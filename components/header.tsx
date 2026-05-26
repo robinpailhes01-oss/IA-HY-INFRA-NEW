@@ -41,7 +41,7 @@ export function Header({
   const displayName = firstName ?? email.split("@")[0];
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-card px-4 md:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-card/60 md:px-6">
       <div className="flex items-center gap-2">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger

@@ -63,7 +63,7 @@ export function LeadsTable({ leads }: { leads: LeadListItem[] }) {
               <TableRow
                 key={lead.id}
                 onClick={() => edit(lead)}
-                className="group cursor-pointer"
+                className="group cursor-pointer transition-colors active:bg-muted/60"
                 title="Modifier ce lead"
               >
                 <TableCell>

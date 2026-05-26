@@ -64,10 +64,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors",
                 "hover:bg-accent hover:text-accent-foreground",
-                active &&
-                  "border-gold bg-sidebar-accent font-semibold text-sidebar-accent-foreground",
+                active && "bg-sidebar-accent font-semibold text-sidebar-accent-foreground",
               )}
             >
               <Icon className={cn("size-4 shrink-0", active && "text-gold")} />

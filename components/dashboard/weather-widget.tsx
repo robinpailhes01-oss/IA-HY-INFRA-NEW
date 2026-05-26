@@ -17,24 +17,9 @@ const RATING: Record<
   string,
   { label: string; dot: string; text: string; tile: string }
 > = {
-  ideal: {
-    label: "Idéal",
-    dot: "bg-success",
-    text: "text-success",
-    tile: "bg-success/5 ring-success/15",
-  },
-  acceptable: {
-    label: "Acceptable",
-    dot: "bg-warning",
-    text: "text-warning",
-    tile: "bg-warning/5 ring-warning/15",
-  },
-  discouraged: {
-    label: "Déconseillé",
-    dot: "bg-danger",
-    text: "text-danger",
-    tile: "bg-danger/5 ring-danger/15",
-  },
+  ideal: { label: "Idéal", dot: "bg-success", text: "text-success", tile: "bg-success/[0.06]" },
+  acceptable: { label: "Acceptable", dot: "bg-warning", text: "text-warning", tile: "bg-warning/[0.06]" },
+  discouraged: { label: "Déconseillé", dot: "bg-danger", text: "text-danger", tile: "bg-danger/[0.06]" },
 };
 
 function ratingOf(rating: string | null) {
@@ -43,7 +28,7 @@ function ratingOf(rating: string | null) {
       label: "—",
       dot: "bg-muted-foreground",
       text: "text-muted-foreground",
-      tile: "bg-background ring-border",
+      tile: "bg-muted/40",
     }
   );
 }
@@ -58,14 +43,15 @@ export function WeatherWidget({ days }: { days: WeatherDay[] }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {days.map((day) => {
         const r = ratingOf(day.rating);
         return (
           <div
             key={day.date}
             className={cn(
-              "flex flex-col gap-2 rounded-xl p-3 ring-1 transition-transform duration-300 hover:-translate-y-0.5",
+              "flex flex-col gap-2 rounded-xl p-3 ring-1 ring-foreground/[0.04] transition-transform duration-300 hover:-translate-y-0.5",
               r.tile,
             )}
           >
@@ -100,6 +86,18 @@ export function WeatherWidget({ days }: { days: WeatherDay[] }) {
           </div>
         );
       })}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-success" />Idéal
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-warning" />Acceptable
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-full bg-danger" />Déconseillé
+        </span>
+      </div>
     </div>
   );
 }

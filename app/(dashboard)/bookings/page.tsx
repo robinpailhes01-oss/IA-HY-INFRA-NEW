@@ -30,6 +30,7 @@ type BookingRow = {
   offer_name: string | null;
   party_size: number | null;
   total_amount: number | null;
+  deposit_amount: number | null;
   deposit_paid: boolean | null;
   balance_due: number | null;
   status: string | null;
@@ -55,7 +56,7 @@ export default async function BookingsPage() {
   const { data } = await supabase
     .from("bookings")
     .select(
-      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_paid, balance_due, status, customers(first_name, last_name)",
+      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, status, customers(first_name, last_name)",
     )
     .order("date", { ascending: true })
     .returns<BookingRow[]>();
@@ -68,9 +69,13 @@ export default async function BookingsPage() {
   const aVenir = bookings.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
   ).length;
-  const soldeDu = bookings
+  const resteAEncaisser = bookings
     .filter((b) => b.status !== "cancelled")
-    .reduce((sum, b) => sum + (b.balance_due ?? 0), 0);
+    .reduce(
+      (sum, b) =>
+        sum + (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0),
+      0,
+    );
 
   return (
     <div className="space-y-6">
@@ -89,8 +94,8 @@ export default async function BookingsPage() {
         <KpiCard label="CA confirmé" value={caConfirme} format="eur" icon={Euro} accent="gold" index={1} />
         <KpiCard label="À venir" value={aVenir} icon={CalendarClock} accent="info" index={2} />
         <KpiCard
-          label="Solde à encaisser"
-          value={soldeDu}
+          label="Reste à encaisser"
+          value={resteAEncaisser}
           format="eur"
           icon={Wallet}
           accent="success"

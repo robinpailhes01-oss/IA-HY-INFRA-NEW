@@ -16,6 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Harmonie Yacht — Dashboard",
   description: "Pilotage des leads, réservations, finances et marketing d'Harmonie Yacht.",
+  formatDetection: { telephone: false, date: false, address: false, email: false },
 };
 
 export default function RootLayout({

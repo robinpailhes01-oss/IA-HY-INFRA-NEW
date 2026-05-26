@@ -259,7 +259,7 @@ export default async function OverviewPage() {
         <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="acomptes + soldes perçus" index={3} />
       </div>
 
-      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
         <Card>
           <CardHeader>
             <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
@@ -281,7 +281,7 @@ export default async function OverviewPage() {
         </Card>
       </Reveal>
 
-      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Réservations à venir</CardTitle>
