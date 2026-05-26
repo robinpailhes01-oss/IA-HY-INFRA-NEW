@@ -1,42 +1,16 @@
 import { CheckCircle2, PhoneCall, UserPlus, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { formatDateLong } from "@/lib/format";
-import { leadStatusBadge, sourceChannelLabel } from "@/lib/status";
-
-type LeadRow = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
-  source_channel: string | null;
-  interested_offer: string | null;
-  score: number | null;
-  status: string | null;
-  needs_human_intervention: boolean | null;
-  created_at: string | null;
-};
-
-function fullName(first: string | null, last: string | null): string {
-  return [first, last].filter(Boolean).join(" ").trim() || "Lead";
-}
+import { LeadsTable, type LeadListItem } from "@/components/leads/leads-table";
+import { sourceChannelLabel } from "@/lib/status";
 
 export default async function LeadsPage() {
   const supabase = await createClient();
@@ -46,7 +20,7 @@ export default async function LeadsPage() {
       "id, first_name, last_name, email, phone, source_channel, interested_offer, score, status, needs_human_intervention, created_at",
     )
     .order("created_at", { ascending: false })
-    .returns<LeadRow[]>();
+    .returns<LeadListItem[]>();
 
   const leads = data ?? [];
   const total = leads.length;
@@ -54,12 +28,23 @@ export default async function LeadsPage() {
   const reserves = leads.filter((l) => l.status === "booked").length;
   const aRappeler = leads.filter((l) => l.needs_human_intervention).length;
 
+  const bySource = Object.entries(
+    leads.reduce<Record<string, number>>((acc, l) => {
+      const key = l.source_channel ?? "other";
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {}),
+  )
+    .map(([channel, count]) => ({ channel, count }))
+    .sort((a, b) => b.count - a.count);
+  const maxSource = bySource[0]?.count ?? 1;
+
   return (
     <div className="space-y-6">
       <header className="enter-up space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
         <p className="text-sm text-muted-foreground">
-          {total} prospect{total > 1 ? "s" : ""} dans le pipeline
+          {total} prospect{total > 1 ? "s" : ""} dans le pipeline · clique sur une ligne pour modifier
         </p>
       </header>
 
@@ -70,72 +55,41 @@ export default async function LeadsPage() {
         <KpiCard label="À rappeler" value={aRappeler} icon={PhoneCall} accent="gold" index={3} />
       </div>
 
-      <Card className="enter-up" style={{ animationDelay: "280ms" }}>
-        <CardHeader>
-          <CardTitle>Tous les leads</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {leads.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Aucun lead pour le moment.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Lead</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Offre</TableHead>
-                  <TableHead className="text-center">Score</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Reçu le</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leads.map((lead) => {
-                  const status = leadStatusBadge(lead.status);
-                  return (
-                    <TableRow key={lead.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="flex items-center gap-2 font-medium text-foreground">
-                            {fullName(lead.first_name, lead.last_name)}
-                            {lead.needs_human_intervention && (
-                              <Badge variant="destructive">À rappeler</Badge>
-                            )}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {lead.email ?? lead.phone ?? "—"}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {sourceChannelLabel(lead.source_channel)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {lead.interested_offer ?? "—"}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {typeof lead.score === "number" ? (
-                          <span className="font-semibold text-gold">{lead.score}/10</span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {lead.created_at ? formatDateLong(lead.created_at) : "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="enter-up" style={{ animationDelay: "240ms" }}>
+          <CardHeader>
+            <CardTitle>Acquisition par canal</CardTitle>
+            <CardDescription>D&apos;où viennent les leads</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {bySource.map((s) => (
+                <li key={s.channel} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">{sourceChannelLabel(s.channel)}</span>
+                    <span className="font-medium text-foreground">{s.count}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-gold/70"
+                      style={{ width: `${Math.round((s.count / maxSource) * 100)}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card className="enter-up lg:col-span-2" style={{ animationDelay: "320ms" }}>
+          <CardHeader>
+            <CardTitle>Tous les leads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LeadsTable leads={leads} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

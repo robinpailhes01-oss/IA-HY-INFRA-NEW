@@ -1,4 +1,4 @@
-import { Euro, Ship, Users, Wallet } from "lucide-react";
+import { Banknote, Ship, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -9,6 +9,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { RevenueHero } from "@/components/dashboard/revenue-hero";
+import { MonthlyBars } from "@/components/dashboard/monthly-bars";
 import { RevenueGauge } from "@/components/dashboard/revenue-gauge";
 import {
   WeatherWidget,
@@ -26,7 +28,7 @@ import {
   AlertsPanel,
   type AlertItem,
 } from "@/components/dashboard/alerts-panel";
-import { formatDateLong, formatEur, formatEurCompact } from "@/lib/format";
+import { formatDateLong, formatEur } from "@/lib/format";
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -36,6 +38,9 @@ type BookingMetricRow = {
   net_margin: number | null;
   status: string | null;
   date: string;
+  deposit_amount: number | null;
+  deposit_paid: boolean | null;
+  balance_due: number | null;
 };
 
 type BookingJoinRow = {
@@ -71,8 +76,11 @@ function fullName(first: string | null, last: string | null): string {
 
 export default async function OverviewPage() {
   const supabase = await createClient();
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const ago30Iso = new Date(Date.now() - 30 * DAY_MS).toISOString();
+  const now = new Date();
+  const year = now.getFullYear();
+  const monthIdx = now.getMonth();
+  const todayIso = now.toISOString().slice(0, 10);
+  const ago30Iso = new Date(now.getTime() - 30 * DAY_MS).toISOString();
 
   const [
     goalRes,
@@ -91,7 +99,9 @@ export default async function OverviewPage() {
       .maybeSingle(),
     supabase
       .from("bookings")
-      .select("total_amount, net_margin, status, date")
+      .select(
+        "total_amount, net_margin, status, date, deposit_amount, deposit_paid, balance_due",
+      )
       .returns<BookingMetricRow[]>(),
     supabase
       .from("bookings")
@@ -135,17 +145,48 @@ export default async function OverviewPage() {
   const min = goal?.target_min ?? 0;
   const medium = goal?.target_medium ?? 0;
   const strong = goal?.target_strong ?? 0;
+  const periodStart = goal?.period_start ?? `${year}-06-01`;
+  const periodEnd = goal?.period_end ?? `${year}-08-31`;
 
   const metrics = metricsRes.data ?? [];
-  const confirmedRevenue = metrics
-    .filter((b) => CONFIRMED.has(b.status ?? ""))
-    .reduce((sum, b) => sum + (b.total_amount ?? 0), 0);
-  const netMargin = metrics
-    .filter((b) => CONFIRMED.has(b.status ?? ""))
-    .reduce((sum, b) => sum + (b.net_margin ?? 0), 0);
+  const isConfirmed = (b: BookingMetricRow) => CONFIRMED.has(b.status ?? "");
+  const inYear = (d: string) => d.slice(0, 4) === String(year);
+  const inCurrentMonth = (d: string) =>
+    inYear(d) && Number(d.slice(5, 7)) - 1 === monthIdx;
+
+  const caYtd = metrics
+    .filter((b) => isConfirmed(b) && inYear(b.date))
+    .reduce((s, b) => s + (b.total_amount ?? 0), 0);
+  const caMonth = metrics
+    .filter((b) => isConfirmed(b) && inCurrentMonth(b.date))
+    .reduce((s, b) => s + (b.total_amount ?? 0), 0);
+  const ytdMargin = metrics
+    .filter((b) => isConfirmed(b) && inYear(b.date))
+    .reduce((s, b) => s + (b.net_margin ?? 0), 0);
+
+  const outstandingOf = (b: BookingMetricRow) =>
+    (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
+  const outstanding = metrics
+    .filter((b) => b.status !== "cancelled" && b.date >= todayIso)
+    .reduce((s, b) => s + outstandingOf(b), 0);
+  const collected = metrics
+    .filter((b) => b.status !== "cancelled")
+    .reduce((s, b) => s + ((b.total_amount ?? 0) - outstandingOf(b)), 0);
+
+  const seasonRevenue = metrics
+    .filter((b) => isConfirmed(b) && b.date >= periodStart && b.date <= periodEnd)
+    .reduce((s, b) => s + (b.total_amount ?? 0), 0);
+
   const upcomingCount = metrics.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
   ).length;
+
+  const monthly = Array<number>(12).fill(0);
+  for (const b of metrics) {
+    if (isConfirmed(b) && inYear(b.date)) {
+      monthly[Number(b.date.slice(5, 7)) - 1] += b.total_amount ?? 0;
+    }
+  }
 
   const upcoming: UpcomingBooking[] = (upcomingRes.data ?? []).map((b) => ({
     id: b.id,
@@ -171,7 +212,6 @@ export default async function OverviewPage() {
 
   const weatherDays = weatherRes.data ?? [];
   const newLeadsCount = newLeadsRes.count ?? 0;
-
   const alerts = buildAlerts(
     upcomingRes.data ?? [],
     attentionLeadsRes.data ?? [],
@@ -186,45 +226,36 @@ export default async function OverviewPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           {goal
-            ? `Saison en cours · ${formatDateLong(goal.period_start!)} – ${formatDateLong(goal.period_end!)}`
+            ? `Saison en cours · ${formatDateLong(periodStart)} – ${formatDateLong(periodEnd)}`
             : "Tableau de bord Harmonie Yacht"}
         </p>
       </header>
 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <RevenueHero
+            year={year}
+            caYtd={caYtd}
+            caMonth={caMonth}
+            outstanding={outstanding}
+          />
+        </div>
+        <Card className="enter-up" style={{ animationDelay: "120ms" }}>
+          <CardHeader>
+            <CardTitle>Revenus par mois</CardTitle>
+            <CardDescription>CA confirmé {year}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MonthlyBars values={monthly} currentMonth={monthIdx} />
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="CA confirmé"
-          value={confirmedRevenue}
-          format="eur"
-          icon={Euro}
-          accent="gold"
-          hint={`objectif ${formatEurCompact(min)} – ${formatEurCompact(strong)}`}
-          index={0}
-        />
-        <KpiCard
-          label="Réservations à venir"
-          value={upcomingCount}
-          icon={Ship}
-          accent="primary"
-          hint="hors annulations"
-          index={1}
-        />
-        <KpiCard
-          label="Nouveaux leads (30 j)"
-          value={newLeadsCount}
-          icon={Users}
-          accent="info"
-          index={2}
-        />
-        <KpiCard
-          label="Marge nette"
-          value={netMargin}
-          format="eur"
-          icon={Wallet}
-          accent="success"
-          hint="sur CA confirmé"
-          index={3}
-        />
+        <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="primary" hint="hors annulations" index={0} />
+        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
+        <KpiCard label="Marge nette 2026" value={ytdMargin} format="eur" icon={TrendingUp} accent="success" index={2} />
+        <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="acomptes + soldes perçus" index={3} />
       </div>
 
       <div
@@ -234,19 +265,10 @@ export default async function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
-            {goal && (
-              <CardDescription>
-                Paliers de la saison · CA confirmé
-              </CardDescription>
-            )}
+            <CardDescription>Saison juin–août · CA confirmé</CardDescription>
           </CardHeader>
           <CardContent>
-            <RevenueGauge
-              current={confirmedRevenue}
-              min={min}
-              medium={medium}
-              strong={strong}
-            />
+            <RevenueGauge current={seasonRevenue} min={min} medium={medium} strong={strong} />
           </CardContent>
         </Card>
 
@@ -328,19 +350,18 @@ function buildAlerts(
         title: `Acompte en attente — ${b.offer_name ?? "réservation"}`,
         description: `${name} · sortie du ${formatDateLong(b.date)}.`,
       });
-    } else if ((b.balance_due ?? 0) > 0) {
-      const dueMs = b.balance_due_date
-        ? new Date(b.balance_due_date).getTime()
-        : null;
-      const soon = dueMs !== null && dueMs - todayMs <= 7 * DAY_MS;
-      alerts.push({
-        id: `balance-${b.id}`,
-        severity: soon ? "danger" : "info",
-        title: `Solde à encaisser — ${formatEur(b.balance_due)}`,
-        description: `${name}${
-          b.balance_due_date ? ` · échéance ${formatDateLong(b.balance_due_date)}` : ""
-        }.`,
-      });
+      continue;
+    }
+    if ((b.balance_due ?? 0) > 0 && b.balance_due_date) {
+      const daysLeft = (new Date(b.balance_due_date).getTime() - todayMs) / DAY_MS;
+      if (daysLeft <= 10) {
+        alerts.push({
+          id: `balance-${b.id}`,
+          severity: daysLeft <= 3 ? "danger" : "warning",
+          title: `Solde à encaisser — ${formatEur(b.balance_due)}`,
+          description: `${name} · le jour de la sortie (${formatDateLong(b.balance_due_date)}).`,
+        });
+      }
     }
   }
 
