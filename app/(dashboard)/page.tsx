@@ -11,6 +11,7 @@ import {
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { RevenueHero } from "@/components/dashboard/revenue-hero";
 import { MonthlyBars } from "@/components/dashboard/monthly-bars";
+import { Reveal } from "@/components/dashboard/reveal";
 import { RevenueGauge } from "@/components/dashboard/revenue-gauge";
 import {
   WeatherWidget,
@@ -258,10 +259,7 @@ export default async function OverviewPage() {
         <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="acomptes + soldes perçus" index={3} />
       </div>
 
-      <div
-        className="enter-up grid grid-cols-1 gap-6 lg:grid-cols-3"
-        style={{ animationDelay: "260ms" }}
-      >
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
@@ -281,12 +279,9 @@ export default async function OverviewPage() {
             <WeatherWidget days={weatherDays} />
           </CardContent>
         </Card>
-      </div>
+      </Reveal>
 
-      <div
-        className="enter-up grid grid-cols-1 gap-6 lg:grid-cols-3"
-        style={{ animationDelay: "340ms" }}
-      >
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Réservations à venir</CardTitle>
@@ -306,17 +301,19 @@ export default async function OverviewPage() {
             <AlertsPanel alerts={alerts} />
           </CardContent>
         </Card>
-      </div>
+      </Reveal>
 
-      <Card className="enter-up" style={{ animationDelay: "420ms" }}>
-        <CardHeader>
-          <CardTitle>Leads récents</CardTitle>
-          <CardDescription>Derniers prospects entrés dans le pipeline</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RecentLeads leads={recentLeads} />
-        </CardContent>
-      </Card>
+      <Reveal>
+        <Card>
+          <CardHeader>
+            <CardTitle>Leads récents</CardTitle>
+            <CardDescription>Derniers prospects entrés dans le pipeline</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RecentLeads leads={recentLeads} />
+          </CardContent>
+        </Card>
+      </Reveal>
     </div>
   );
 }

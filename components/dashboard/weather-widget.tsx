@@ -13,14 +13,39 @@ export type WeatherDay = {
   swell_m: number | null;
 };
 
-const RATING: Record<string, { label: string; dot: string; text: string }> = {
-  ideal: { label: "Idéal", dot: "bg-success", text: "text-success" },
-  acceptable: { label: "Acceptable", dot: "bg-warning", text: "text-warning" },
-  discouraged: { label: "Déconseillé", dot: "bg-danger", text: "text-danger" },
+const RATING: Record<
+  string,
+  { label: string; dot: string; text: string; tile: string }
+> = {
+  ideal: {
+    label: "Idéal",
+    dot: "bg-success",
+    text: "text-success",
+    tile: "bg-success/5 ring-success/15",
+  },
+  acceptable: {
+    label: "Acceptable",
+    dot: "bg-warning",
+    text: "text-warning",
+    tile: "bg-warning/5 ring-warning/15",
+  },
+  discouraged: {
+    label: "Déconseillé",
+    dot: "bg-danger",
+    text: "text-danger",
+    tile: "bg-danger/5 ring-danger/15",
+  },
 };
 
 function ratingOf(rating: string | null) {
-  return RATING[rating ?? ""] ?? { label: "—", dot: "bg-muted-foreground", text: "text-muted-foreground" };
+  return (
+    RATING[rating ?? ""] ?? {
+      label: "—",
+      dot: "bg-muted-foreground",
+      text: "text-muted-foreground",
+      tile: "bg-background ring-border",
+    }
+  );
 }
 
 export function WeatherWidget({ days }: { days: WeatherDay[] }) {
@@ -39,7 +64,10 @@ export function WeatherWidget({ days }: { days: WeatherDay[] }) {
         return (
           <div
             key={day.date}
-            className="flex flex-col gap-2 rounded-lg border border-border bg-background/60 p-3"
+            className={cn(
+              "flex flex-col gap-2 rounded-xl p-3 ring-1 transition-transform duration-300 hover:-translate-y-0.5",
+              r.tile,
+            )}
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium capitalize text-foreground">

@@ -67,6 +67,13 @@ export function RevenueGauge({ current, min, medium, strong }: RevenueGaugeProps
           role="img"
           aria-label={`Chiffre d'affaires ${formatEur(current)} sur objectif fort ${formatEur(strong)}`}
         >
+          <defs>
+            <linearGradient id="gaugeGold" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#e3c878" />
+              <stop offset="55%" stopColor="var(--gold)" />
+              <stop offset="100%" stopColor="#b8923a" />
+            </linearGradient>
+          </defs>
           <path
             d={arcPath(0, 1)}
             fill="none"
@@ -77,29 +84,45 @@ export function RevenueGauge({ current, min, medium, strong }: RevenueGaugeProps
           <path
             d={arcPath(0, 1)}
             fill="none"
-            stroke="var(--gold)"
+            stroke="url(#gaugeGold)"
             strokeWidth={STROKE}
             strokeLinecap="round"
             pathLength={1}
             strokeDasharray={1}
             strokeDashoffset={1 - fraction}
             className="animate-gauge"
+            style={{ filter: "drop-shadow(0 3px 8px rgba(201,168,76,0.45))" }}
           />
           {tiers.map((tier) => {
             const f = Math.min(tier.value / max, 1);
-            const [tx, ty] = polar(f, RADIUS);
+            const [tx, ty] = polar(START_ANGLE + SWEEP * f, RADIUS);
             return (
               <circle
                 key={tier.label}
                 cx={tx}
                 cy={ty}
-                r={3.5}
+                r={3}
                 fill="var(--background)"
                 stroke="var(--primary)"
                 strokeWidth={2}
               />
             );
           })}
+          {fraction > 0.02 &&
+            (() => {
+              const [ex, ey] = polar(START_ANGLE + SWEEP * fraction, RADIUS);
+              return (
+                <circle
+                  cx={ex}
+                  cy={ey}
+                  r={6}
+                  fill="#ffffff"
+                  stroke="var(--gold)"
+                  strokeWidth={3}
+                  style={{ filter: "drop-shadow(0 2px 5px rgba(201,168,76,0.6))" }}
+                />
+              );
+            })()}
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">

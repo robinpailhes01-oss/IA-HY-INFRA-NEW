@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 
 type Accent = "gold" | "primary" | "success" | "info";
 
-const ACCENT: Record<Accent, { icon: string; bar: string }> = {
-  gold: { icon: "bg-gold/12 text-gold ring-gold/20", bar: "from-gold/70" },
-  primary: { icon: "bg-primary/10 text-primary ring-primary/20", bar: "from-primary/60" },
-  success: { icon: "bg-success/12 text-success ring-success/20", bar: "from-success/60" },
-  info: { icon: "bg-info/12 text-info ring-info/20", bar: "from-info/60" },
+const ACCENT: Record<Accent, { chip: string; glow: string }> = {
+  gold: { chip: "from-gold to-[#b8923a]", glow: "bg-gold/25" },
+  primary: { chip: "from-[#2a5a8c] to-primary", glow: "bg-primary/20" },
+  success: { chip: "from-success to-[#0e9f6e]", glow: "bg-success/20" },
+  info: { chip: "from-info to-[#2563eb]", glow: "bg-info/25" },
 };
 
 type KpiCardProps = {
@@ -38,22 +38,22 @@ export function KpiCard({
   return (
     <Card
       style={{ animationDelay: `${index * 70}ms` }}
-      className="enter-up relative hover:-translate-y-1 hover:shadow-[0_1px_2px_rgba(16,24,40,0.04),0_24px_48px_-20px_rgba(16,24,40,0.28)]"
+      className="enter-up relative hover:-translate-y-1 hover:shadow-[0_1px_2px_rgba(16,24,40,0.04),0_28px_56px_-20px_rgba(16,24,40,0.30)]"
     >
-      <span
+      <div
         aria-hidden
         className={cn(
-          "absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r to-transparent",
-          a.bar,
+          "pointer-events-none absolute -top-10 -right-8 size-28 rounded-full opacity-70 blur-2xl transition-opacity duration-300 group-hover/card:opacity-100",
+          a.glow,
         )}
       />
-      <CardContent className="flex items-start justify-between gap-3">
+      <CardContent className="relative flex items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
           <span className="text-sm text-muted-foreground">{label}</span>
           <AnimatedNumber
             value={value}
             format={format}
-            className="text-2xl font-semibold tracking-tight text-foreground"
+            className="text-[1.7rem] leading-tight font-semibold tracking-tight text-foreground"
           />
           {delta ? (
             <span
@@ -78,8 +78,8 @@ export function KpiCard({
         </div>
         <span
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-transform duration-300 group-hover/card:scale-110",
-            a.icon,
+            "flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm transition-transform duration-300 group-hover/card:scale-110",
+            a.chip,
           )}
         >
           <Icon className="size-5" />

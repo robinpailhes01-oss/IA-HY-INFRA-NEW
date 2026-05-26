@@ -32,7 +32,10 @@ export function UpcomingBookings({ bookings }: { bookings: UpcomingBooking[] }) 
         const status = bookingStatusBadge(b.status);
         const time = formatTimeRange(b.startTime, b.endTime);
         return (
-          <li key={b.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+          <li
+            key={b.id}
+            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/50"
+          >
             <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-secondary text-center">
               <span className="text-[11px] font-medium capitalize leading-none text-muted-foreground">
                 {formatDateRelative(b.date).split(" ")[0]}

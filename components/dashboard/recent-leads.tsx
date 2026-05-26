@@ -38,7 +38,10 @@ export function RecentLeads({ leads }: { leads: RecentLead[] }) {
       {leads.map((lead) => {
         const status = leadStatusBadge(lead.status);
         return (
-          <li key={lead.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+          <li
+            key={lead.id}
+            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/50"
+          >
             <Avatar className="size-9">
               <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
                 {initials(lead.name)}

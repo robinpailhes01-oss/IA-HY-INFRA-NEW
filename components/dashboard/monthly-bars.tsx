@@ -18,14 +18,21 @@ export function MonthlyBars({
         const isCurrent = i === currentMonth;
         const heightPct = Math.round((value / max) * 100);
         return (
-          <div key={i} className="flex flex-1 flex-col items-center gap-2">
+          <div key={i} className="group/bar flex flex-1 flex-col items-center gap-2">
             <div className="flex min-h-0 w-full flex-1 items-end" title={formatEur(value)}>
               <div
                 className={cn(
-                  "w-full rounded-md transition-[height] duration-700 ease-out",
-                  value === 0 ? "bg-border" : isCurrent ? "bg-gold" : "bg-primary/15",
+                  "animate-grow w-full rounded-md bg-gradient-to-t transition-[filter] duration-200 group-hover/bar:brightness-105",
+                  value === 0
+                    ? "from-border to-border"
+                    : isCurrent
+                      ? "from-gold/80 to-gold shadow-[0_4px_12px_-4px_rgba(201,168,76,0.6)]"
+                      : "from-primary/10 to-primary/30",
                 )}
-                style={{ height: value === 0 ? "3px" : `${Math.max(heightPct, 5)}%` }}
+                style={{
+                  height: value === 0 ? "3px" : `${Math.max(heightPct, 5)}%`,
+                  animationDelay: `${i * 45}ms`,
+                }}
               />
             </div>
             <span
