@@ -1,0 +1,81 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  Wallet,
+  Megaphone,
+  PartyPopper,
+  Bot,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/", label: "Vue d'ensemble", icon: LayoutDashboard },
+  { href: "/leads", label: "Leads", icon: Users },
+  { href: "/bookings", label: "Réservations", icon: Calendar },
+  { href: "/finances", label: "Finances", icon: Wallet },
+  { href: "/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/events", label: "Événements", icon: PartyPopper },
+  { href: "/agent", label: "Agent IA", icon: Bot },
+  { href: "/settings", label: "Paramètres", icon: Settings },
+];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname();
+
+  return (
+    <div className="flex h-full flex-col">
+      <Link
+        href="/"
+        onClick={onNavigate}
+        className="flex h-16 shrink-0 items-center gap-2 px-6 text-lg font-semibold tracking-tight"
+      >
+        <span className="text-gold">⚓</span>
+        <span>
+          Harmonie <span className="text-gold">Yacht</span>
+        </span>
+      </Link>
+
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = isActive(pathname, href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors",
+                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                active &&
+                  "border-gold bg-sidebar-accent text-sidebar-accent-foreground",
+              )}
+            >
+              <Icon className="size-4 shrink-0" />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
