@@ -58,7 +58,7 @@ export function Header({
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-60 max-w-[80vw] border-0 bg-sidebar p-0 text-sidebar-foreground"
+            className="w-60 max-w-[80vw] border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <SidebarNav onNavigate={() => setMobileOpen(false)} />

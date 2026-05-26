@@ -13,6 +13,8 @@
 
   /* Brand tokens Harmonie Yacht */
   --color-gold: var(--gold);
+  --color-gold-100: var(--gold-100);
+  --color-gold-foreground: var(--gold-foreground);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -67,6 +69,8 @@
 
   /* Identité Harmonie Yacht */
   --gold: #c9a84c;
+  --gold-100: #f6efd9;
+  --gold-foreground: #1b3a5c;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
@@ -97,15 +101,15 @@
   --chart-4: #10b981;
   --chart-5: #f59e0b;
 
-  /* Sidebar sombre */
-  --sidebar: #0f172a;
-  --sidebar-foreground: #e2e8f0;
+  /* Sidebar claire (fond blanc, accents or) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #475569;
   --sidebar-primary: #c9a84c;
-  --sidebar-primary-foreground: #0f172a;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: #1e293b;
-  --sidebar-ring: #2a5a8c;
+  --sidebar-primary-foreground: #1b3a5c;
+  --sidebar-accent: #f6efd9;
+  --sidebar-accent-foreground: #1b3a5c;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #c9a84c;
 }
 
 .dark {

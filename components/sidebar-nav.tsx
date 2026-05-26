@@ -46,7 +46,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Link
         href="/"
         onClick={onNavigate}
-        className="flex h-16 shrink-0 items-center gap-2 px-6 text-lg font-semibold tracking-tight"
+        className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border px-6 text-lg font-semibold tracking-tight text-primary"
       >
         <span className="text-gold">⚓</span>
         <span>
@@ -64,13 +64,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition-colors",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                "flex items-center gap-3 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors",
+                "hover:bg-accent hover:text-accent-foreground",
                 active &&
-                  "border-gold bg-sidebar-accent text-sidebar-accent-foreground",
+                  "border-gold bg-sidebar-accent font-semibold text-sidebar-accent-foreground",
               )}
             >
-              <Icon className="size-4 shrink-0" />
+              <Icon className={cn("size-4 shrink-0", active && "text-gold")} />
               <span>{label}</span>
             </Link>
           );
