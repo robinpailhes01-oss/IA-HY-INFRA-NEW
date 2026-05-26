@@ -2,6 +2,7 @@ import { CalendarClock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { formatDateRelative, formatEur, formatTimeRange } from "@/lib/format";
+import { bookingStatusBadge } from "@/lib/status";
 
 export type UpcomingBooking = {
   id: string;
@@ -13,16 +14,6 @@ export type UpcomingBooking = {
   partySize: number | null;
   amount: number | null;
   status: string | null;
-};
-
-const STATUS: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
-> = {
-  confirmed: { label: "Confirmée", variant: "default" },
-  pending: { label: "En attente", variant: "secondary" },
-  completed: { label: "Terminée", variant: "outline" },
-  cancelled: { label: "Annulée", variant: "destructive" },
 };
 
 export function UpcomingBookings({ bookings }: { bookings: UpcomingBooking[] }) {
@@ -38,10 +29,7 @@ export function UpcomingBookings({ bookings }: { bookings: UpcomingBooking[] }) 
   return (
     <ul className="divide-y divide-border">
       {bookings.map((b) => {
-        const status = STATUS[b.status ?? ""] ?? {
-          label: b.status ?? "—",
-          variant: "outline" as const,
-        };
+        const status = bookingStatusBadge(b.status);
         const time = formatTimeRange(b.startTime, b.endTime);
         return (
           <li key={b.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">

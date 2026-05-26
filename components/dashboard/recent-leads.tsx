@@ -3,6 +3,7 @@ import { UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDateRelative } from "@/lib/format";
+import { leadStatusBadge } from "@/lib/status";
 
 export type RecentLead = {
   id: string;
@@ -12,19 +13,6 @@ export type RecentLead = {
   score: number | null;
   status: string | null;
   createdAt: string | null;
-};
-
-const STATUS: Record<
-  string,
-  { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
-> = {
-  new: { label: "Nouveau", variant: "default" },
-  contacted: { label: "Contacté", variant: "secondary" },
-  qualified: { label: "Qualifié", variant: "secondary" },
-  quote_sent: { label: "Devis envoyé", variant: "secondary" },
-  followed_up: { label: "Relancé", variant: "secondary" },
-  booked: { label: "Réservé", variant: "outline" },
-  lost: { label: "Perdu", variant: "destructive" },
 };
 
 function initials(name: string) {
@@ -48,10 +36,7 @@ export function RecentLeads({ leads }: { leads: RecentLead[] }) {
   return (
     <ul className="divide-y divide-border">
       {leads.map((lead) => {
-        const status = STATUS[lead.status ?? ""] ?? {
-          label: lead.status ?? "—",
-          variant: "outline" as const,
-        };
+        const status = leadStatusBadge(lead.status);
         return (
           <li key={lead.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
             <Avatar className="size-9">
