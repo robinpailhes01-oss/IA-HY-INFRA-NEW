@@ -138,6 +138,7 @@ export type Database = {
         Row: {
           balance_due: number | null
           balance_due_date: string | null
+          balance_payments: Json
           booking_type: string | null
           costs: number | null
           created_at: string | null
@@ -168,6 +169,7 @@ export type Database = {
         Insert: {
           balance_due?: number | null
           balance_due_date?: string | null
+          balance_payments?: Json
           booking_type?: string | null
           costs?: number | null
           created_at?: string | null
@@ -198,6 +200,7 @@ export type Database = {
         Update: {
           balance_due?: number | null
           balance_due_date?: string | null
+          balance_payments?: Json
           booking_type?: string | null
           costs?: number | null
           created_at?: string | null

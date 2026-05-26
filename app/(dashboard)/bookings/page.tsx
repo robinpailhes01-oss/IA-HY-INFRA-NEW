@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -17,6 +18,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import {
+  BalanceAgenda,
+} from "@/components/bookings/balance-agenda";
+import type { SettleTarget } from "@/components/bookings/settle-balance-dialog";
 import { formatDateLong, formatEur, formatTimeRange } from "@/lib/format";
 import { bookingStatusBadge } from "@/lib/status";
 
@@ -77,6 +82,21 @@ export default async function BookingsPage() {
       0,
     );
 
+  const toCollect: SettleTarget[] = bookings
+    .filter(
+      (b) => b.status !== "cancelled" && b.date >= todayIso && (b.balance_due ?? 0) > 0,
+    )
+    .map((b) => ({
+      id: b.id,
+      customerName: fullName(
+        b.customers?.first_name ?? null,
+        b.customers?.last_name ?? null,
+      ),
+      offerName: b.offer_name,
+      date: b.date,
+      balanceDue: b.balance_due ?? 0,
+    }));
+
   return (
     <div className="space-y-6">
       <header className="enter-up space-y-1">
@@ -103,7 +123,19 @@ export default async function BookingsPage() {
         />
       </div>
 
-      <Card className="enter-up" style={{ animationDelay: "280ms" }}>
+      <Card className="enter-up" style={{ animationDelay: "260ms" }}>
+        <CardHeader>
+          <CardTitle>Soldes à encaisser</CardTitle>
+          <CardDescription>
+            Sorties à venir avec un solde à percevoir le jour J
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BalanceAgenda items={toCollect} />
+        </CardContent>
+      </Card>
+
+      <Card className="enter-up" style={{ animationDelay: "340ms" }}>
         <CardHeader>
           <CardTitle>Toutes les réservations</CardTitle>
         </CardHeader>

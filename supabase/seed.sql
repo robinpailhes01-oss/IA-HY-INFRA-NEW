@@ -5,6 +5,9 @@
 
 begin;
 
+-- Colonne d'encaissement du solde (idempotent — voir migration add_balance_payments_to_bookings)
+alter table bookings add column if not exists balance_payments jsonb not null default '[]'::jsonb;
+
 -- Nettoyage (ordre des dépendances)
 delete from content_marketing;
 delete from expenses;
@@ -68,6 +71,16 @@ insert into bookings (id, customer_id, date, start_time, end_time, duration_hour
   ('b0000000-0000-4000-8000-000000000020', 'c0000000-0000-4000-8000-000000000002', '2026-05-10', '10:00:00', '17:00:00', 7, 'Journée privée',        10, 4200, 1600, 1260, true, 0, null, 'completed', 'whatsapp',  'sortie_privative', true),
   ('b0000000-0000-4000-8000-000000000021', 'c0000000-0000-4000-8000-000000000009', '2026-05-17', '17:00:00', '22:00:00', 5, 'Anniversaire',          12, 3100, 1200, 930,  true, 0, null, 'completed', 'instagram', 'sortie_privative', true),
   ('b0000000-0000-4000-8000-000000000022', 'c0000000-0000-4000-8000-000000000010', '2026-05-24', '18:00:00', '21:00:00', 3, 'Coucher de soleil',     8,  2400, 900,  720,  true, 0, null, 'completed', 'website',   'sortie_privative', true);
+
+-- Encaissements du solde des sorties passées (moyens de paiement ; b20 = paiement fractionné)
+update bookings set balance_payments = '[{"method":"cb","amount":1260}]'::jsonb      where id='b0000000-0000-4000-8000-000000000015';
+update bookings set balance_payments = '[{"method":"especes","amount":1540}]'::jsonb where id='b0000000-0000-4000-8000-000000000016';
+update bookings set balance_payments = '[{"method":"cb","amount":1820}]'::jsonb      where id='b0000000-0000-4000-8000-000000000017';
+update bookings set balance_payments = '[{"method":"especes","amount":1330}]'::jsonb where id='b0000000-0000-4000-8000-000000000018';
+update bookings set balance_payments = '[{"method":"cheque","amount":1470}]'::jsonb  where id='b0000000-0000-4000-8000-000000000019';
+update bookings set balance_payments = '[{"method":"cb","amount":1620},{"method":"especes","amount":1320}]'::jsonb where id='b0000000-0000-4000-8000-000000000020';
+update bookings set balance_payments = '[{"method":"especes","amount":2170}]'::jsonb where id='b0000000-0000-4000-8000-000000000021';
+update bookings set balance_payments = '[{"method":"cb","amount":1680}]'::jsonb      where id='b0000000-0000-4000-8000-000000000022';
 
 -- Météo marine (rating ∈ ideal | acceptable | discouraged)
 insert into weather_cache (date, rating, wind_speed_kmh, wind_direction, wave_height_m, water_temp_c, swell_m, fetched_at) values

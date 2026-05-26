@@ -3,13 +3,16 @@ import { Euro, PiggyBank, Receipt, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
 import { formatEur } from "@/lib/format";
+import { PAYMENT_METHODS, parsePayments } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
@@ -33,6 +36,9 @@ type BookingFin = {
   costs: number | null;
   net_margin: number | null;
   status: string | null;
+  deposit_amount: number | null;
+  deposit_paid: boolean | null;
+  balance_payments: unknown;
 };
 
 type ExpenseRow = { category: string; amount: number };
@@ -47,7 +53,9 @@ export default async function FinancesPage() {
   const [bookingsRes, expensesRes] = await Promise.all([
     supabase
       .from("bookings")
-      .select("total_amount, costs, net_margin, status")
+      .select(
+        "total_amount, costs, net_margin, status, deposit_amount, deposit_paid, balance_payments",
+      )
       .returns<BookingFin[]>(),
     supabase.from("expenses").select("category, amount").returns<ExpenseRow[]>(),
   ]);
@@ -72,6 +80,26 @@ export default async function FinancesPage() {
     .map(([category, amount]) => ({ category, amount }))
     .sort((a, b) => b.amount - a.amount);
   const maxCategory = byCategory[0]?.amount ?? 1;
+
+  const allBookings = bookingsRes.data ?? [];
+  const encByMethod: Record<string, number> = {};
+  let totalEncaisse = 0;
+  for (const b of allBookings) {
+    if (b.status === "cancelled") continue;
+    if (b.deposit_paid) {
+      encByMethod.virement = (encByMethod.virement ?? 0) + (b.deposit_amount ?? 0);
+      totalEncaisse += b.deposit_amount ?? 0;
+    }
+    for (const p of parsePayments(b.balance_payments)) {
+      encByMethod[p.method] = (encByMethod[p.method] ?? 0) + p.amount;
+      totalEncaisse += p.amount;
+    }
+  }
+  const encList = PAYMENT_METHODS.map((m) => ({
+    label: m.label,
+    amount: encByMethod[m.value] ?? 0,
+  }));
+  const maxEnc = Math.max(...encList.map((e) => e.amount), 1);
 
   const segments = [
     { label: "Coûts directs", value: directCosts, color: "bg-slate-400" },
@@ -159,6 +187,9 @@ export default async function FinancesPage() {
           <CardHeader>
             <CardTitle>Dépenses par catégorie</CardTitle>
             <CardDescription>Total {formatEur(opex)}</CardDescription>
+            <CardAction>
+              <AddExpenseDialog />
+            </CardAction>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
@@ -182,6 +213,35 @@ export default async function FinancesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="enter-up" style={{ animationDelay: "440ms" }}>
+        <CardHeader>
+          <CardTitle>Encaissements par moyen de paiement</CardTitle>
+          <CardDescription>
+            Total perçu {formatEur(totalEncaisse)} · l&apos;acompte du site est compté en virement
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+            {encList.map((e) => (
+              <div key={e.label} className="space-y-2">
+                <span className="text-[13px] font-medium text-muted-foreground">
+                  {e.label}
+                </span>
+                <div className="text-xl font-semibold tracking-tight text-foreground">
+                  {formatEur(e.amount)}
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-primary/40"
+                    style={{ width: `${pct(e.amount, maxEnc)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
