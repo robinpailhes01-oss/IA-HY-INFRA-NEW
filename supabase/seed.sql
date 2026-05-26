@@ -6,6 +6,7 @@
 begin;
 
 -- Nettoyage (ordre des dépendances)
+delete from content_marketing;
 delete from expenses;
 delete from bookings;
 delete from event_bookings;
@@ -71,14 +72,39 @@ insert into events_public (id, title, theme, date, start_time, end_time, price_p
 
 -- Dépenses (category selon contrainte)
 insert into expenses (date, category, amount, description, is_recurring, recurrence_period) values
-  ('2026-06-01', 'fuel',        1200, 'Plein début de saison', false, null),
-  ('2026-06-15', 'maintenance', 850,  'Révision moteur',       false, null),
-  ('2026-06-01', 'insurance',   480,  'Prime mensuelle',       true,  'monthly');
+  ('2026-06-01', 'fuel',              1200, 'Plein début de saison',         false, null),
+  ('2026-07-05', 'fuel',              1100, 'Plein juillet',                 false, null),
+  ('2026-08-02', 'fuel',              1300, 'Plein août',                    false, null),
+  ('2026-06-15', 'maintenance',       850,  'Révision moteur',               false, null),
+  ('2026-06-01', 'insurance',         480,  'Assurance — juin',              true,  'monthly'),
+  ('2026-07-01', 'insurance',         480,  'Assurance — juillet',           true,  'monthly'),
+  ('2026-08-01', 'insurance',         480,  'Assurance — août',              true,  'monthly'),
+  ('2026-06-01', 'port',              650,  'Place de port — juin',          true,  'monthly'),
+  ('2026-07-01', 'port',              650,  'Place de port — juillet',       true,  'monthly'),
+  ('2026-08-01', 'port',              650,  'Place de port — août',          true,  'monthly'),
+  ('2026-06-30', 'cleaning',          240,  'Nettoyage fin juin',            false, null),
+  ('2026-07-31', 'cleaning',          240,  'Nettoyage fin juillet',         false, null),
+  ('2026-07-04', 'food_options',      780,  'Approvisionnement prestations', false, null),
+  ('2026-06-01', 'advertising_meta',  600,  'Campagne Meta été',             false, null),
+  ('2026-06-15', 'advertising_tiktok',300,  'Campagne TikTok',               false, null),
+  ('2026-06-10', 'equipment',         450,  'Gilets & équipement sécurité',  false, null),
+  ('2026-08-15', 'salary_bonus',      1500, 'Prime skipper haute saison',    false, null);
 
--- Stats publicitaires
+-- Stats publicitaires (channel libre)
 insert into ad_stats (channel, campaign_name, period_start, period_end, budget_spent, impressions, clicks, leads_generated, bookings_attributed, revenue_generated) values
-  ('meta',   'Sunset été 2026',   '2026-05-01', '2026-05-25', 600, 48000, 1320, 14, 4, 9200),
-  ('google', 'Réservation yacht', '2026-05-01', '2026-05-25', 420, 21000, 680,  8,  2, 5400);
+  ('meta_ads',      'Sunset été 2026',   '2026-05-01', '2026-05-25', 600, 48000, 1320, 14, 4, 9200),
+  ('google',        'Réservation yacht', '2026-05-01', '2026-05-25', 420, 21000, 680,  8,  2, 5400),
+  ('instagram_ads', 'Stories prestige',  '2026-05-01', '2026-05-25', 350, 32000, 980,  9,  3, 6800),
+  ('tiktok_ads',    'Reels découverte',  '2026-05-01', '2026-05-25', 280, 41000, 1500, 6,  1, 2400);
+
+-- Contenus marketing (channel/status selon contraintes)
+insert into content_marketing (channel, content_type, title, description, status, publish_date, publish_time, views, likes, comments, shares, leads_attributed) values
+  ('instagram_reel',  'reel',  'Coucher de soleil sur l''eau', 'Reel ambiance sunset', 'published', '2026-05-18', '19:30:00', 12400, 890,  45, 120, 4),
+  ('tiktok',          'video', 'Une journée à bord',           'Vlog accéléré',        'published', '2026-05-22', '12:00:00', 28900, 2100, 95, 410, 5),
+  ('instagram_post',  'post',  'Nouvelle offre EVJF',          'Carrousel offre',      'published', '2026-05-20', '18:00:00', 5400,  320,  18, 30,  2),
+  ('instagram_story', 'story', 'Dispo ce week-end',            'Story dispo',          'published', '2026-05-24', '10:00:00', 3200,  0,    0,  0,   1),
+  ('instagram_reel',  'reel',  'Apéritif prestige au large',   'Reel apéritif',        'scheduled', '2026-05-28', '19:00:00', 0,     0,    0,  0,   0),
+  ('facebook',        'post',  'Événement Soirée DJ Sunset',   'Annonce événement',    'scheduled', '2026-06-01', '11:00:00', 0,     0,    0,  0,   0);
 
 -- Aligne l'objectif sur le CA confirmé
 update goals

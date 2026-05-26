@@ -180,7 +180,7 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
+      <header className="enter-up space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Vue d&apos;ensemble
         </h1>
@@ -194,34 +194,43 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="CA confirmé"
-          value={formatEur(confirmedRevenue)}
+          value={confirmedRevenue}
+          format="eur"
           icon={Euro}
           accent="gold"
           hint={`objectif ${formatEurCompact(min)} – ${formatEurCompact(strong)}`}
+          index={0}
         />
         <KpiCard
           label="Réservations à venir"
-          value={String(upcomingCount)}
+          value={upcomingCount}
           icon={Ship}
           accent="primary"
           hint="hors annulations"
+          index={1}
         />
         <KpiCard
           label="Nouveaux leads (30 j)"
-          value={String(newLeadsCount)}
+          value={newLeadsCount}
           icon={Users}
           accent="info"
+          index={2}
         />
         <KpiCard
           label="Marge nette"
-          value={formatEur(netMargin)}
+          value={netMargin}
+          format="eur"
           icon={Wallet}
           accent="success"
           hint="sur CA confirmé"
+          index={3}
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div
+        className="enter-up grid grid-cols-1 gap-6 lg:grid-cols-3"
+        style={{ animationDelay: "260ms" }}
+      >
         <Card>
           <CardHeader>
             <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
@@ -252,7 +261,10 @@ export default async function OverviewPage() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div
+        className="enter-up grid grid-cols-1 gap-6 lg:grid-cols-3"
+        style={{ animationDelay: "340ms" }}
+      >
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Réservations à venir</CardTitle>
@@ -274,7 +286,7 @@ export default async function OverviewPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="enter-up" style={{ animationDelay: "420ms" }}>
         <CardHeader>
           <CardTitle>Leads récents</CardTitle>
           <CardDescription>Derniers prospects entrés dans le pipeline</CardDescription>

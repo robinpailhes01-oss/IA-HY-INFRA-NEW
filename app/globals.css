@@ -159,3 +159,46 @@
     @apply font-sans;
   }
 }
+
+/* ── Micro-animations (sans dépendance) ───────────────────────── */
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gauge-fill {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.enter-up {
+  animation: enter-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-gauge {
+  animation: gauge-fill 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter-up,
+  .animate-gauge {
+    animation: none !important;
+  }
+  .enter-up {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { formatEur } from "@/lib/format";
+import { AnimatedNumber } from "@/components/dashboard/animated-number";
 import { cn } from "@/lib/utils";
 
 type Tier = {
@@ -73,15 +74,17 @@ export function RevenueGauge({ current, min, medium, strong }: RevenueGaugeProps
             strokeWidth={STROKE}
             strokeLinecap="round"
           />
-          {fraction > 0 && (
-            <path
-              d={arcPath(0, fraction)}
-              fill="none"
-              stroke="var(--gold)"
-              strokeWidth={STROKE}
-              strokeLinecap="round"
-            />
-          )}
+          <path
+            d={arcPath(0, 1)}
+            fill="none"
+            stroke="var(--gold)"
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={1 - fraction}
+            className="animate-gauge"
+          />
           {tiers.map((tier) => {
             const f = Math.min(tier.value / max, 1);
             const [tx, ty] = polar(f, RADIUS);
@@ -100,9 +103,12 @@ export function RevenueGauge({ current, min, medium, strong }: RevenueGaugeProps
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-3xl font-semibold tracking-tight text-foreground">
-            {formatEur(current)}
-          </span>
+          <AnimatedNumber
+            value={current}
+            format="eur"
+            durationMs={1200}
+            className="text-3xl font-semibold tracking-tight text-foreground"
+          />
           <span className="mt-1 text-xs text-muted-foreground">
             {Math.round((current / strong) * 100)}% de l&apos;objectif fort
           </span>

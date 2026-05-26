@@ -74,7 +74,7 @@ export default async function BookingsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
+      <header className="enter-up space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Réservations
         </h1>
@@ -85,18 +85,20 @@ export default async function BookingsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Confirmées" value={String(confirmees)} icon={Ship} accent="primary" />
-        <KpiCard label="CA confirmé" value={formatEur(caConfirme)} icon={Euro} accent="gold" />
-        <KpiCard label="À venir" value={String(aVenir)} icon={CalendarClock} accent="info" />
+        <KpiCard label="Confirmées" value={confirmees} icon={Ship} accent="primary" index={0} />
+        <KpiCard label="CA confirmé" value={caConfirme} format="eur" icon={Euro} accent="gold" index={1} />
+        <KpiCard label="À venir" value={aVenir} icon={CalendarClock} accent="info" index={2} />
         <KpiCard
           label="Solde à encaisser"
-          value={formatEur(soldeDu)}
+          value={soldeDu}
+          format="eur"
           icon={Wallet}
           accent="success"
+          index={3}
         />
       </div>
 
-      <Card>
+      <Card className="enter-up" style={{ animationDelay: "280ms" }}>
         <CardHeader>
           <CardTitle>Toutes les réservations</CardTitle>
         </CardHeader>

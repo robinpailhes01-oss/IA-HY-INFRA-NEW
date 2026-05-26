@@ -56,7 +56,7 @@ export default async function LeadsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
+      <header className="enter-up space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
         <p className="text-sm text-muted-foreground">
           {total} prospect{total > 1 ? "s" : ""} dans le pipeline
@@ -64,13 +64,13 @@ export default async function LeadsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total leads" value={String(total)} icon={Users} accent="primary" />
-        <KpiCard label="Nouveaux" value={String(nouveaux)} icon={UserPlus} accent="info" />
-        <KpiCard label="Réservés" value={String(reserves)} icon={CheckCircle2} accent="success" />
-        <KpiCard label="À rappeler" value={String(aRappeler)} icon={PhoneCall} accent="gold" />
+        <KpiCard label="Total leads" value={total} icon={Users} accent="primary" index={0} />
+        <KpiCard label="Nouveaux" value={nouveaux} icon={UserPlus} accent="info" index={1} />
+        <KpiCard label="Réservés" value={reserves} icon={CheckCircle2} accent="success" index={2} />
+        <KpiCard label="À rappeler" value={aRappeler} icon={PhoneCall} accent="gold" index={3} />
       </div>
 
-      <Card>
+      <Card className="enter-up" style={{ animationDelay: "280ms" }}>
         <CardHeader>
           <CardTitle>Tous les leads</CardTitle>
         </CardHeader>
