@@ -48,3 +48,29 @@ export async function settleBalance(
   revalidatePath("/");
   return { ok: true as const, error: null };
 }
+
+export type BookingUpdate = {
+  source_channel: string | null;
+  status: string | null;
+  party_size: number | null;
+  offer_name: string | null;
+};
+
+export async function updateBooking(id: string, values: BookingUpdate) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    return { ok: false as const, error: error.message };
+  }
+
+  revalidatePath("/bookings");
+  revalidatePath("/marketing");
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null };
+}

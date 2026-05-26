@@ -19,19 +19,21 @@ const BOOKING_STATUS: Record<string, Config> = {
   cancelled: { label: "Annulée", variant: "destructive" },
 };
 
-const SOURCE_CHANNEL: Record<string, string> = {
-  instagram_organic: "Instagram",
-  instagram_ads: "Instagram Ads",
-  tiktok_organic: "TikTok",
-  tiktok_ads: "TikTok Ads",
-  meta_ads: "Meta Ads",
-  whatsapp: "WhatsApp",
-  email: "Email",
-  website: "Site web",
-  phone: "Téléphone",
-  word_of_mouth: "Bouche à oreille",
-  other: "Autre",
-};
+export const SOURCE_OPTIONS: [string, string][] = [
+  ["instagram_organic", "Instagram"],
+  ["instagram_ads", "Instagram Ads"],
+  ["tiktok_organic", "TikTok"],
+  ["tiktok_ads", "TikTok Ads"],
+  ["meta_ads", "Meta Ads"],
+  ["whatsapp", "WhatsApp"],
+  ["email", "Email"],
+  ["website", "Site web"],
+  ["phone", "Téléphone"],
+  ["word_of_mouth", "Bouche à oreille"],
+  ["other", "Autre"],
+];
+
+const SOURCE_CHANNEL: Record<string, string> = Object.fromEntries(SOURCE_OPTIONS);
 
 function fallback(value: string | null): Config {
   return { label: value ?? "—", variant: "outline" };

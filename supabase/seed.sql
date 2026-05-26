@@ -82,6 +82,11 @@ update bookings set balance_payments = '[{"method":"cb","amount":1620},{"method"
 update bookings set balance_payments = '[{"method":"especes","amount":2170}]'::jsonb where id='b0000000-0000-4000-8000-000000000021';
 update bookings set balance_payments = '[{"method":"cb","amount":1680}]'::jsonb      where id='b0000000-0000-4000-8000-000000000022';
 
+-- Canaux d'acquisition normalisés (mêmes valeurs que les leads)
+update bookings set source_channel = 'instagram_organic' where source_channel = 'instagram';
+update bookings set source_channel = 'word_of_mouth'      where source_channel = 'referral';
+update bookings set source_channel = 'other'              where source_channel = 'manychat';
+
 -- Météo marine (rating ∈ ideal | acceptable | discouraged)
 insert into weather_cache (date, rating, wind_speed_kmh, wind_direction, wave_height_m, water_temp_c, swell_m, fetched_at) values
   ('2026-05-26', 'acceptable',  12, 'NO', 0.3, 19, 0.4, now()),

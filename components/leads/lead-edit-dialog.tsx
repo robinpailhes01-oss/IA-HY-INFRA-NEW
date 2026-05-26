@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { updateLead, type LeadUpdate } from "@/app/(dashboard)/leads/actions";
+import { SOURCE_OPTIONS } from "@/lib/status";
 
 export type EditableLead = {
   id: string;
@@ -40,20 +41,6 @@ export type EditableLead = {
   status: string | null;
   needs_human_intervention: boolean | null;
 };
-
-const SOURCE_OPTIONS: [string, string][] = [
-  ["instagram_organic", "Instagram"],
-  ["instagram_ads", "Instagram Ads"],
-  ["tiktok_organic", "TikTok"],
-  ["tiktok_ads", "TikTok Ads"],
-  ["meta_ads", "Meta Ads"],
-  ["whatsapp", "WhatsApp"],
-  ["email", "Email"],
-  ["website", "Site web"],
-  ["phone", "Téléphone"],
-  ["word_of_mouth", "Bouche à oreille"],
-  ["other", "Autre"],
-];
 
 const STATUS_OPTIONS: [string, string][] = [
   ["new", "Nouveau"],

@@ -19,6 +19,9 @@ import {
 } from "@/components/ui/table";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { formatDateLong, formatEur, formatNumber } from "@/lib/format";
+import { sourceChannelLabel } from "@/lib/status";
+
+const CONFIRMED = new Set(["confirmed", "completed"]);
 
 const CHANNEL_LABELS: Record<string, string> = {
   meta_ads: "Meta Ads",
@@ -76,7 +79,7 @@ function roasText(revenue: number, budget: number): string {
 export default async function MarketingPage() {
   const supabase = await createClient();
 
-  const [adsRes, contentRes] = await Promise.all([
+  const [adsRes, contentRes, bookingsRes] = await Promise.all([
     supabase
       .from("ad_stats")
       .select(
@@ -89,10 +92,28 @@ export default async function MarketingPage() {
       .select("id, channel, title, status, publish_date, views, likes, leads_attributed")
       .order("publish_date", { ascending: false })
       .returns<ContentRow[]>(),
+    supabase
+      .from("bookings")
+      .select("source_channel, total_amount, status")
+      .returns<{ source_channel: string | null; total_amount: number | null; status: string | null }[]>(),
   ]);
 
   const ads = adsRes.data ?? [];
   const content = contentRes.data ?? [];
+
+  const caByChannel = Object.entries(
+    (bookingsRes.data ?? [])
+      .filter((b) => CONFIRMED.has(b.status ?? ""))
+      .reduce<Record<string, number>>((acc, b) => {
+        const key = b.source_channel ?? "other";
+        acc[key] = (acc[key] ?? 0) + (b.total_amount ?? 0);
+        return acc;
+      }, {}),
+  )
+    .map(([channel, amount]) => ({ channel, amount }))
+    .sort((a, b) => b.amount - a.amount);
+  const maxChannel = caByChannel[0]?.amount ?? 1;
+  const totalChannelCa = caByChannel.reduce((s, c) => s + c.amount, 0);
 
   const totalBudget = ads.reduce((s, a) => s + (a.budget_spent ?? 0), 0);
   const totalLeads = ads.reduce((s, a) => s + (a.leads_generated ?? 0), 0);
@@ -126,7 +147,40 @@ export default async function MarketingPage() {
         />
       </div>
 
-      <Card className="enter-up" style={{ animationDelay: "280ms" }}>
+      <Card className="enter-up" style={{ animationDelay: "240ms" }}>
+        <CardHeader>
+          <CardTitle>CA par canal d&apos;acquisition</CardTitle>
+          <CardDescription>
+            D&apos;où viennent les réservations confirmées · {formatEur(totalChannelCa)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {caByChannel.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Aucune réservation pour le moment.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {caByChannel.map((c) => (
+                <li key={c.channel} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-foreground">{sourceChannelLabel(c.channel)}</span>
+                    <span className="font-medium text-foreground">{formatEur(c.amount)}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-gold/70"
+                      style={{ width: `${Math.round((c.amount / maxChannel) * 100)}%` }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="enter-up" style={{ animationDelay: "320ms" }}>
         <CardHeader>
           <CardTitle>Performance par canal</CardTitle>
           <CardDescription>
