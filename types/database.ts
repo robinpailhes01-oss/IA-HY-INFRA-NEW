@@ -680,6 +680,7 @@ export type Database = {
       leads: {
         Row: {
           ai_memo: string | null
+          archived: boolean
           assigned_to: string | null
           budget_range: string | null
           created_at: string | null
@@ -695,6 +696,7 @@ export type Database = {
           last_name: string | null
           needs_human_intervention: boolean | null
           notes: string | null
+          occasion: string | null
           party_size: number | null
           phone: string | null
           score: number | null
@@ -705,6 +707,7 @@ export type Database = {
         }
         Insert: {
           ai_memo?: string | null
+          archived?: boolean
           assigned_to?: string | null
           budget_range?: string | null
           created_at?: string | null
@@ -720,6 +723,7 @@ export type Database = {
           last_name?: string | null
           needs_human_intervention?: boolean | null
           notes?: string | null
+          occasion?: string | null
           party_size?: number | null
           phone?: string | null
           score?: number | null
@@ -730,6 +734,7 @@ export type Database = {
         }
         Update: {
           ai_memo?: string | null
+          archived?: boolean
           assigned_to?: string | null
           budget_range?: string | null
           created_at?: string | null
@@ -745,6 +750,7 @@ export type Database = {
           last_name?: string | null
           needs_human_intervention?: boolean | null
           notes?: string | null
+          occasion?: string | null
           party_size?: number | null
           phone?: string | null
           score?: number | null

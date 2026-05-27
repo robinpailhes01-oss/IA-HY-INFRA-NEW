@@ -16,6 +16,7 @@ delete from event_bookings;
 delete from events_public;
 delete from ad_stats;
 delete from weather_cache;
+delete from conversations;
 delete from customers;
 delete from leads;
 
@@ -32,16 +33,46 @@ insert into customers (id, first_name, last_name, email, phone, acquisition_chan
   ('c0000000-0000-4000-8000-000000000009', 'Elise',    'Henry',    'elise.henry@example.com',      '+33600000009', 'instagram', 'membre',             2600, 1),
   ('c0000000-0000-4000-8000-000000000010', 'Maxime',   'Robin',    'maxime.robin@example.com',     '+33600000010', 'website',   'membre_privilegie',  8200, 2);
 
--- Leads (score 0–10 ; source_channel & status selon contraintes)
-insert into leads (id, first_name, last_name, email, phone, source_channel, interested_offer, score, status, needs_human_intervention, created_at) values
-  ('1ead0000-0000-4000-8000-000000000001', 'Sophie',  'Marchand', 'sophie.marchand@example.com', '+33611000001', 'instagram_organic', 'Journée privée',    8, 'new',        true,  '2026-05-25 09:12:00+02'),
-  ('1ead0000-0000-4000-8000-000000000002', 'Thomas',  'Bernard',  'thomas.bernard@example.com',  '+33611000002', 'whatsapp',          'Coucher de soleil', 7, 'contacted',  false, '2026-05-24 14:30:00+02'),
-  ('1ead0000-0000-4000-8000-000000000003', 'Léa',     'Dubois',   'lea.dubois@example.com',      '+33611000003', 'word_of_mouth',     'EVJF',              9, 'qualified',  true,  '2026-05-23 18:05:00+02'),
-  ('1ead0000-0000-4000-8000-000000000004', 'Hugo',    'Petit',    'hugo.petit@example.com',      '+33611000004', 'website',           'Apéritif sunset',   4, 'new',        false, '2026-05-22 11:20:00+02'),
-  ('1ead0000-0000-4000-8000-000000000005', 'Emma',    'Moreau',   'emma.moreau@example.com',     '+33611000005', 'instagram_organic', 'Journée prestige',  8, 'quote_sent', false, '2026-05-20 16:45:00+02'),
-  ('1ead0000-0000-4000-8000-000000000006', 'Lucas',   'Girard',   'lucas.girard@example.com',    '+33611000006', 'other',             'Anniversaire',      6, 'new',        false, '2026-05-19 10:00:00+02'),
-  ('1ead0000-0000-4000-8000-000000000007', 'Chloé',   'Roux',     'chloe.roux@example.com',      '+33611000007', 'whatsapp',          'Demi-journée',      5, 'lost',       false, '2026-05-15 08:40:00+02'),
-  ('1ead0000-0000-4000-8000-000000000008', 'Nathan',  'Fontaine', 'nathan.fontaine@example.com', '+33611000008', 'word_of_mouth',     'Corporate',         9, 'booked',     false, '2026-05-12 13:15:00+02');
+-- Leads (score 0–10 ; source_channel, status & source_status selon contraintes)
+-- Répartis sur les 7 colonnes du Kanban ; "À relancer" = last_interaction_at > 48h sur un statut actif.
+insert into leads (id, first_name, last_name, email, phone, source_channel, interested_offer, occasion, party_size, desired_date, desired_time_slot, source_status, score, status, needs_human_intervention, last_interaction_at, ai_memo, notes, created_at) values
+  ('1ead0000-0000-4000-8000-000000000001', 'Sophie',  'Martin',   'sophie.martin@example.com',   '+33611000001', 'instagram_organic', 'Coucher de soleil', 'Anniversaire 30 ans',     8,  '2026-06-14', 'Coucher de soleil', 'to_ask',    8, 'qualified',  false, '2026-05-26 17:40:00+02', 'Cliente très réactive, sensible au cadre romantique. Mentionner le champagne offert.', 'Souhaite une déco florale. Budget confortable.', '2026-05-24 10:12:00+02'),
+  ('1ead0000-0000-4000-8000-000000000002', 'Pierre',  'Lefebvre', 'pierre.lefebvre@example.com', '+33611000002', 'whatsapp',          'Journée privée',    'Séminaire entreprise',    12, '2026-07-02', 'Journée',           'confirmed', 9, 'quote_sent', true,  '2026-05-24 09:05:00+02', 'Décideur, demande une facture au nom de la société. Relancer rapidement.', 'Devis envoyé le 23/05 — en attente de validation interne.', '2026-05-21 15:30:00+02'),
+  ('1ead0000-0000-4000-8000-000000000003', 'Marie',   'Garnier',  'marie.garnier@example.com',   '+33611000003', 'instagram_ads',     'Apéritif sunset',   'EVJF',                    10, '2026-06-21', 'Coucher de soleil', 'to_ask',    7, 'contacted',  false, '2026-05-26 19:20:00+02', null, 'Groupe d''amies, ambiance festive. Demande playlist personnalisée.', '2026-05-25 11:00:00+02'),
+  ('1ead0000-0000-4000-8000-000000000004', 'Julien',  'Roux',     'julien.roux@example.com',     '+33611000004', 'meta_ads',          'Demi-journée',      'Anniversaire 30 ans',     6,  '2026-06-28', 'Après-midi',        'unknown',   5, 'new',        false, '2026-05-27 08:30:00+02', null, null, '2026-05-27 08:30:00+02'),
+  ('1ead0000-0000-4000-8000-000000000005', 'Léa',     'Dubois',   'lea.dubois@example.com',      '+33611000005', 'word_of_mouth',     'EVJF',              'EVJF',                    9,  '2026-06-07', 'Journée',           'confirmed', 9, 'qualified',  true,  '2026-05-23 16:05:00+02', 'Recommandée par une ancienne cliente (Sophie Blanc). Profil prioritaire.', 'Veut confirmer le nombre exact de personnes.', '2026-05-22 18:05:00+02'),
+  ('1ead0000-0000-4000-8000-000000000006', 'Thomas',  'Bernard',  'thomas.bernard@example.com',  '+33611000006', 'whatsapp',          'Coucher de soleil', 'Demande en mariage',      2,  '2026-06-12', 'Coucher de soleil', 'confirmed', 8, 'quote_sent', false, '2026-05-26 21:10:00+02', 'Projet de demande en mariage — discrétion et romantisme essentiels.', 'Prévoir bouquet et coupe de champagne au moment clé.', '2026-05-23 14:30:00+02'),
+  ('1ead0000-0000-4000-8000-000000000007', 'Emma',    'Moreau',   'emma.moreau@example.com',     '+33611000007', 'instagram_organic', 'Journée prestige',  'Anniversaire',            7,  '2026-08-03', 'Journée',           'to_ask',    8, 'followed_up', false, '2026-05-25 12:45:00+02', null, 'A déjà fait une sortie l''an dernier. Fidèle.', '2026-05-18 16:45:00+02'),
+  ('1ead0000-0000-4000-8000-000000000008', 'Hugo',    'Petit',    'hugo.petit@example.com',      '+33611000008', 'website',           'Apéritif sunset',   null,                      4,  '2026-06-30', 'Coucher de soleil', 'unknown',   4, 'new',        false, '2026-05-27 07:50:00+02', null, null, '2026-05-27 07:50:00+02'),
+  ('1ead0000-0000-4000-8000-000000000009', 'Lucas',   'Girard',   'lucas.girard@example.com',    '+33611000009', 'tiktok_organic',    'Anniversaire',      'Anniversaire 25 ans',     5,  '2026-07-15', 'Après-midi',        'to_ask',    6, 'contacted',  false, '2026-05-23 10:00:00+02', null, 'Découvert via TikTok. Sensible au prix.', '2026-05-20 10:00:00+02'),
+  ('1ead0000-0000-4000-8000-000000000010', 'Chloé',   'Roux',     'chloe.roux@example.com',      '+33611000010', 'whatsapp',          'Demi-journée',      null,                      3,  null,         null,                'unknown',   3, 'lost',       false, '2026-05-15 08:40:00+02', null, 'Budget trop limité pour nos offres. Perdu.', '2026-05-13 08:40:00+02'),
+  ('1ead0000-0000-4000-8000-000000000011', 'Nathan',  'Fontaine', 'nathan.fontaine@example.com', '+33611000011', 'word_of_mouth',     'Corporate',         'Séminaire',               14, '2026-06-18', 'Journée',           'confirmed', 9, 'booked',     false, '2026-05-20 13:15:00+02', 'Client converti — sortie corporate confirmée.', 'Acompte versé. Sortie le 18/06.', '2026-05-10 13:15:00+02'),
+  ('1ead0000-0000-4000-8000-000000000012', 'Camille', 'Lemoine',  'camille.lemoine@example.com', '+33611000012', 'tiktok_ads',        'Journée privée',    'Anniversaire de mariage', 2,  '2026-07-20', 'Journée',           'to_ask',    7, 'followed_up', false, '2026-05-22 09:30:00+02', null, '2e relance envoyée. En réflexion.', '2026-05-17 09:30:00+02'),
+  ('1ead0000-0000-4000-8000-000000000013', 'Antoine', 'Mercier',  'antoine.mercier@example.com', '+33611000013', 'email',             'Coucher de soleil', 'Demande spéciale',        6,  '2026-06-25', 'Coucher de soleil', 'unknown',   6, 'qualified',  false, '2026-05-26 14:00:00+02', null, 'A des questions sur les options traiteur.', '2026-05-24 14:00:00+02'),
+  ('1ead0000-0000-4000-8000-000000000014', 'Inès',    'Bernard',  'ines.bernard@example.com',    '+33611000014', 'phone',             'Demi-journée',      null,                      4,  null,         null,                'unknown',   2, 'lost',       false, '2026-05-10 11:00:00+02', null, 'Ne répond plus depuis 2 semaines.', '2026-05-08 11:00:00+02'),
+  ('1ead0000-0000-4000-8000-000000000015', 'Manon',   'Leroy',    'manon.leroy@example.com',     '+33611000015', 'instagram_organic', 'Apéritif sunset',   'Afterwork équipe',        8,  '2026-06-10', 'Coucher de soleil', 'to_ask',    6, 'new',        true,  '2026-05-27 09:15:00+02', null, 'Nouvelle demande Instagram — à qualifier.', '2026-05-27 09:15:00+02');
+
+-- Conversations (historique IA ↔ client pour l'onglet Conversations du détail lead)
+insert into conversations (id, lead_id, channel, summary, outcome, messages, created_at, updated_at) values
+  ('c04f0000-0000-4000-8000-000000000001', '1ead0000-0000-4000-8000-000000000001', 'instagram', 'Sophie demande une sortie coucher de soleil pour son anniversaire (8 pers., 14/06). Léa (IA) a présenté l''offre et proposé un créneau.', 'qualified',
+    '[
+      {"from":"client","text":"Bonjour ! Je cherche à privatiser le bateau pour mon anniversaire mi-juin, c''est possible ?","at":"2026-05-24T10:12:00+02:00"},
+      {"from":"ai","text":"Bonjour Sophie ! Avec grand plaisir 🌅 Pour un anniversaire, notre sortie Coucher de soleil est idéale. Vous seriez combien et quelle date vise-t-elle ?","at":"2026-05-24T10:13:00+02:00"},
+      {"from":"client","text":"On serait 8, plutôt le 14 juin si possible","at":"2026-05-24T10:20:00+02:00"},
+      {"from":"ai","text":"Parfait, le 14 juin en soirée est disponible ✨ La sortie Coucher de soleil dure 3h avec apéritif à bord. Je vous prépare une proposition détaillée. Une occasion particulière à souligner ?","at":"2026-05-24T10:21:00+02:00"},
+      {"from":"client","text":"Oui c''est mes 30 ans, j''aimerais quelque chose d''un peu festif et joli","at":"2026-05-26T17:38:00+02:00"},
+      {"from":"ai","text":"Génial 🎉 Nous pouvons ajouter une décoration florale et le champagne offert pour l''occasion. Je transmets votre demande à l''équipe pour finaliser les détails.","at":"2026-05-26T17:40:00+02:00"}
+    ]'::jsonb,
+    '2026-05-24 10:12:00+02', '2026-05-26 17:40:00+02'),
+  ('c04f0000-0000-4000-8000-000000000002', '1ead0000-0000-4000-8000-000000000002', 'whatsapp', 'Pierre (entreprise) demande une journée privée pour un séminaire (12 pers., 02/07). Devis envoyé, en attente de validation.', 'quote_sent',
+    '[
+      {"from":"client","text":"Bonjour, nous organisons un séminaire et cherchons une activité bateau pour 12 personnes début juillet.","at":"2026-05-21T15:30:00+02:00"},
+      {"from":"ai","text":"Bonjour Pierre ! Pour 12 personnes, notre Journée privée est tout indiquée (jusqu''à 8h en mer, repas possible). Avez-vous une date précise ?","at":"2026-05-21T15:32:00+02:00"},
+      {"from":"client","text":"Le 2 juillet. Il nous faudrait une facture au nom de la société.","at":"2026-05-22T09:10:00+02:00"},
+      {"from":"human","text":"Bonjour Pierre, Léa de Harmonie Yacht. Je vous prépare un devis avec facture société et vous l''envoie aujourd''hui.","at":"2026-05-23T11:00:00+02:00"},
+      {"from":"client","text":"Parfait merci, je le présente à la direction.","at":"2026-05-24T09:05:00+02:00"}
+    ]'::jsonb,
+    '2026-05-21 15:30:00+02', '2026-05-24 09:05:00+02');
 
 -- Réservations (net_margin = total_amount - costs, calculé ; solde = total - acompte, dû le jour J)
 -- Saison juin–août 2026 (à venir)
