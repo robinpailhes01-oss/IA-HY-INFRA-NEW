@@ -1,0 +1,59 @@
+-- Seed idempotent de la configuration de l'agent Léa (table agent_config).
+-- Source de vérité lisible : supabase/agent_data.json — garder les deux synchronisés.
+-- Met à jour la ligne existante, ou l'insère si la table est vide.
+
+begin;
+
+with payload as (
+  select
+    $offers$ {
+      "sortie_2h": {"name":"Sortie privative 2h","price":400,"included":["Skipper professionnel","Carburant","Eau à bord","Paddle","Plateforme de bain"],"ideal_for":["Découverte","Premier essai","Petit créneau"],"not_included":["Nourriture","Boissons","BBQ (uniquement à partir de 3h)"],"available_days":["all"],"duration_hours":2,"price_per_hour":200,"max_participants":10,"available_seasons":["all"],"morning_discount_eligible":true},
+      "sortie_3h": {"name":"Sortie privative 3h","price":600,"included":["Skipper professionnel","Carburant","Eau à bord","Paddle","Plateforme de bain","BBQ à bord (matériel fourni, nourriture à la charge du client)"],"ideal_for":["Sortie standard recommandée","Couples","Familles","Anniversaires","Sunset"],"not_included":["Nourriture","Boissons"],"available_days":["all"],"duration_hours":3,"price_per_hour":200,"max_participants":10,"available_seasons":["all"],"morning_discount_eligible":true},
+      "sortie_4h": {"name":"Sortie privative 4h","price":800,"included":["Skipper professionnel","Carburant","Eau à bord","Paddle","Plateforme de bain","BBQ à bord (matériel fourni, nourriture à la charge du client)"],"ideal_for":["Groupes","Demi-journée complète","Découverte approfondie"],"not_included":["Nourriture","Boissons"],"available_days":["all"],"duration_hours":4,"price_per_hour":200,"max_participants":10,"available_seasons":["all"],"morning_discount_eligible":true},
+      "nuit_prestige": {"name":"Nuit Prestige","price":380,"wc_note":"Sanitaires de la capitainerie à 20m","duration":"18h jusqu'à 12h le lendemain","included":["Nuit complète à bord","Sortie en mer en début de soirée incluse","Plateau tapas (partenaire Una Mas)","Petit-déjeuner livré (hôtel Neptune)"],"ideal_for":["Couples","Anniversaires de mariage","Occasions romantiques","Demandes en mariage"],"weekend_days":["friday","saturday","sunday"],"season_months":["may","june","july","august","september"],"yacht_at_dock":true,"weekend_contact":"ludivine","max_participants":2,"available_seasons":["summer"],"weekend_requires_human":true,"available_days_direct_booking":["monday","tuesday","wednesday","thursday"]},
+      "nuit_insolite_avec_sortie": {"name":"Nuit Insolite (avec sortie en mer)","price":380,"heated":true,"duration":"18h jusqu'à 12h le lendemain","included":["Nuit complète à bord chauffée","Sortie en mer en début de soirée incluse","Plateau tapas (partenaire Una Mas)","Petit-déjeuner livré (hôtel Neptune)"],"ideal_for":["Couples","Expérience insolite hivernale","Cocooning"],"season_months":["october","november","december","january","february","march","april"],"yacht_at_dock":true,"max_participants":2,"available_seasons":["winter"]},
+      "nuit_insolite_sans_sortie": {"name":"Nuit Insolite (sans sortie en mer)","heated":true,"duration":"18h jusqu'à 12h le lendemain","included":["Nuit complète à bord chauffée"],"ideal_for":["Expérience insolite à petit budget","Cocooning","Découverte"],"price_from":180,"season_months":["october","november","december","january","february","march","april"],"yacht_at_dock":true,"max_participants":2,"available_seasons":["winter"]}
+    } $offers$::jsonb as offers,
+    $options$ {
+      "morning_discount": {"name":"Réduction matinée","condition":"Départ avant 11h00","auto_apply":true,"applicable_to":["sortie_2h","sortie_3h","sortie_4h"],"discount_percent":10}
+    } $options$::jsonb as options,
+    $faq$ {
+      "yacht": {"name":"Harmonie","model":"Atlantis 42","wc_note":"Pas de WC à bord actuellement (en réparation). Sanitaires de la capitainerie à 20m.","length_m":12,"equipment":["Enceinte Bluetooth","Paddle","Plateforme de bain","Frigo","Lit double à l'avant","Bains de soleil avant et arrière","Table extérieure centrale"],"wc_onboard":false,"comfort_capacity":7,"max_capacity_legal":10,"no_electricity_at_sea":true,"safety_equipment_complete":true,"child_life_jackets_available":true},
+      "captain": {"name":"Robin","optional":true,"freelance":true,"languages":["français","anglais"],"optional_conditions":["Permis bateau depuis au moins 3 ans","50h de navigation prouvées sur un navire similaire"],"mention_optional_to_client":"JAMAIS spontanément. Uniquement si le client demande explicitement."},
+      "location": {"city":"Carnon","region":"Hérault","country":"France","gps_lat":43.5511,"gps_lon":3.9806,"port_name":"Port de Carnon","wc_location":"Sanitaires de la capitainerie","parking_note":"Pas de parking dédié pour les clients. Prévoir un parking dans Carnon.","nearest_landmark":"Hôtel Neptune","parking_dedicated":false,"wc_distance_meters":20},
+      "partners": {"una_mas":{"name":"Una Mas","note":"Léa envoie la carte (à fournir) ou le numéro direct. Escalade humaine en dernier recours.","type":"restaurant","phone":"TO_BE_PROVIDED","service":"Plateaux tapas","menu_link":"TO_BE_PROVIDED"},"maison_perla":{"name":"Maison Perla","note":"Recommander en cas de demande champagne","type":"champagne","contact":"TO_BE_PROVIDED","service":"Champagne"},"hotel_neptune":{"name":"Hôtel Neptune","note":"Pas à recommander, intégré dans la formule nuits","type":"hotel","service":"Petit-déjeuner (intégré aux nuits Prestige/Insolites)","location":"À côté du yacht à Carnon"}},
+      "_metadata": {"version":"1.0.0","description":"Données factuelles de Léa — modifiables via le dashboard Paramètres.","last_updated":"2026-05-28"},
+      "events_public": {"capacity":"8-10 personnes","examples":["DJ set en mer","Soirée feu d'artifice","Brunch en mer","Soirées thématiques"],"lea_role":"Ne vend pas directement. Redirige vers le groupe WhatsApp public.","active_events_source":"Table events_public dans Supabase","whatsapp_public_group_link":"TO_BE_PROVIDED","lea_should_know_active_events":true},
+      "onboard_rules": {"pmr_note":"Embarquement difficile pour les personnes à mobilité réduite. Escalade humaine pour évaluer au cas par cas.","kids_note":"Pas d'âge minimum officiel, gilets enfants disponibles","music_note":"Enceinte Bluetooth fournie, clients connectent leur téléphone","kids_min_age":null,"kids_welcome":true,"pets_allowed":true,"wifi_onboard":false,"glass_allowed":true,"music_allowed":true,"pmr_accessible":false,"alcohol_allowed":true,"smoking_allowed":true,"electricity_note":"Recharge téléphone uniquement au port","electricity_at_sea":false},
+      "weather_rules": {"decision_maker":"Capitaine (Robin)","decision_timing":"Le jour J au matin si météo douteuse","wave_height_note":"OK jusqu'à 70 cm mais aussi selon longueur de vague — décision finale au capitaine","heavy_rain_policy":"Annulation / report / remboursement","wave_height_ok_cm":70,"proactive_reschedule":"Si météo moyenne et créneaux dispos, proposer pro-activement un autre créneau","client_options_if_cancelled":["remboursement_integral","report_sans_frais"]},
+      "what_to_bring": ["Maillot de bain","Serviette","Crème solaire","Casquette / lunettes de soleil","Eau / boissons / nourriture (selon envie)","Nourriture pour BBQ si sortie 3h+"],
+      "agent_settings": {"max_followups":3,"auto_followup_enabled":true,"followup_intervals_hours":[24,72,168],"morning_discount_percent":10,"morning_discount_cutoff_hour":11,"weekend_nuit_prestige_contact":"ludivine"},
+      "pricing_policy": {"discount_allowed":false,"discount_exceptions":["Réduction matinée -10% (auto, départ avant 11h)","Client fidèle déjà venu (escalade humaine)"],"negotiation_response":"Pas de négociation. Rediriger vers offre plus courte si budget est un point clé.","if_negotiation_attempt":"Ne pas prendre la réservation, esquiver poliment."},
+      "booking_process": {"balance_when":"À bord avant embarquement","info_required":["Prénom","Nom","Téléphone","Email","Nombre de personnes","Date et créneau"],"deposit_method":"Via le site (lien à fournir)","deposit_link":"TO_BE_PROVIDED","balance_methods":["CB","Espèces"],"deposit_percent":30,"confirmation_within":"1 heure ouvrée","last_minute_accepted":true,"last_minute_condition":"Acompte versé"},
+      "navigation_spots": [{"name":"Petit et Grand Travers","description":"Plages naturelles, accessibles selon durée"},{"name":"La Grande-Motte","description":"Côté plus animé"},{"name":"Plage de la Maguelone","description":"Cadre naturel, eau souvent turquoise"}],
+      "cancellation_policy": {"late_arrival":{"policy":"Le retard empiète sur la durée du créneau","details":"La sortie ne peut pas être décalée (sauf si pas de sortie derrière, à confirmer avec le capitaine sur place). À mentionner OBLIGATOIREMENT en confirmation.","critical":true},"client_cancel":{"policy":"Acompte conservé","details":"Si le client annule de son propre fait, l'acompte n'est pas remboursé."},"weather_cancel":{"details":"Au choix du client","options":["remboursement_integral","report"]}}
+    } $faq$::jsonb as faq,
+    $bh$ {
+      "timezone":"Europe/Paris","open":"08:00","close":"22:00","days_open":["monday","tuesday","wednesday","thursday","friday","saturday","sunday"],"lea_availability":"24/7","human_escalation":{"available":true,"hours":"08:00-22:00","days":["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]}
+    } $bh$::jsonb as business_hours
+),
+upd as (
+  update public.agent_config c set
+    offers = p.offers,
+    options = p.options,
+    faq = p.faq,
+    business_hours = p.business_hours,
+    auto_followup_enabled = true,
+    max_followups = 3,
+    morning_discount_percent = 10,
+    weekend_nuit_prestige_contact = 'ludivine',
+    updated_at = now()
+  from payload p
+  returning c.id
+)
+insert into public.agent_config (offers, options, faq, business_hours, auto_followup_enabled, max_followups, morning_discount_percent, weekend_nuit_prestige_contact)
+select p.offers, p.options, p.faq, p.business_hours, true, 3, 10, 'ludivine'
+from payload p
+where not exists (select 1 from upd);
+
+commit;
