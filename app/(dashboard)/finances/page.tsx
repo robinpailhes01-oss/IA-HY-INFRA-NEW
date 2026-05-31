@@ -12,7 +12,8 @@ import {
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
 import { AddRevenueDialog } from "@/components/finances/add-revenue-dialog";
-import { formatEur } from "@/lib/format";
+import { PeriodFilter } from "@/components/finances/period-filter";
+import { formatEur, formatDateLong } from "@/lib/format";
 import { PAYMENT_METHODS, parsePayments } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
@@ -50,16 +51,52 @@ function pct(part: number, whole: number): number {
   return whole > 0 ? Math.round((part / whole) * 100) : 0;
 }
 
-export default async function FinancesPage() {
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function currentMonthBounds(): { from: string; to: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const last = new Date(y, m + 1, 0).getDate();
+  return {
+    from: `${y}-${pad2(m + 1)}-01`,
+    to: `${y}-${pad2(m + 1)}-${pad2(last)}`,
+  };
+}
+
+export default async function FinancesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
+  const params = await searchParams;
+  const defaults = currentMonthBounds();
+  const from = params.from ?? defaults.from;
+  const to = params.to ?? defaults.to;
+
   const supabase = await createClient();
 
   const [bookingsRes, expensesRes, revenuesRes] = await Promise.all([
     supabase
       .from("bookings")
       .select("status, deposit_amount, deposit_paid, balance_payments")
+      .gte("date", from)
+      .lte("date", to)
       .returns<BookingFin[]>(),
-    supabase.from("expenses").select("category, amount").returns<ExpenseRow[]>(),
-    supabase.from("revenues").select("type, amount").returns<RevenueRow[]>(),
+    supabase
+      .from("expenses")
+      .select("category, amount")
+      .gte("date", from)
+      .lte("date", to)
+      .returns<ExpenseRow[]>(),
+    supabase
+      .from("revenues")
+      .select("type, amount")
+      .gte("date", from)
+      .lte("date", to)
+      .returns<RevenueRow[]>(),
   ]);
 
   const revenues = revenuesRes.data ?? [];
@@ -116,13 +153,16 @@ export default async function FinancesPage() {
 
   return (
     <div className="space-y-6">
-      <header className="enter-up space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Finances
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Saison 2026 · pro uniquement
-        </p>
+      <header className="enter-up space-y-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Finances
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Période · {formatDateLong(from)} → {formatDateLong(to)}
+          </p>
+        </div>
+        <PeriodFilter from={from} to={to} />
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
