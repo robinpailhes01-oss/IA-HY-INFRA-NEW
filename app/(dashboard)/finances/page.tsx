@@ -17,24 +17,21 @@ import { PAYMENT_METHODS, parsePayments } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
 const EXPENSE_LABELS: Record<string, string> = {
-  fuel: "Carburant",
-  marketing: "Marketing / Pub",
-  maintenance: "Entretien & réparations",
-  insurance_pro: "Assurance",
-  office: "Matériel / Office",
-  restaurant_pro: "Restaurant pro",
-  saas: "SaaS / Outils",
-  salary_expense_pro: "Salaires & primes",
-  subcontract: "Sous-traitance",
-  subscription_pro: "Abonnements pro",
-  other_expense_pro: "Autre",
+  subscription: "Abonnement",
+  marketing: "Marketing",
+  fuel: "Gasoil",
+  maintenance: "Entretien",
+  tools: "Outils",
+  subcontract: "Sous traitance",
+  fixed_monthly: "Mensualité fixe",
+  salary: "Salaire",
+  taxes: "Taxes",
+  savings: "Épargne",
 };
 
 const REVENUE_LABELS: Record<string, string> = {
   sea_trip: "Sorties en mer",
   unusual_night: "Nuits insolites",
-  freelance_pro: "Freelance",
-  client: "Client",
 };
 
 type BookingFin = {

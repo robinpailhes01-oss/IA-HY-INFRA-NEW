@@ -28,17 +28,16 @@ import {
 import { addExpense } from "@/app/(dashboard)/finances/actions";
 
 const CATEGORIES: [string, string][] = [
-  ["fuel", "Carburant"],
-  ["marketing", "Marketing / Pub"],
-  ["maintenance", "Entretien & réparations"],
-  ["insurance_pro", "Assurance"],
-  ["office", "Matériel / Office"],
-  ["restaurant_pro", "Restaurant pro"],
-  ["saas", "SaaS / Outils"],
-  ["salary_expense_pro", "Salaires & primes"],
-  ["subcontract", "Sous-traitance"],
-  ["subscription_pro", "Abonnements pro"],
-  ["other_expense_pro", "Autre"],
+  ["subscription", "Abonnement"],
+  ["marketing", "Marketing"],
+  ["fuel", "Gasoil"],
+  ["maintenance", "Entretien"],
+  ["tools", "Outils"],
+  ["subcontract", "Sous traitance"],
+  ["fixed_monthly", "Mensualité fixe"],
+  ["salary", "Salaire"],
+  ["taxes", "Taxes"],
+  ["savings", "Épargne"],
 ];
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES);
 
@@ -49,7 +48,7 @@ export function AddExpenseDialog() {
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState({
     date: today,
-    category: "fuel",
+    category: "subscription",
     amount: "",
     description: "",
   });
@@ -77,7 +76,7 @@ export function AddExpenseDialog() {
       }
       toast.success("Dépense ajoutée");
       setOpen(false);
-      setForm({ date: today, category: "fuel", amount: "", description: "" });
+      setForm({ date: today, category: "subscription", amount: "", description: "" });
       router.refresh();
     });
   }
