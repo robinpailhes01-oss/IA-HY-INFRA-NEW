@@ -38,6 +38,7 @@ const CATEGORIES: [string, string][] = [
   ["salary", "Salaire"],
   ["taxes", "Taxes"],
   ["savings", "Épargne"],
+  ["other", "Autre"],
 ];
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES);
 

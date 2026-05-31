@@ -27,6 +27,7 @@ const EXPENSE_LABELS: Record<string, string> = {
   salary: "Salaire",
   taxes: "Taxes",
   savings: "Épargne",
+  other: "Autre",
 };
 
 const REVENUE_LABELS: Record<string, string> = {
