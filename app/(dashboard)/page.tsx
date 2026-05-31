@@ -1,6 +1,8 @@
 import { Banknote, Ship, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
+import { AddRevenueDialog } from "@/components/finances/add-revenue-dialog";
 import {
   Card,
   CardContent,
@@ -249,15 +251,21 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      <header className="enter-up space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Vue d&apos;ensemble
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {goal
-            ? `Saison en cours · ${formatDateLong(periodStart)} – ${formatDateLong(periodEnd)}`
-            : "Tableau de bord Harmonie Yacht"}
-        </p>
+      <header className="enter-up flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Vue d&apos;ensemble
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {goal
+              ? `Saison en cours · ${formatDateLong(periodStart)} – ${formatDateLong(periodEnd)}`
+              : "Tableau de bord Harmonie Yacht"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <AddExpenseDialog />
+          <AddRevenueDialog />
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
