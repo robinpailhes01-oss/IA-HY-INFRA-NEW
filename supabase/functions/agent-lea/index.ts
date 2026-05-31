@@ -12,7 +12,7 @@ const MAX_TOOL_TURNS = 6;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Headers": "authorization, content-type, x-lea-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -248,6 +248,12 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY manquante (secret Supabase)" }, 500);
 
+  // Auth optionnelle par secret partagé : appliquée seulement si LEA_WEBHOOK_SECRET est défini.
+  const sharedSecret = Deno.env.get("LEA_WEBHOOK_SECRET");
+  if (sharedSecret && req.headers.get("x-lea-secret") !== sharedSecret) {
+    return json({ error: "unauthorized" }, 401);
+  }
+
   let body: { message?: string; lead_id?: string; phone?: string; history?: ChatMsg[] };
   try {
     body = await req.json();
@@ -281,8 +287,21 @@ Deno.serve(async (req) => {
   }
   const state = { leadId: (lead?.id as string) ?? null, escalated: false };
 
-  // Historique → messages API
-  const history: ChatMsg[] = body.history ?? [];
+  // Historique → messages API. Si non fourni, on recharge depuis le Dashboard
+  // (conversation du lead) pour une continuité stateful par téléphone/lead.
+  let history: ChatMsg[] = body.history ?? [];
+  if (!body.history && state.leadId) {
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select("messages")
+      .eq("lead_id", state.leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (conv && Array.isArray(conv.messages)) {
+      history = (conv.messages as ChatMsg[]).slice(-20);
+    }
+  }
   const messages: ApiMessage[] = history.map((m) => ({
     role: m.from === "client" ? "user" : "assistant",
     content: m.text,
