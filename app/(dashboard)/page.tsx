@@ -60,6 +60,11 @@ type BookingJoinRow = {
   customers: { first_name: string | null; last_name: string | null } | null;
 };
 
+type RevenueMetricRow = {
+  amount: number | null;
+  date: string;
+};
+
 type LeadRow = {
   id: string;
   first_name: string | null;
@@ -91,6 +96,7 @@ export default async function OverviewPage() {
     newLeadsRes,
     attentionLeadsRes,
     weatherRes,
+    revenuesRes,
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -140,6 +146,10 @@ export default async function OverviewPage() {
       .order("date", { ascending: true })
       .limit(5)
       .returns<WeatherDay[]>(),
+    supabase
+      .from("revenues")
+      .select("amount, date")
+      .returns<RevenueMetricRow[]>(),
   ]);
 
   const goal = goalRes.data;
@@ -155,12 +165,21 @@ export default async function OverviewPage() {
   const inCurrentMonth = (d: string) =>
     inYear(d) && Number(d.slice(5, 7)) - 1 === monthIdx;
 
-  const caYtd = metrics
-    .filter((b) => isConfirmed(b) && inYear(b.date))
-    .reduce((s, b) => s + (b.total_amount ?? 0), 0);
-  const caMonth = metrics
-    .filter((b) => isConfirmed(b) && inCurrentMonth(b.date))
-    .reduce((s, b) => s + (b.total_amount ?? 0), 0);
+  const revenuesData = revenuesRes.data ?? [];
+  const caYtd =
+    metrics
+      .filter((b) => isConfirmed(b) && inYear(b.date))
+      .reduce((s, b) => s + (b.total_amount ?? 0), 0) +
+    revenuesData
+      .filter((r) => inYear(r.date))
+      .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const caMonth =
+    metrics
+      .filter((b) => isConfirmed(b) && inCurrentMonth(b.date))
+      .reduce((s, b) => s + (b.total_amount ?? 0), 0) +
+    revenuesData
+      .filter((r) => inCurrentMonth(r.date))
+      .reduce((s, r) => s + (r.amount ?? 0), 0);
   const ytdMargin = metrics
     .filter((b) => isConfirmed(b) && inYear(b.date))
     .reduce((s, b) => s + (b.net_margin ?? 0), 0);
@@ -174,9 +193,13 @@ export default async function OverviewPage() {
     .filter((b) => b.status !== "cancelled")
     .reduce((s, b) => s + ((b.total_amount ?? 0) - outstandingOf(b)), 0);
 
-  const seasonRevenue = metrics
-    .filter((b) => isConfirmed(b) && b.date >= periodStart && b.date <= periodEnd)
-    .reduce((s, b) => s + (b.total_amount ?? 0), 0);
+  const seasonRevenue =
+    metrics
+      .filter((b) => isConfirmed(b) && b.date >= periodStart && b.date <= periodEnd)
+      .reduce((s, b) => s + (b.total_amount ?? 0), 0) +
+    revenuesData
+      .filter((r) => r.date >= periodStart && r.date <= periodEnd)
+      .reduce((s, r) => s + (r.amount ?? 0), 0);
 
   const upcomingCount = metrics.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
@@ -186,6 +209,11 @@ export default async function OverviewPage() {
   for (const b of metrics) {
     if (isConfirmed(b) && inYear(b.date)) {
       monthly[Number(b.date.slice(5, 7)) - 1] += b.total_amount ?? 0;
+    }
+  }
+  for (const r of revenuesData) {
+    if (inYear(r.date)) {
+      monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
     }
   }
 

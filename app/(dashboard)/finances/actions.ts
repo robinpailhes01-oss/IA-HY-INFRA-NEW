@@ -31,3 +31,31 @@ export async function addExpense(values: {
   revalidatePath("/");
   return { ok: true as const, error: null };
 }
+
+export async function addRevenue(values: {
+  date: string;
+  type: string;
+  amount: number;
+  note: string | null;
+}) {
+  const supabase = await createClient();
+
+  if (!values.date || !values.type || !(values.amount > 0)) {
+    return { ok: false as const, error: "Date, type et montant sont requis." };
+  }
+
+  const { error } = await supabase.from("revenues").insert({
+    date: values.date,
+    type: values.type,
+    amount: Math.round(values.amount),
+    note: values.note,
+  });
+
+  if (error) {
+    return { ok: false as const, error: error.message };
+  }
+
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null };
+}

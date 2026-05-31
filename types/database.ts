@@ -638,6 +638,33 @@ export type Database = {
           },
         ]
       }
+      revenues: {
+        Row: {
+          amount: number
+          created_at: string | null
+          date: string
+          id: string
+          note: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          date: string
+          id?: string
+          note?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          note?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string | null

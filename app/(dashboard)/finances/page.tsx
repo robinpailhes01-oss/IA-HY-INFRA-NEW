@@ -11,30 +11,33 @@ import {
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
+import { AddRevenueDialog } from "@/components/finances/add-revenue-dialog";
 import { formatEur } from "@/lib/format";
 import { PAYMENT_METHODS, parsePayments } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
-const CONFIRMED = new Set(["confirmed", "completed"]);
-
 const EXPENSE_LABELS: Record<string, string> = {
-  port: "Place de port",
-  insurance: "Assurance",
   fuel: "Carburant",
-  cleaning: "Nettoyage",
-  maintenance: "Entretien",
-  advertising_meta: "Publicité Meta",
-  advertising_tiktok: "Publicité TikTok",
-  food_options: "Restauration & options",
-  equipment: "Équipement",
-  salary_bonus: "Primes équipage",
-  other: "Autre",
+  marketing: "Marketing / Pub",
+  maintenance: "Entretien & réparations",
+  insurance_pro: "Assurance",
+  office: "Matériel / Office",
+  restaurant_pro: "Restaurant pro",
+  saas: "SaaS / Outils",
+  salary_expense_pro: "Salaires & primes",
+  subcontract: "Sous-traitance",
+  subscription_pro: "Abonnements pro",
+  other_expense_pro: "Autre",
+};
+
+const REVENUE_LABELS: Record<string, string> = {
+  sea_trip: "Sorties en mer",
+  unusual_night: "Nuits insolites",
+  freelance_pro: "Freelance",
+  client: "Client",
 };
 
 type BookingFin = {
-  total_amount: number | null;
-  costs: number | null;
-  net_margin: number | null;
   status: string | null;
   deposit_amount: number | null;
   deposit_paid: boolean | null;
@@ -42,6 +45,7 @@ type BookingFin = {
 };
 
 type ExpenseRow = { category: string; amount: number };
+type RevenueRow = { type: string; amount: number };
 
 function pct(part: number, whole: number): number {
   return whole > 0 ? Math.round((part / whole) * 100) : 0;
@@ -50,28 +54,23 @@ function pct(part: number, whole: number): number {
 export default async function FinancesPage() {
   const supabase = await createClient();
 
-  const [bookingsRes, expensesRes] = await Promise.all([
+  const [bookingsRes, expensesRes, revenuesRes] = await Promise.all([
     supabase
       .from("bookings")
-      .select(
-        "total_amount, costs, net_margin, status, deposit_amount, deposit_paid, balance_payments",
-      )
+      .select("status, deposit_amount, deposit_paid, balance_payments")
       .returns<BookingFin[]>(),
     supabase.from("expenses").select("category, amount").returns<ExpenseRow[]>(),
+    supabase.from("revenues").select("type, amount").returns<RevenueRow[]>(),
   ]);
 
-  const confirmed = (bookingsRes.data ?? []).filter((b) =>
-    CONFIRMED.has(b.status ?? ""),
-  );
-  const revenue = confirmed.reduce((s, b) => s + (b.total_amount ?? 0), 0);
-  const directCosts = confirmed.reduce((s, b) => s + (b.costs ?? 0), 0);
-  const grossMargin = confirmed.reduce((s, b) => s + (b.net_margin ?? 0), 0);
-
+  const revenues = revenuesRes.data ?? [];
   const expenses = expensesRes.data ?? [];
-  const opex = expenses.reduce((s, e) => s + (e.amount ?? 0), 0);
-  const netResult = grossMargin - opex;
 
-  const byCategory = Object.entries(
+  const revenue = revenues.reduce((s, r) => s + (r.amount ?? 0), 0);
+  const opex = expenses.reduce((s, e) => s + (e.amount ?? 0), 0);
+  const netResult = revenue - opex;
+
+  const byExpenseCategory = Object.entries(
     expenses.reduce<Record<string, number>>((acc, e) => {
       acc[e.category] = (acc[e.category] ?? 0) + (e.amount ?? 0);
       return acc;
@@ -79,7 +78,17 @@ export default async function FinancesPage() {
   )
     .map(([category, amount]) => ({ category, amount }))
     .sort((a, b) => b.amount - a.amount);
-  const maxCategory = byCategory[0]?.amount ?? 1;
+  const maxExpense = byExpenseCategory[0]?.amount ?? 1;
+
+  const byRevenueType = Object.entries(
+    revenues.reduce<Record<string, number>>((acc, r) => {
+      acc[r.type] = (acc[r.type] ?? 0) + (r.amount ?? 0);
+      return acc;
+    }, {}),
+  )
+    .map(([type, amount]) => ({ type, amount }))
+    .sort((a, b) => b.amount - a.amount);
+  const maxRevenue = byRevenueType[0]?.amount ?? 1;
 
   const allBookings = bookingsRes.data ?? [];
   const encByMethod: Record<string, number> = {};
@@ -102,7 +111,6 @@ export default async function FinancesPage() {
   const maxEnc = Math.max(...encList.map((e) => e.amount), 1);
 
   const segments = [
-    { label: "Coûts directs", value: directCosts, color: "bg-slate-400" },
     { label: "Dépenses opé.", value: opex, color: "bg-warning" },
     { label: "Résultat net", value: Math.max(netResult, 0), color: "bg-success" },
   ];
@@ -114,29 +122,36 @@ export default async function FinancesPage() {
           Finances
         </h1>
         <p className="text-sm text-muted-foreground">
-          Saison été 2026 · résultat sur le chiffre d&apos;affaires confirmé
+          Saison 2026 · pro uniquement
         </p>
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="CA confirmé" value={revenue} format="eur" icon={Euro} accent="primary" index={0} />
+        <KpiCard label="Revenus" value={revenue} format="eur" icon={Euro} accent="primary" index={0} />
         <KpiCard
-          label="Marge brute"
-          value={grossMargin}
+          label="Dépenses"
+          value={opex}
           format="eur"
-          icon={TrendingUp}
-          accent="success"
-          hint={`${pct(grossMargin, revenue)}% du CA`}
+          icon={Receipt}
+          accent="info"
           index={1}
         />
-        <KpiCard label="Dépenses" value={opex} format="eur" icon={Receipt} accent="info" index={2} />
         <KpiCard
           label="Résultat net"
           value={netResult}
           format="eur"
           icon={PiggyBank}
+          accent={netResult >= 0 ? "success" : "gold"}
+          hint={`${pct(netResult, revenue)}% des revenus`}
+          index={2}
+        />
+        <KpiCard
+          label="Marge"
+          value={pct(netResult, revenue)}
+          format="int"
+          icon={TrendingUp}
           accent="gold"
-          hint={`${pct(netResult, revenue)}% du CA`}
+          hint="% Résultat / Revenus"
           index={3}
         />
       </div>
@@ -145,13 +160,11 @@ export default async function FinancesPage() {
         <Card className="enter-up lg:col-span-3" style={{ animationDelay: "280ms" }}>
           <CardHeader>
             <CardTitle>Compte de résultat</CardTitle>
-            <CardDescription>Du chiffre d&apos;affaires au résultat net</CardDescription>
+            <CardDescription>Des revenus au résultat net</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <dl className="divide-y divide-border text-sm">
-              <PnlRow label="Chiffre d'affaires confirmé" amount={revenue} sign="+" />
-              <PnlRow label="Coûts directs des sorties" amount={-directCosts} sign="−" />
-              <PnlRow label="Marge brute" amount={grossMargin} emphasis tone="success" />
+              <PnlRow label="Revenus" amount={revenue} sign="+" />
               <PnlRow label="Dépenses opérationnelles" amount={-opex} sign="−" />
               <PnlRow
                 label="Résultat net"
@@ -185,15 +198,53 @@ export default async function FinancesPage() {
 
         <Card className="enter-up lg:col-span-2" style={{ animationDelay: "360ms" }}>
           <CardHeader>
-            <CardTitle>Dépenses par catégorie</CardTitle>
-            <CardDescription>Total {formatEur(opex)}</CardDescription>
+            <CardTitle>Revenus par type</CardTitle>
+            <CardDescription>Total {formatEur(revenue)}</CardDescription>
             <CardAction>
-              <AddExpenseDialog />
+              <AddRevenueDialog />
             </CardAction>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-3">
-              {byCategory.map((c) => (
+            {byRevenueType.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun revenu enregistré.</p>
+            ) : (
+              <ul className="space-y-3">
+                {byRevenueType.map((r) => (
+                  <li key={r.type} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-foreground">
+                        {REVENUE_LABELS[r.type] ?? r.type}
+                      </span>
+                      <span className="font-medium text-foreground">{formatEur(r.amount)}</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                      <div
+                        className="h-full rounded-full bg-success/70"
+                        style={{ width: `${pct(r.amount, maxRevenue)}%` }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="enter-up" style={{ animationDelay: "440ms" }}>
+        <CardHeader>
+          <CardTitle>Dépenses par catégorie</CardTitle>
+          <CardDescription>Total {formatEur(opex)}</CardDescription>
+          <CardAction>
+            <AddExpenseDialog />
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          {byExpenseCategory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune dépense enregistrée.</p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+              {byExpenseCategory.map((c) => (
                 <li key={c.category} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-foreground">
@@ -204,44 +255,46 @@ export default async function FinancesPage() {
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                     <div
                       className="h-full rounded-full bg-gold/70"
-                      style={{ width: `${pct(c.amount, maxCategory)}%` }}
+                      style={{ width: `${pct(c.amount, maxExpense)}%` }}
                     />
                   </div>
                 </li>
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="enter-up" style={{ animationDelay: "440ms" }}>
-        <CardHeader>
-          <CardTitle>Encaissements par moyen de paiement</CardTitle>
-          <CardDescription>
-            Total perçu {formatEur(totalEncaisse)} · l&apos;acompte du site est compté en virement
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-            {encList.map((e) => (
-              <div key={e.label} className="space-y-2">
-                <span className="text-[13px] font-medium text-muted-foreground">
-                  {e.label}
-                </span>
-                <div className="text-xl font-semibold tracking-tight text-foreground">
-                  {formatEur(e.amount)}
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className="h-full rounded-full bg-primary/40"
-                    style={{ width: `${pct(e.amount, maxEnc)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          )}
         </CardContent>
       </Card>
+
+      {totalEncaisse > 0 && (
+        <Card className="enter-up" style={{ animationDelay: "520ms" }}>
+          <CardHeader>
+            <CardTitle>Encaissements par moyen de paiement</CardTitle>
+            <CardDescription>
+              Total perçu {formatEur(totalEncaisse)} · l&apos;acompte du site est compté en virement
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+              {encList.map((e) => (
+                <div key={e.label} className="space-y-2">
+                  <span className="text-[13px] font-medium text-muted-foreground">
+                    {e.label}
+                  </span>
+                  <div className="text-xl font-semibold tracking-tight text-foreground">
+                    {formatEur(e.amount)}
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-primary/40"
+                      style={{ width: `${pct(e.amount, maxEnc)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

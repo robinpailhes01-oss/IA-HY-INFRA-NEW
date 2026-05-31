@@ -25,33 +25,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addExpense } from "@/app/(dashboard)/finances/actions";
+import { addRevenue } from "@/app/(dashboard)/finances/actions";
 
-const CATEGORIES: [string, string][] = [
-  ["fuel", "Carburant"],
-  ["marketing", "Marketing / Pub"],
-  ["maintenance", "Entretien & réparations"],
-  ["insurance_pro", "Assurance"],
-  ["office", "Matériel / Office"],
-  ["restaurant_pro", "Restaurant pro"],
-  ["saas", "SaaS / Outils"],
-  ["salary_expense_pro", "Salaires & primes"],
-  ["subcontract", "Sous-traitance"],
-  ["subscription_pro", "Abonnements pro"],
-  ["other_expense_pro", "Autre"],
+const TYPES: [string, string][] = [
+  ["sea_trip", "Sortie en mer"],
+  ["unusual_night", "Nuit insolite"],
+  ["freelance_pro", "Freelance"],
+  ["client", "Client"],
 ];
-const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES);
+const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES);
 
-export function AddExpenseDialog() {
+export function AddRevenueDialog() {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState({
     date: today,
-    category: "fuel",
+    type: "sea_trip",
     amount: "",
-    description: "",
+    note: "",
   });
 
   function set<K extends keyof typeof form>(key: K, value: string) {
@@ -65,19 +58,19 @@ export function AddExpenseDialog() {
       return;
     }
     startTransition(async () => {
-      const res = await addExpense({
+      const res = await addRevenue({
         date: form.date,
-        category: form.category,
+        type: form.type,
         amount,
-        description: form.description || null,
+        note: form.note || null,
       });
       if (!res.ok) {
         toast.error("Échec de l'ajout", { description: res.error ?? undefined });
         return;
       }
-      toast.success("Dépense ajoutée");
+      toast.success("Revenu ajouté");
       setOpen(false);
-      setForm({ date: today, category: "fuel", amount: "", description: "" });
+      setForm({ date: today, type: "sea_trip", amount: "", note: "" });
       router.refresh();
     });
   }
@@ -85,13 +78,14 @@ export function AddExpenseDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>
-        <Plus /> Dépense
+        <Plus /> Revenu
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Ajouter une dépense</DialogTitle>
+          <DialogTitle>Ajouter un revenu</DialogTitle>
           <DialogDescription>
-            Les rentrées (acomptes & soldes) sont automatiques — saisis seulement les dépenses.
+            Pour l&apos;historique. Les vraies réservations (site &amp; GCal) seront
+            automatiques.
           </DialogDescription>
         </DialogHeader>
 
@@ -118,15 +112,15 @@ export function AddExpenseDialog() {
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Catégorie</Label>
-            <Select value={form.category} onValueChange={(v) => set("category", (v as string) ?? "")}>
+            <Label>Type</Label>
+            <Select value={form.type} onValueChange={(v) => set("type", (v as string) ?? "")}>
               <SelectTrigger className="w-full">
                 <SelectValue>
-                  {(val) => (val ? CAT_LABEL[val as string] : "Choisir")}
+                  {(val) => (val ? TYPE_LABEL[val as string] : "Choisir")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {CATEGORIES.map(([value, label]) => (
+                {TYPES.map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>
@@ -136,11 +130,11 @@ export function AddExpenseDialog() {
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Description (optionnel)</Label>
+            <Label>Note (optionnel)</Label>
             <Input
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder="Ex. plein de carburant"
+              value={form.note}
+              onChange={(e) => set("note", e.target.value)}
+              placeholder="Ex. sortie 3h Léa Dupont"
             />
           </div>
         </div>
