@@ -248,8 +248,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY manquante (secret Supabase)" }, 500);
 
-  // Auth optionnelle par secret partagé : appliquée seulement si LEA_WEBHOOK_SECRET est défini.
-  const sharedSecret = Deno.env.get("LEA_WEBHOOK_SECRET");
+  // Auth optionnelle par secret partagé : appliquée seulement si LEA_SHARED_SECRET est défini.
+  const sharedSecret = Deno.env.get("LEA_SHARED_SECRET");
   if (sharedSecret && req.headers.get("x-lea-secret") !== sharedSecret) {
     return json({ error: "unauthorized" }, 401);
   }
