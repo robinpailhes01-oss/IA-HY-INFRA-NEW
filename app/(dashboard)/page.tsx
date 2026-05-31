@@ -99,6 +99,7 @@ export default async function OverviewPage() {
     attentionLeadsRes,
     weatherRes,
     revenuesRes,
+    expensesRes,
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -152,6 +153,10 @@ export default async function OverviewPage() {
       .from("revenues")
       .select("amount, date")
       .returns<RevenueMetricRow[]>(),
+    supabase
+      .from("expenses")
+      .select("amount, date")
+      .returns<{ amount: number | null; date: string }[]>(),
   ]);
 
   const goal = goalRes.data;
@@ -182,26 +187,30 @@ export default async function OverviewPage() {
     revenuesData
       .filter((r) => inCurrentMonth(r.date))
       .reduce((s, r) => s + (r.amount ?? 0), 0);
-  const ytdMargin = metrics
-    .filter((b) => isConfirmed(b) && inYear(b.date))
-    .reduce((s, b) => s + (b.net_margin ?? 0), 0);
+  const expensesData = expensesRes.data ?? [];
+  const opexYtd = expensesData
+    .filter((e) => inYear(e.date))
+    .reduce((s, e) => s + (e.amount ?? 0), 0);
+
+  const ytdMargin =
+    metrics
+      .filter((b) => isConfirmed(b) && inYear(b.date))
+      .reduce((s, b) => s + (b.net_margin ?? 0), 0) +
+    revenuesData
+      .filter((r) => inYear(r.date))
+      .reduce((s, r) => s + (r.amount ?? 0), 0) -
+    opexYtd;
 
   const outstandingOf = (b: BookingMetricRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
   const outstanding = metrics
     .filter((b) => b.status !== "cancelled" && b.date >= todayIso)
     .reduce((s, b) => s + outstandingOf(b), 0);
-  const collected = metrics
-    .filter((b) => b.status !== "cancelled")
-    .reduce((s, b) => s + ((b.total_amount ?? 0) - outstandingOf(b)), 0);
-
-  const seasonRevenue =
+  const collected =
     metrics
-      .filter((b) => isConfirmed(b) && b.date >= periodStart && b.date <= periodEnd)
-      .reduce((s, b) => s + (b.total_amount ?? 0), 0) +
-    revenuesData
-      .filter((r) => r.date >= periodStart && r.date <= periodEnd)
-      .reduce((s, r) => s + (r.amount ?? 0), 0);
+      .filter((b) => b.status !== "cancelled")
+      .reduce((s, b) => s + ((b.total_amount ?? 0) - outstandingOf(b)), 0) +
+    revenuesData.reduce((s, r) => s + (r.amount ?? 0), 0);
 
   const upcomingCount = metrics.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
@@ -291,18 +300,18 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="primary" hint="hors annulations" index={0} />
         <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
-        <KpiCard label="Marge nette 2026" value={ytdMargin} format="eur" icon={TrendingUp} accent="success" index={2} />
-        <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="acomptes + soldes perçus" index={3} />
+        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="revenus − dépenses" index={2} />
+        <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="revenus + soldes perçus" index={3} />
       </div>
 
       <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
         <Card>
           <CardHeader>
             <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
-            <CardDescription>Saison juin–août · CA confirmé</CardDescription>
+            <CardDescription>CA {year} · cumul depuis le 1ᵉʳ janvier</CardDescription>
           </CardHeader>
           <CardContent>
-            <RevenueGauge current={seasonRevenue} min={min} medium={medium} strong={strong} />
+            <RevenueGauge current={caYtd} min={min} medium={medium} strong={strong} />
           </CardContent>
         </Card>
 
