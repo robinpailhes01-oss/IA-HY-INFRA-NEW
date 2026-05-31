@@ -33,6 +33,7 @@ const EXPENSE_LABELS: Record<string, string> = {
 const REVENUE_LABELS: Record<string, string> = {
   sea_trip: "Sorties en mer",
   unusual_night: "Nuits insolites",
+  other: "Autre",
 };
 
 type BookingFin = {

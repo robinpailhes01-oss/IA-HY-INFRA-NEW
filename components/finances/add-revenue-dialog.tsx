@@ -30,6 +30,7 @@ import { addRevenue } from "@/app/(dashboard)/finances/actions";
 const TYPES: [string, string][] = [
   ["sea_trip", "Sortie en mer"],
   ["unusual_night", "Nuit insolite"],
+  ["other", "Autre"],
 ];
 const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES);
 
