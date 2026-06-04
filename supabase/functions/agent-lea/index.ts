@@ -1,13 +1,20 @@
 // Supabase Edge Function — agent "Léa"
 // Anthropic Messages API : prompt caching (system = config stable, mis en cache)
-// + tool use (qualify_lead, update_lead_status, create_lead, escalate_to_human, get_active_events).
+// + tool use (qualify_lead, update_lead_status, create_lead, escalate_to_human,
+//   get_active_events, check_availability, send_booking_link).
 // Modèle : claude-sonnet-4-6 (dernier Sonnet ; caching/effort/adaptive thinking en GA).
+//
+// Léa fait du FRONT-OFFICE conversationnel uniquement : informer, qualifier,
+// communiquer les disponibilités, relancer. Elle NE crée PAS de réservation —
+// les réservations se font sur le site (send_booking_link partage le lien).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-6";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+// Lien de réservation du site (les résa se font sur le site, pas via Léa).
+const SITE_BOOKING_URL = Deno.env.get("SITE_BOOKING_URL") ?? "";
 const MAX_TOOL_TURNS = 6;
 
 const cors = {
@@ -93,6 +100,30 @@ const TOOLS = [
     description: "Liste les événements publics à venir (soirées, brunchs en mer…) pour pouvoir y rediriger le prospect.",
     input_schema: { type: "object", properties: {} },
   },
+  {
+    name: "check_availability",
+    description:
+      "Vérifie le planning du yacht (unique) pour une date donnée et renvoie les créneaux déjà occupés ce jour-là. À utiliser dès que le client demande une disponibilité ou propose une date. Ne JAMAIS affirmer une disponibilité sans avoir appelé cet outil — il n'y a qu'un seul bateau, donc une sortie déjà réservée bloque ce créneau.",
+    input_schema: {
+      type: "object",
+      properties: {
+        date: { type: "string", description: "Date à vérifier au format YYYY-MM-DD" },
+      },
+      required: ["date"],
+    },
+  },
+  {
+    name: "send_booking_link",
+    description:
+      "Renvoie le lien officiel de réservation du site. Les réservations se font UNIQUEMENT sur le site, jamais par toi. Appelle cet outil pour obtenir le lien exact (ne l'invente jamais) puis transmets-le au client. Tu peux pré-remplir l'offre et la date si tu les connais.",
+    input_schema: {
+      type: "object",
+      properties: {
+        offer: { type: "string", description: "Clé ou nom de l'offre visée (optionnel)" },
+        date: { type: "string", description: "Date souhaitée YYYY-MM-DD (optionnel)" },
+      },
+    },
+  },
 ];
 
 // ── Construction du system prompt (partie stable mise en cache) ──────
@@ -112,10 +143,17 @@ function buildStableSystem(config: Record<string, unknown>): string {
 - Mentionne OBLIGATOIREMENT en confirmation que le retard empiète sur la durée du créneau.
 - En cas de doute, de sujet sensible (PMR, météo, demande spéciale) ou hors de tes connaissances → utilise escalate_to_human.
 
+# Réservations
+- Tu NE prends PAS les réservations toi-même. Les réservations (acompte) se font sur le site.
+- Quand le client est prêt à réserver, utilise send_booking_link pour lui transmettre le lien officiel, puis accompagne-le.
+- Tu informes, tu qualifies, tu communiques les disponibilités et tu relances — c'est tout.
+
 # Utilisation des outils (côté serveur, invisible pour le client)
-- create_lead : dès qu'un nouveau contact te donne prénom ou téléphone (si la fiche n'existe pas déjà).
-- qualify_lead : au fil de l'eau, dès que tu apprends offre/occasion/nb de personnes/date/score.
+- create_lead : dès qu'un nouveau contact te donne prénom ou téléphone (si la fiche n'existe pas déjà). Sur WhatsApp, le téléphone est rempli automatiquement, crée la fiche dès le prénom connu.
+- qualify_lead : au fil de l'eau, dès que tu apprends offre/occasion/nb de personnes/date/score. Un score ≥ 7 = lead chaud (remonte automatiquement dans le tableau de l'équipe).
 - update_lead_status : fais avancer le pipeline (contacted → qualified → quote_sent…).
+- check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
+- send_booking_link : pour partager le lien de réservation du site (jamais inventé).
 - get_active_events : si le client demande des événements / soirées publiques.
 - escalate_to_human : selon les règles ci-dessus.
 Continue toujours à répondre naturellement au client APRÈS avoir utilisé un outil.
@@ -145,7 +183,7 @@ async function runTool(
   supabase: ReturnType<typeof createClient>,
   name: string,
   input: Record<string, unknown>,
-  state: { leadId: string | null; escalated: boolean },
+  state: { leadId: string | null; escalated: boolean; phone: string | null; bookingUrl: string },
 ): Promise<string> {
   const now = new Date().toISOString();
   switch (name) {
@@ -155,7 +193,9 @@ async function runTool(
         .from("leads")
         .insert({
           first_name: (input.first_name as string) ?? null,
-          phone: (input.phone as string) ?? null,
+          // Sur WhatsApp, le numéro de l'expéditeur est connu côté serveur même si
+          // le modèle ne l'a pas explicité : on le reprend par défaut.
+          phone: (input.phone as string) ?? state.phone ?? null,
           interested_offer: (input.interested_offer as string) ?? null,
           occasion: (input.occasion as string) ?? null,
           party_size: (input.party_size as number) ?? null,
@@ -210,6 +250,57 @@ async function runTool(
         .limit(10);
       if (error) return `Erreur: ${error.message}`;
       return data && data.length ? JSON.stringify(data) : "Aucun événement public à venir.";
+    }
+    case "check_availability": {
+      const date = (input.date as string)?.slice(0, 10);
+      if (!date) return "Date manquante (format YYYY-MM-DD attendu).";
+      // Yacht unique : toute sortie réservée (en attente ou confirmée) occupe le créneau.
+      const { data: bk, error } = await supabase
+        .from("bookings")
+        .select("start_time, end_time, offer_name, status")
+        .eq("date", date)
+        .in("status", ["pending", "confirmed"])
+        .order("start_time", { ascending: true });
+      if (error) return `Erreur: ${error.message}`;
+      const { data: evts } = await supabase
+        .from("events_public")
+        .select("title, start_time, end_time")
+        .eq("date", date)
+        .eq("status", "published");
+      const occupied = [
+        ...(bk ?? []).map((b) => ({
+          type: "sortie privative",
+          from: (b.start_time as string)?.slice(0, 5),
+          to: (b.end_time as string)?.slice(0, 5),
+          label: b.offer_name,
+        })),
+        ...(evts ?? []).map((e) => ({
+          type: "événement public",
+          from: (e.start_time as string)?.slice(0, 5),
+          to: (e.end_time as string)?.slice(0, 5),
+          label: e.title,
+        })),
+      ];
+      return JSON.stringify({
+        date,
+        fully_free: occupied.length === 0,
+        occupied,
+        note:
+          occupied.length === 0
+            ? "Aucun créneau réservé ce jour — le bateau est disponible."
+            : "Créneaux déjà pris ci-dessus. Le reste de la journée peut rester disponible (un seul bateau).",
+      });
+    }
+    case "send_booking_link": {
+      if (!state.bookingUrl) {
+        return "Lien de réservation non configuré (SITE_BOOKING_URL absent). Escalade vers l'équipe humaine pour transmettre le lien.";
+      }
+      const params = new URLSearchParams();
+      if (input.offer) params.set("offer", String(input.offer));
+      if (input.date) params.set("date", String(input.date).slice(0, 10));
+      const qs = params.toString();
+      const url = qs ? `${state.bookingUrl}${state.bookingUrl.includes("?") ? "&" : "?"}${qs}` : state.bookingUrl;
+      return `Lien de réservation officiel à transmettre au client : ${url}`;
     }
     default:
       return `Outil inconnu: ${name}`;
@@ -285,7 +376,14 @@ Deno.serve(async (req) => {
     const { data } = await supabase.from("leads").select("*").eq("phone", body.phone).maybeSingle();
     lead = data;
   }
-  const state = { leadId: (lead?.id as string) ?? null, escalated: false };
+  const state = {
+    leadId: (lead?.id as string) ?? null,
+    escalated: false,
+    phone: body.phone ?? (lead?.phone as string) ?? null,
+    bookingUrl: SITE_BOOKING_URL || ((config.faq as Record<string, any>)?.booking_process?.deposit_link ?? ""),
+  };
+  // Placeholder du seed : on ne transmet pas un lien factice au client.
+  if (state.bookingUrl === "TO_BE_PROVIDED") state.bookingUrl = "";
 
   // Historique → messages API. Si non fourni, on recharge depuis le Dashboard
   // (conversation du lead) pour une continuité stateful par téléphone/lead.
