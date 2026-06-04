@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { parsePayments, type BalancePayment } from "@/lib/payments";
+import { syncGCal } from "@/lib/sync-gcal";
 
 export async function settleBalance(
   bookingId: string,
@@ -67,6 +68,10 @@ export async function updateBooking(id: string, values: BookingUpdate) {
   if (error) {
     return { ok: false as const, error: error.message };
   }
+
+  // Sync GCal en best-effort (ne bloque pas si GCal est indisponible).
+  const isCancel = values.status === "cancelled" || values.status === "refunded";
+  void syncGCal(isCancel ? "delete" : "upsert", "booking", id);
 
   revalidatePath("/bookings");
   revalidatePath("/marketing");

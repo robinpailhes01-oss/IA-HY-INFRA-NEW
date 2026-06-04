@@ -9,6 +9,7 @@
 // les réservations se font sur le site (send_booking_link partage le lien).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { gcalFromEnv } from "../_shared/google-calendar.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-6";
@@ -254,7 +255,8 @@ async function runTool(
     case "check_availability": {
       const date = (input.date as string)?.slice(0, 10);
       if (!date) return "Date manquante (format YYYY-MM-DD attendu).";
-      // Yacht unique : toute sortie réservée (en attente ou confirmée) occupe le créneau.
+
+      // ── Source 1 : table bookings (source de vérité principale) ──
       const { data: bk, error } = await supabase
         .from("bookings")
         .select("start_time, end_time, offer_name, status")
@@ -262,11 +264,35 @@ async function runTool(
         .in("status", ["pending", "confirmed"])
         .order("start_time", { ascending: true });
       if (error) return `Erreur: ${error.message}`;
+
+      // ── Source 2 : events_public Supabase ──
       const { data: evts } = await supabase
         .from("events_public")
         .select("title, start_time, end_time")
         .eq("date", date)
         .eq("status", "published");
+
+      // ── Source 3 : Google Calendar (si credentials présents) ──
+      // Donne la visibilité sur les blocages manuels saisis directement dans GCal
+      // (congé, maintenance, réservation hors-système…).
+      let gcalOccupied: Array<{ type: string; from: string; to: string; label: string }> = [];
+      try {
+        const gcal = gcalFromEnv();
+        if (gcal) {
+          const timeMin = `${date}T00:00:00+02:00`;
+          const timeMax = `${date}T23:59:59+02:00`;
+          const gcalEvts = await gcal.listEvents(timeMin, timeMax);
+          gcalOccupied = gcalEvts.map((e) => ({
+            type: "agenda google",
+            from: e.start.length > 10 ? e.start.slice(11, 16) : "00:00",
+            to: e.end.length > 10 ? e.end.slice(11, 16) : "23:59",
+            label: e.summary,
+          }));
+        }
+      } catch (e) {
+        console.warn("check_availability: GCal indisponible, lecture ignorée.", e);
+      }
+
       const occupied = [
         ...(bk ?? []).map((b) => ({
           type: "sortie privative",
@@ -280,7 +306,9 @@ async function runTool(
           to: (e.end_time as string)?.slice(0, 5),
           label: e.title,
         })),
+        ...gcalOccupied,
       ];
+
       return JSON.stringify({
         date,
         fully_free: occupied.length === 0,
