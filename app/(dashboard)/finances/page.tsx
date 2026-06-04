@@ -14,7 +14,6 @@ import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
 import { AddRevenueDialog } from "@/components/finances/add-revenue-dialog";
 import { PeriodFilter } from "@/components/finances/period-filter";
 import { formatEur, formatDateLong } from "@/lib/format";
-import { PAYMENT_METHODS, parsePayments } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
 const EXPENSE_LABELS: Record<string, string> = {
@@ -35,13 +34,6 @@ const REVENUE_LABELS: Record<string, string> = {
   sea_trip: "Sorties en mer",
   unusual_night: "Nuits insolites",
   other: "Autre",
-};
-
-type BookingFin = {
-  status: string | null;
-  deposit_amount: number | null;
-  deposit_paid: boolean | null;
-  balance_payments: unknown;
 };
 
 type ExpenseRow = { category: string; amount: number };
@@ -78,13 +70,7 @@ export default async function FinancesPage({
 
   const supabase = await createClient();
 
-  const [bookingsRes, expensesRes, revenuesRes] = await Promise.all([
-    supabase
-      .from("bookings")
-      .select("status, deposit_amount, deposit_paid, balance_payments")
-      .gte("date", from)
-      .lte("date", to)
-      .returns<BookingFin[]>(),
+  const [expensesRes, revenuesRes] = await Promise.all([
     supabase
       .from("expenses")
       .select("category, amount")
@@ -125,26 +111,6 @@ export default async function FinancesPage({
     .map(([type, amount]) => ({ type, amount }))
     .sort((a, b) => b.amount - a.amount);
   const maxRevenue = byRevenueType[0]?.amount ?? 1;
-
-  const allBookings = bookingsRes.data ?? [];
-  const encByMethod: Record<string, number> = {};
-  let totalEncaisse = 0;
-  for (const b of allBookings) {
-    if (b.status === "cancelled") continue;
-    if (b.deposit_paid) {
-      encByMethod.virement = (encByMethod.virement ?? 0) + (b.deposit_amount ?? 0);
-      totalEncaisse += b.deposit_amount ?? 0;
-    }
-    for (const p of parsePayments(b.balance_payments)) {
-      encByMethod[p.method] = (encByMethod[p.method] ?? 0) + p.amount;
-      totalEncaisse += p.amount;
-    }
-  }
-  const encList = PAYMENT_METHODS.map((m) => ({
-    label: m.label,
-    amount: encByMethod[m.value] ?? 0,
-  }));
-  const maxEnc = Math.max(...encList.map((e) => e.amount), 1);
 
   const segments = [
     { label: "Dépenses opé.", value: opex, color: "bg-warning" },
@@ -304,36 +270,6 @@ export default async function FinancesPage({
         </CardContent>
       </Card>
 
-      {totalEncaisse > 0 && (
-        <Card className="enter-up" style={{ animationDelay: "520ms" }}>
-          <CardHeader>
-            <CardTitle>Encaissements par moyen de paiement</CardTitle>
-            <CardDescription>
-              Total perçu {formatEur(totalEncaisse)} · l&apos;acompte du site est compté en virement
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-              {encList.map((e) => (
-                <div key={e.label} className="space-y-2">
-                  <span className="text-[13px] font-medium text-muted-foreground">
-                    {e.label}
-                  </span>
-                  <div className="text-xl font-semibold tracking-tight text-foreground">
-                    {formatEur(e.amount)}
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-primary/40"
-                      style={{ width: `${pct(e.amount, maxEnc)}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

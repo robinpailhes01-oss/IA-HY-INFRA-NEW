@@ -1,4 +1,4 @@
-import { CalendarClock, Euro, Ship, Wallet } from "lucide-react";
+import { CalendarClock, Ship, Wallet } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -52,9 +52,6 @@ export default async function BookingsPage() {
 
   const bookings = data ?? [];
   const confirmees = bookings.filter((b) => CONFIRMED.has(b.status ?? "")).length;
-  const caConfirme = bookings
-    .filter((b) => CONFIRMED.has(b.status ?? ""))
-    .reduce((sum, b) => sum + (b.total_amount ?? 0), 0);
   const aVenir = bookings.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
   ).length;
@@ -111,17 +108,16 @@ export default async function BookingsPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Confirmées" value={confirmees} icon={Ship} accent="primary" index={0} />
-        <KpiCard label="CA confirmé" value={caConfirme} format="eur" icon={Euro} accent="gold" index={1} />
-        <KpiCard label="À venir" value={aVenir} icon={CalendarClock} accent="info" index={2} />
+        <KpiCard label="À venir" value={aVenir} icon={CalendarClock} accent="info" index={1} />
         <KpiCard
           label="Reste à encaisser"
           value={resteAEncaisser}
           format="eur"
           icon={Wallet}
           accent="success"
-          index={3}
+          index={2}
         />
       </div>
 
