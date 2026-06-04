@@ -31,9 +31,26 @@ const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json" },
   });
 
+// Ajoute n jours à une date YYYY-MM-DD.
+function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// Pour les nuits (Prestige, Insolite) ou tout créneau où end_time <= start_time,
+// l'horaire de fin est le lendemain.
+function isOvernight(b: Record<string, any>): boolean {
+  if (b.booking_type === "nuit_prestige" || b.booking_type === "nuit_insolite") return true;
+  const s = (b.start_time as string)?.slice(0, 5) ?? "00:00";
+  const e = (b.end_time as string)?.slice(0, 5) ?? "00:00";
+  return e <= s;
+}
+
 // Construit le body GCal depuis un booking Supabase.
 function bookingToEvent(b: Record<string, any>): GCalEvent {
-  const dateStr = b.date as string; // YYYY-MM-DD
+  const startDate = b.date as string;
+  const endDate = isOvernight(b) ? addDays(startDate, 1) : startDate;
   const startTime = (b.start_time as string)?.slice(0, 5) ?? "00:00";
   const endTime = (b.end_time as string)?.slice(0, 5) ?? "00:00";
 
@@ -52,7 +69,8 @@ function bookingToEvent(b: Record<string, any>): GCalEvent {
     `Offre : ${b.offer_name ?? "—"}`,
     `Personnes : ${b.party_size ?? "—"}`,
     `Montant total : ${b.total_amount ? `${b.total_amount} €` : "—"}`,
-    `Acompte payé : ${b.deposit_paid ? "Oui" : "Non"}`,
+    `Acompte payé : ${b.deposit_paid ? "Oui" : "Non"}${b.deposit_amount ? ` (${b.deposit_amount} €)` : ""}`,
+    `Solde dû : ${b.balance_due ? `${b.balance_due} €` : "0 €"}`,
     `Statut : ${b.status ?? "—"}`,
     `Canal : ${b.source_channel ?? "—"}`,
   ];
@@ -62,8 +80,8 @@ function bookingToEvent(b: Record<string, any>): GCalEvent {
     summary: `${icon} Harmonie Yacht — ${name}`,
     description: lines.join("\n"),
     location: "Port de Carnon, Hérault, France",
-    start: { dateTime: `${dateStr}T${startTime}:00`, timeZone: TZ },
-    end: { dateTime: `${dateStr}T${endTime}:00`, timeZone: TZ },
+    start: { dateTime: `${startDate}T${startTime}:00`, timeZone: TZ },
+    end: { dateTime: `${endDate}T${endTime}:00`, timeZone: TZ },
     colorId,
   };
 }
