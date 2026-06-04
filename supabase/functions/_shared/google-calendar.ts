@@ -98,12 +98,18 @@ export class GoogleCalendar {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
+    const txt = await res.text();
     if (!res.ok) {
-      const txt = await res.text();
+      // 404/410 sur DELETE = event déjà parti → traité comme un succès.
+      if (method === "DELETE" && (res.status === 404 || res.status === 410)) return null;
       throw new Error(`GCal ${method} ${path} → ${res.status}: ${txt}`);
     }
-    if (res.status === 204) return null;
-    return res.json();
+    if (!txt) return null; // 204 No Content ou body vide
+    try {
+      return JSON.parse(txt);
+    } catch {
+      return null;
+    }
   }
 
   // Crée un event et retourne son ID Google.
@@ -117,13 +123,9 @@ export class GoogleCalendar {
     await this.req("PUT", `/events/${eventId}`, event);
   }
 
-  // Supprime un event (silencieux si déjà supprimé — 404 ignoré).
+  // Supprime un event. Idempotent : si l'event a déjà disparu, on ne lève pas.
   async deleteEvent(eventId: string): Promise<void> {
-    try {
-      await this.req("DELETE", `/events/${eventId}`);
-    } catch (e) {
-      if (!String(e).includes("404")) throw e;
-    }
+    await this.req("DELETE", `/events/${eventId}`);
   }
 
   // Liste les events sur une plage de dates (pour check_availability).

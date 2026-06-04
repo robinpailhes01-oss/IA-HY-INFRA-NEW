@@ -89,84 +89,89 @@ function publicEventToGCal(ev: Record<string, any>): GCalEvent {
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return json({ error: "POST only" }, 405);
-  if (SYNC_SECRET && req.headers.get("x-sync-secret") !== SYNC_SECRET) {
-    return json({ error: "unauthorized" }, 401);
-  }
-
-  let body: { action?: string; type?: string; id?: string };
   try {
-    body = await req.json();
-  } catch {
-    return json({ error: "JSON invalide" }, 400);
-  }
-
-  const { action, type, id } = body;
-  if (!action || !type || !id) {
-    return json({ error: "action, type et id sont requis" }, 400);
-  }
-  if (!["upsert", "delete"].includes(action)) {
-    return json({ error: "action doit être 'upsert' ou 'delete'" }, 400);
-  }
-  if (!["booking", "event_public"].includes(type)) {
-    return json({ error: "type doit être 'booking' ou 'event_public'" }, 400);
-  }
-
-  const gcal = gcalFromEnv();
-  if (!gcal) {
-    // Pas de credentials → on log mais on ne bloque pas le caller.
-    console.warn("sync-gcal: GOOGLE_* secrets absents, synchronisation ignorée.");
-    return json({ skipped: "google_credentials_missing" });
-  }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-
-  const table = type === "booking" ? "bookings" : "events_public";
-
-  // ── DELETE ──────────────────────────────────────────────────────────
-  if (action === "delete") {
-    const { data } = await supabase
-      .from(table)
-      .select("google_calendar_event_id")
-      .eq("id", id)
-      .maybeSingle();
-    const gcalId = data?.google_calendar_event_id as string | null;
-    if (gcalId) {
-      await gcal.deleteEvent(gcalId);
-      await supabase.from(table).update({ google_calendar_event_id: null }).eq("id", id);
+    if (req.method !== "POST") return json({ error: "POST only" }, 405);
+    if (SYNC_SECRET && req.headers.get("x-sync-secret") !== SYNC_SECRET) {
+      return json({ error: "unauthorized" }, 401);
     }
-    return json({ deleted: true, gcal_event_id: gcalId });
-  }
 
-  // ── UPSERT ──────────────────────────────────────────────────────────
-  const { data: row, error } = await supabase.from(table).select("*").eq("id", id).maybeSingle();
-  if (error || !row) return json({ error: error?.message ?? "Enregistrement introuvable" }, 404);
-
-  // Les réservations annulées : on supprime l'event GCal.
-  if (type === "booking" && (row.status === "cancelled" || row.status === "refunded")) {
-    const gcalId = row.google_calendar_event_id as string | null;
-    if (gcalId) {
-      await gcal.deleteEvent(gcalId);
-      await supabase.from(table).update({ google_calendar_event_id: null }).eq("id", id);
-      return json({ deleted: true, reason: "booking_cancelled", gcal_event_id: gcalId });
+    let body: { action?: string; type?: string; id?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "JSON invalide" }, 400);
     }
-    return json({ skipped: "already_no_gcal_event" });
+
+    const { action, type, id } = body;
+    if (!action || !type || !id) {
+      return json({ error: "action, type et id sont requis" }, 400);
+    }
+    if (!["upsert", "delete"].includes(action)) {
+      return json({ error: "action doit être 'upsert' ou 'delete'" }, 400);
+    }
+    if (!["booking", "event_public"].includes(type)) {
+      return json({ error: "type doit être 'booking' ou 'event_public'" }, 400);
+    }
+
+    const gcal = gcalFromEnv();
+    if (!gcal) {
+      // Pas de credentials → on log mais on ne bloque pas le caller.
+      console.warn("sync-gcal: GOOGLE_* secrets absents, synchronisation ignorée.");
+      return json({ skipped: "google_credentials_missing" });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const table = type === "booking" ? "bookings" : "events_public";
+
+    // ── DELETE ──────────────────────────────────────────────────────────
+    if (action === "delete") {
+      const { data } = await supabase
+        .from(table)
+        .select("google_calendar_event_id")
+        .eq("id", id)
+        .maybeSingle();
+      const gcalId = data?.google_calendar_event_id as string | null;
+      if (gcalId) {
+        await gcal.deleteEvent(gcalId);
+        await supabase.from(table).update({ google_calendar_event_id: null }).eq("id", id);
+      }
+      return json({ deleted: true, gcal_event_id: gcalId });
+    }
+
+    // ── UPSERT ──────────────────────────────────────────────────────────
+    const { data: row, error } = await supabase.from(table).select("*").eq("id", id).maybeSingle();
+    if (error || !row) return json({ error: error?.message ?? "Enregistrement introuvable" }, 404);
+
+    // Les réservations annulées : on supprime l'event GCal.
+    if (type === "booking" && (row.status === "cancelled" || row.status === "refunded")) {
+      const gcalId = row.google_calendar_event_id as string | null;
+      if (gcalId) {
+        await gcal.deleteEvent(gcalId);
+        await supabase.from(table).update({ google_calendar_event_id: null }).eq("id", id);
+        return json({ deleted: true, reason: "booking_cancelled", gcal_event_id: gcalId });
+      }
+      return json({ skipped: "already_no_gcal_event" });
+    }
+
+    const event = type === "booking" ? bookingToEvent(row) : publicEventToGCal(row);
+    const existingId = row.google_calendar_event_id as string | null;
+
+    let gcalEventId: string;
+    if (existingId) {
+      await gcal.updateEvent(existingId, event);
+      gcalEventId = existingId;
+    } else {
+      gcalEventId = await gcal.createEvent(event);
+      await supabase.from(table).update({ google_calendar_event_id: gcalEventId }).eq("id", id);
+    }
+
+    return json({ upserted: true, gcal_event_id: gcalEventId });
+  } catch (e) {
+    console.error("sync-gcal error:", e);
+    return json({ error: String(e), stack: (e as any)?.stack }, 500);
   }
-
-  const event = type === "booking" ? bookingToEvent(row) : publicEventToGCal(row);
-  const existingId = row.google_calendar_event_id as string | null;
-
-  let gcalEventId: string;
-  if (existingId) {
-    await gcal.updateEvent(existingId, event);
-    gcalEventId = existingId;
-  } else {
-    gcalEventId = await gcal.createEvent(event);
-    await supabase.from(table).update({ google_calendar_event_id: gcalEventId }).eq("id", id);
-  }
-
-  return json({ upserted: true, gcal_event_id: gcalEventId });
 });
