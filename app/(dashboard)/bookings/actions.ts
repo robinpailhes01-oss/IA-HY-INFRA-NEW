@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import { parsePayments, type BalancePayment } from "@/lib/payments";
-import { syncGCal } from "@/lib/sync-gcal";
 
 export async function settleBalance(
   bookingId: string,
@@ -69,9 +68,8 @@ export async function updateBooking(id: string, values: BookingUpdate) {
     return { ok: false as const, error: error.message };
   }
 
-  // Sync GCal en best-effort (ne bloque pas si GCal est indisponible).
-  const isCancel = values.status === "cancelled" || values.status === "refunded";
-  void syncGCal(isCancel ? "delete" : "upsert", "booking", id);
+  // La synchronisation Google Calendar est gérée par le trigger Postgres
+  // `trg_bookings_sync_gcal` — elle s'exécute automatiquement après l'UPDATE.
 
   revalidatePath("/bookings");
   revalidatePath("/marketing");
