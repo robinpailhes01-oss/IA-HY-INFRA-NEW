@@ -5,6 +5,76 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { parsePayments, type BalancePayment } from "@/lib/payments";
 
+export type BookingCreate = {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  offer_name: string | null;
+  booking_type: string;
+  party_size: number | null;
+  total_amount: number;
+  deposit_amount: number;
+  deposit_paid: boolean;
+  source_channel: string | null;
+  status: string;
+  notes: string | null;
+};
+
+export async function createBooking(values: BookingCreate) {
+  const supabase = await createClient();
+
+  const { data: customer, error: custErr } = await supabase
+    .from("customers")
+    .insert({
+      first_name: values.first_name,
+      last_name: values.last_name,
+      email: values.email || null,
+      phone: values.phone || null,
+    })
+    .select("id")
+    .single();
+
+  if (custErr || !customer) {
+    return { ok: false as const, error: custErr?.message ?? "Erreur lors de la création du client" };
+  }
+
+  const balanceDue = Math.max(
+    0,
+    values.total_amount - (values.deposit_paid ? values.deposit_amount : 0),
+  );
+
+  const { error: bookErr } = await supabase.from("bookings").insert({
+    customer_id: customer.id,
+    date: values.date,
+    start_time: values.start_time || null,
+    end_time: values.end_time || null,
+    offer_name: values.offer_name || null,
+    booking_type: values.booking_type,
+    party_size: values.party_size,
+    total_amount: values.total_amount,
+    deposit_amount: values.deposit_amount,
+    deposit_paid: values.deposit_paid,
+    balance_due: balanceDue,
+    balance_due_date: values.date,
+    status: values.status,
+    source_channel: values.source_channel || null,
+    notes: values.notes || null,
+  });
+
+  if (bookErr) {
+    return { ok: false as const, error: bookErr.message };
+  }
+
+  revalidatePath("/bookings");
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null };
+}
+
 export async function settleBalance(
   bookingId: string,
   payments: BalancePayment[],

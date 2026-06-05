@@ -15,6 +15,7 @@ import {
   BookingsTable,
   type BookingTableItem,
 } from "@/components/bookings/bookings-table";
+import { AddBookingDialog } from "@/components/bookings/add-booking-dialog";
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
 
@@ -98,14 +99,17 @@ export default async function BookingsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="enter-up space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Réservations
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {bookings.length} sortie{bookings.length > 1 ? "s" : ""} enregistrée
-          {bookings.length > 1 ? "s" : ""} · clique sur une ligne pour modifier
-        </p>
+      <header className="enter-up flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Réservations
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {bookings.length} sortie{bookings.length > 1 ? "s" : ""} enregistrée
+            {bookings.length > 1 ? "s" : ""} · clique sur une ligne pour modifier
+          </p>
+        </div>
+        <AddBookingDialog />
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -3,6 +3,7 @@ import { Banknote, Ship, TrendingUp, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
 import { AddRevenueDialog } from "@/components/finances/add-revenue-dialog";
+import { AddBookingDialog } from "@/components/bookings/add-booking-dialog";
 import {
   Card,
   CardContent,
@@ -249,6 +250,7 @@ export default async function OverviewPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <AddBookingDialog />
           <AddExpenseDialog />
           <AddRevenueDialog />
         </div>
