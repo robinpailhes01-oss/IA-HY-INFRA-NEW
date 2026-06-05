@@ -119,10 +119,22 @@ export async function connectToWhatsApp(): Promise<void> {
         const reply = await askLea(body, customerPhone);
         if (!reply.trim()) continue;
 
+        // Simule la frappe humaine : indicateur "écrit…" + délai proportionnel
+        // au message (lecture + rédaction). Évite l'effet robot d'une réponse instantanée.
+        const baseMs = parseInt(process.env.LEA_REPLY_DELAY_MS ?? '8000', 10);
+        const perCharMs = parseInt(process.env.LEA_REPLY_PER_CHAR_MS ?? '25', 10);
+        const maxMs = parseInt(process.env.LEA_REPLY_DELAY_MAX_MS ?? '15000', 10);
+        const jitterMs = Math.floor(Math.random() * 2000);
+        const delayMs = Math.min(maxMs, baseMs + reply.length * perCharMs + jitterMs);
+
+        try { await sock!.sendPresenceUpdate('composing', jid); } catch {}
+        await new Promise((r) => setTimeout(r, delayMs));
+        try { await sock!.sendPresenceUpdate('paused', jid); } catch {}
+
         const sent = await sock!.sendMessage(jid, { text: reply });
         if (sent?.key?.id) leaSentIds.add(sent.key.id);
         await saveMessage(conv.id, true, reply, false, sent?.key?.id ?? undefined);
-        console.log(`🤖 Léa → ${customerPhone}: ${reply.slice(0, 80)}…`);
+        console.log(`🤖 Léa → ${customerPhone} (après ${delayMs}ms): ${reply.slice(0, 80)}…`);
       } catch (err) {
         console.error('[whatsapp] erreur Léa:', err);
       }

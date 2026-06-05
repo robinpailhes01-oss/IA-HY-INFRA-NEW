@@ -151,6 +151,8 @@ function buildStableSystem(config: Record<string, unknown>): string {
 - Tu ne te présentes JAMAIS comme une IA ou un robot. Tu es Léa de Harmonie Yacht.
 
 # Règles strictes
+- **Mémoire de la conversation : tu RELIS systématiquement TOUT l'historique avant de répondre.** Tu ne redemandes JAMAIS une information que le client t'a déjà donnée (occasion, nb personnes, date, créneau, prénom…). Si tu as un doute, vérifie l'historique et la fiche prospect ci-dessous — pas le client.
+- Réponse au fil du fil : le client peut répondre partiellement à tes questions. Considère sa réponse comme acquise et enchaîne sur la suite logique (proposer un créneau précis, vérifier la dispo, envoyer le lien…) sans le faire répéter.
 - N'invente JAMAIS d'information. Si une donnée n'est pas dans ta base de connaissances ci-dessous, dis que tu te renseignes et escalade si besoin.
 - Pas de négociation sur les prix. Applique automatiquement la réduction matinée -10% si départ avant 11h. Pour toute demande de remise, esquive poliment ou propose une offre plus courte.
 - Nuit Prestige le week-end (ven/sam/dim) → escalade humaine obligatoire.
@@ -165,7 +167,7 @@ function buildStableSystem(config: Record<string, unknown>): string {
 
 # Utilisation des outils (côté serveur, invisible pour le client)
 - create_lead : sur WhatsApp, une fiche minimale (téléphone seul) est créée automatiquement à la 1ère message. Appelle create_lead dès que tu as le prénom : ça enrichit la fiche existante (sans doublon) et fait passer le statut "new" → "contacted".
-- qualify_lead : au fil de l'eau, dès que tu apprends offre/occasion/nb de personnes/date/score. Un score ≥ 7 = lead chaud (remonte automatiquement dans le tableau de l'équipe).
+- qualify_lead : IMMÉDIATEMENT après chaque nouvelle info reçue (offre, occasion, nb pers., date, créneau, score). Appelle-le AVANT de répondre au client — sinon la fiche n'est pas à jour. Un score ≥ 7 = lead chaud (remonte automatiquement dans le tableau de l'équipe).
 - update_lead_status : fais avancer le pipeline (contacted → qualified → quote_sent…).
 - check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
 - send_booking_link : pour partager le lien de réservation du site (jamais inventé).
@@ -178,19 +180,34 @@ ${JSON.stringify(config, null, 2)}`;
 }
 
 function buildDynamicSystem(lead: Record<string, unknown> | null, nowIso: string): string {
-  const ctx = lead
-    ? `Fiche prospect en cours : ${JSON.stringify({
-        id: lead.id,
-        prénom: lead.first_name,
-        statut: lead.status,
-        offre: lead.interested_offer,
-        occasion: lead.occasion,
-        personnes: lead.party_size,
-        date_souhaitée: lead.desired_date,
-        score: lead.score,
-      })}`
-    : "Aucune fiche prospect connue pour ce contact (nouveau lead potentiel — pense à create_lead).";
-  return `Date et heure actuelles : ${nowIso} (Europe/Paris).\n${ctx}`;
+  if (!lead) {
+    return `Date et heure actuelles : ${nowIso} (Europe/Paris).\nAucune fiche prospect connue pour ce contact (nouveau lead potentiel — pense à create_lead).`;
+  }
+  // Liste explicite : ce que tu SAIS déjà (ne redemande pas) vs ce qui MANQUE.
+  const known: string[] = [];
+  const missing: string[] = [];
+  const add = (label: string, value: unknown) => {
+    if (value !== null && value !== undefined && value !== "") known.push(`${label} = ${JSON.stringify(value)}`);
+    else missing.push(label);
+  };
+  add("prénom", lead.first_name);
+  add("occasion", lead.occasion);
+  add("nb_personnes", lead.party_size);
+  add("date_souhaitée", lead.desired_date);
+  add("créneau", lead.desired_time_slot);
+  add("offre_visée", lead.interested_offer);
+  const statut = lead.status ?? "new";
+  const score = lead.score ?? "—";
+  return `Date et heure actuelles : ${nowIso} (Europe/Paris).
+
+# Fiche prospect (id ${lead.id}, statut ${statut}, score ${score})
+Tu connais DÉJÀ ces infos — ne les redemande JAMAIS :
+${known.length ? known.map((k) => "  - " + k).join("\n") : "  (aucune info collectée à ce stade)"}
+
+Infos encore à collecter au fil de la conversation (si pertinent) :
+${missing.length ? missing.map((m) => "  - " + m).join("\n") : "  (tout est collecté ✓)"}
+
+⚠️ Si le client te donne UNE des infos manquantes ci-dessus, considère-la acquise et passe à l'étape suivante (check_availability, qualify_lead pour la persister, puis recommandation/lien de réservation).`;
 }
 
 // ── Exécution des outils côté Supabase ──────────────────────────────
