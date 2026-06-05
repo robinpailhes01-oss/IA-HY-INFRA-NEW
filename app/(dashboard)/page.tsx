@@ -33,12 +33,9 @@ import {
 } from "@/components/dashboard/alerts-panel";
 import { formatDateLong, formatEur } from "@/lib/format";
 
-const CONFIRMED = new Set(["confirmed", "completed"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 type BookingMetricRow = {
-  total_amount: number | null;
-  net_margin: number | null;
   status: string | null;
   date: string;
   deposit_amount: number | null;
@@ -110,7 +107,7 @@ export default async function OverviewPage() {
     supabase
       .from("bookings")
       .select(
-        "total_amount, net_margin, status, date, deposit_amount, deposit_paid, balance_due",
+        "status, date, deposit_amount, deposit_paid, balance_due",
       )
       .returns<BookingMetricRow[]>(),
     supabase
@@ -167,61 +164,41 @@ export default async function OverviewPage() {
   const periodEnd = goal?.period_end ?? `${year}-08-31`;
 
   const metrics = metricsRes.data ?? [];
-  const isConfirmed = (b: BookingMetricRow) => CONFIRMED.has(b.status ?? "");
   const inYear = (d: string) => d.slice(0, 4) === String(year);
   const inCurrentMonth = (d: string) =>
     inYear(d) && Number(d.slice(5, 7)) - 1 === monthIdx;
 
+  // Le CA et la marge se calculent UNIQUEMENT depuis la table revenues
+  // (alimentée par le trigger bookings_to_revenues + entrées manuelles via
+  // AddRevenueDialog). Évite tout double-comptage avec bookings.total_amount.
   const revenuesData = revenuesRes.data ?? [];
-  const caYtd =
-    metrics
-      .filter((b) => isConfirmed(b) && inYear(b.date))
-      .reduce((s, b) => s + (b.total_amount ?? 0), 0) +
-    revenuesData
-      .filter((r) => inYear(r.date))
-      .reduce((s, r) => s + (r.amount ?? 0), 0);
-  const caMonth =
-    metrics
-      .filter((b) => isConfirmed(b) && inCurrentMonth(b.date))
-      .reduce((s, b) => s + (b.total_amount ?? 0), 0) +
-    revenuesData
-      .filter((r) => inCurrentMonth(r.date))
-      .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const caYtd = revenuesData
+    .filter((r) => inYear(r.date))
+    .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const caMonth = revenuesData
+    .filter((r) => inCurrentMonth(r.date))
+    .reduce((s, r) => s + (r.amount ?? 0), 0);
+
   const expensesData = expensesRes.data ?? [];
   const opexYtd = expensesData
     .filter((e) => inYear(e.date))
     .reduce((s, e) => s + (e.amount ?? 0), 0);
 
-  const ytdMargin =
-    metrics
-      .filter((b) => isConfirmed(b) && inYear(b.date))
-      .reduce((s, b) => s + (b.net_margin ?? 0), 0) +
-    revenuesData
-      .filter((r) => inYear(r.date))
-      .reduce((s, r) => s + (r.amount ?? 0), 0) -
-    opexYtd;
+  const ytdMargin = caYtd - opexYtd;
 
   const outstandingOf = (b: BookingMetricRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
   const outstanding = metrics
     .filter((b) => b.status !== "cancelled" && b.date >= todayIso)
     .reduce((s, b) => s + outstandingOf(b), 0);
-  const collected =
-    metrics
-      .filter((b) => b.status !== "cancelled")
-      .reduce((s, b) => s + ((b.total_amount ?? 0) - outstandingOf(b)), 0) +
-    revenuesData.reduce((s, r) => s + (r.amount ?? 0), 0);
+  // « Déjà encaissé » = ce qui est entré dans la caisse cette année.
+  const collected = caYtd;
 
   const upcomingCount = metrics.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
   ).length;
 
   const monthly = Array<number>(12).fill(0);
-  for (const b of metrics) {
-    if (isConfirmed(b) && inYear(b.date)) {
-      monthly[Number(b.date.slice(5, 7)) - 1] += b.total_amount ?? 0;
-    }
-  }
   for (const r of revenuesData) {
     if (inYear(r.date)) {
       monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
