@@ -34,6 +34,20 @@ const json = (body: unknown, status = 200) =>
 type ChatMsg = { from: "client" | "ai" | "human"; text: string; at: string };
 type ApiMessage = { role: "user" | "assistant"; content: unknown };
 
+// ── Normalisation téléphone (E.164, biais France) ────────────────────
+// Évite les doublons quand un même client est saisi en "06xx xx", "+33…", "33…".
+function normalizePhone(input: string | null | undefined): string | null {
+  if (!input) return null;
+  let s = String(input).trim().replace(/[\s\-().]/g, "");
+  if (!s) return null;
+  if (s.startsWith("00")) s = "+" + s.slice(2);
+  if (s.startsWith("+")) return /^\+\d{6,15}$/.test(s) ? s : null;
+  if (/^0\d{9}$/.test(s)) return "+33" + s.slice(1); // 0XXXXXXXXX → +33XXXXXXXXX
+  if (/^33\d{9}$/.test(s)) return "+" + s;            // 33XXXXXXXXX → +33XXXXXXXXX
+  if (/^\d{6,15}$/.test(s)) return "+" + s;
+  return null;
+}
+
 // ── Outils exposés au modèle ────────────────────────────────────────
 const TOOLS = [
   {
@@ -150,7 +164,7 @@ function buildStableSystem(config: Record<string, unknown>): string {
 - Tu informes, tu qualifies, tu communiques les disponibilités et tu relances — c'est tout.
 
 # Utilisation des outils (côté serveur, invisible pour le client)
-- create_lead : dès qu'un nouveau contact te donne prénom ou téléphone (si la fiche n'existe pas déjà). Sur WhatsApp, le téléphone est rempli automatiquement, crée la fiche dès le prénom connu.
+- create_lead : sur WhatsApp, une fiche minimale (téléphone seul) est créée automatiquement à la 1ère message. Appelle create_lead dès que tu as le prénom : ça enrichit la fiche existante (sans doublon) et fait passer le statut "new" → "contacted".
 - qualify_lead : au fil de l'eau, dès que tu apprends offre/occasion/nb de personnes/date/score. Un score ≥ 7 = lead chaud (remonte automatiquement dans le tableau de l'équipe).
 - update_lead_status : fais avancer le pipeline (contacted → qualified → quote_sent…).
 - check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
@@ -189,20 +203,30 @@ async function runTool(
   const now = new Date().toISOString();
   switch (name) {
     case "create_lead": {
-      if (state.leadId) return `Fiche déjà existante (id ${state.leadId}).`;
+      // Enrichit le stub auto-créé à la 1ère message WhatsApp si présent,
+      // sinon crée une nouvelle fiche (canaux sans téléphone : web, etc.).
+      if (state.leadId) {
+        const patch: Record<string, unknown> = { updated_at: now, last_interaction_at: now };
+        for (const k of ["first_name", "interested_offer", "occasion", "party_size", "source_channel"]) {
+          if (input[k] !== undefined && input[k] !== null) patch[k] = input[k];
+        }
+        // Passe de "new" (stub) à "contacted" dès qu'on a un prénom.
+        if (input.first_name) patch.status = "contacted";
+        const { error } = await supabase.from("leads").update(patch).eq("id", state.leadId);
+        return error ? `Erreur mise à jour: ${error.message}` : `Fiche enrichie (id ${state.leadId}).`;
+      }
+      const insertPhone = normalizePhone((input.phone as string) ?? state.phone);
       const { data, error } = await supabase
         .from("leads")
         .insert({
           first_name: (input.first_name as string) ?? null,
-          // Sur WhatsApp, le numéro de l'expéditeur est connu côté serveur même si
-          // le modèle ne l'a pas explicité : on le reprend par défaut.
-          phone: (input.phone as string) ?? state.phone ?? null,
+          phone: insertPhone,
           interested_offer: (input.interested_offer as string) ?? null,
           occasion: (input.occasion as string) ?? null,
           party_size: (input.party_size as number) ?? null,
           source_channel: (input.source_channel as string) ?? "whatsapp",
           source_status: "to_ask",
-          status: "contacted",
+          status: input.first_name ? "contacted" : "new",
           last_interaction_at: now,
           created_at: now,
           updated_at: now,
@@ -395,21 +419,54 @@ Deno.serve(async (req) => {
     .single();
   if (cfgErr || !config) return json({ error: `agent_config introuvable: ${cfgErr?.message}` }, 500);
 
-  // Contexte lead
+  // Contexte lead — recherche par lead_id, sinon par téléphone normalisé.
+  const normalizedPhone = normalizePhone(body.phone);
   let lead: Record<string, unknown> | null = null;
   if (body.lead_id) {
     const { data } = await supabase.from("leads").select("*").eq("id", body.lead_id).maybeSingle();
     lead = data;
-  } else if (body.phone) {
-    const { data } = await supabase.from("leads").select("*").eq("phone", body.phone).maybeSingle();
+  } else if (normalizedPhone) {
+    const { data } = await supabase.from("leads").select("*").eq("phone", normalizedPhone).maybeSingle();
     lead = data;
   }
+
+  // Stub auto à la première message WhatsApp : garantit que tout prospect apparaisse
+  // dans /leads dès le premier échange, même si Léa n'a pas encore appelé create_lead
+  // (le client n'a pas encore donné son prénom).
+  if (!lead && normalizedPhone) {
+    const nowStub = new Date().toISOString();
+    const { data: stub } = await supabase
+      .from("leads")
+      .insert({
+        phone: normalizedPhone,
+        source_channel: "whatsapp",
+        source_status: "to_ask",
+        status: "new",
+        created_at: nowStub,
+        updated_at: nowStub,
+        last_interaction_at: nowStub,
+      })
+      .select("*")
+      .single();
+    lead = stub;
+  }
+
   const state = {
     leadId: (lead?.id as string) ?? null,
     escalated: false,
-    phone: body.phone ?? (lead?.phone as string) ?? null,
+    phone: normalizedPhone ?? (lead?.phone as string) ?? null,
     bookingUrl: SITE_BOOKING_URL || ((config.faq as Record<string, any>)?.booking_process?.deposit_link ?? ""),
   };
+
+  // Lie la conversation WhatsApp au lead — permet d'afficher le fil WA sur la
+  // fiche du prospect dans le dashboard.
+  if (state.leadId && state.phone) {
+    await supabase
+      .from("wa_conversations")
+      .update({ lead_id: state.leadId })
+      .eq("customer_phone", state.phone)
+      .is("lead_id", null);
+  }
   // Placeholder du seed : on ne transmet pas un lien factice au client.
   if (state.bookingUrl === "TO_BE_PROVIDED") state.bookingUrl = "";
 

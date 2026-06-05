@@ -970,6 +970,7 @@ export type Database = {
           id: string
           is_paused: boolean
           last_message_at: string
+          lead_id: string | null
           paused_until: string | null
           unread_count: number
         }
@@ -979,6 +980,7 @@ export type Database = {
           id?: string
           is_paused?: boolean
           last_message_at?: string
+          lead_id?: string | null
           paused_until?: string | null
           unread_count?: number
         }
@@ -988,10 +990,19 @@ export type Database = {
           id?: string
           is_paused?: boolean
           last_message_at?: string
+          lead_id?: string | null
           paused_until?: string | null
           unread_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "wa_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       wa_messages: {
         Row: {
