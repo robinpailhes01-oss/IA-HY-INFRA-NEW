@@ -945,6 +945,92 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_auth_state: {
+        Row: {
+          data: Json | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          data?: Json | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          data?: Json | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      wa_conversations: {
+        Row: {
+          customer_name: string | null
+          customer_phone: string
+          id: string
+          is_paused: boolean
+          last_message_at: string
+          paused_until: string | null
+          unread_count: number
+        }
+        Insert: {
+          customer_name?: string | null
+          customer_phone: string
+          id?: string
+          is_paused?: boolean
+          last_message_at?: string
+          paused_until?: string | null
+          unread_count?: number
+        }
+        Update: {
+          customer_name?: string | null
+          customer_phone?: string
+          id?: string
+          is_paused?: boolean
+          last_message_at?: string
+          paused_until?: string | null
+          unread_count?: number
+        }
+        Relationships: []
+      }
+      wa_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          from_me: boolean
+          id: string
+          is_from_human: boolean
+          wa_message_id: string | null
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          from_me: boolean
+          id?: string
+          is_from_human: boolean
+          wa_message_id?: string | null
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          is_from_human?: boolean
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
     }
     Views: {
       [_ in never]: never

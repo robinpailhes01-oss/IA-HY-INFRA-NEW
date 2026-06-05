@@ -98,7 +98,8 @@ export function AddBookingDialog() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function handleOfferChange(key: string) {
+  function handleOfferChange(key: string | null) {
+    if (!key) return;
     const opt = OFFER_OPTIONS.find((o) => o.value === key);
     const isNuit = opt?.type === "nuit_insolite" || opt?.type === "nuit_prestige";
     setForm((f) => ({
