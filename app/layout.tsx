@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -17,6 +17,15 @@ export const metadata: Metadata = {
   title: "Harmonie Yacht — Dashboard",
   description: "Pilotage des leads, réservations, finances et marketing d'Harmonie Yacht.",
   formatDetection: { telephone: false, date: false, address: false, email: false },
+  appleWebApp: {
+    capable: true,
+    title: "Harmonie Yacht",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1b3a5c",
 };
 
 export default function RootLayout({
