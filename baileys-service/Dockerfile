@@ -6,8 +6,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Force git to use HTTPS instead of SSH (no SSH keys in Docker)
-RUN git config --global url."https://".insteadOf git:// \
- && git config --global url."https://github.com/".insteadOf "git@github.com:"
+# Baileys pulls libsignal-node via ssh://git@github.com/...
+RUN git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
+ && git config --global url."https://github.com/".insteadOf "git@github.com:" \
+ && git config --global url."https://".insteadOf "git://"
 
 WORKDIR /app
 
