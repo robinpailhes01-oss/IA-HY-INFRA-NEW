@@ -1,17 +1,19 @@
 FROM node:20-slim
 
+# Required for native build deps (Baileys / libsignal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json* ./
+COPY package.json ./
 RUN npm install
 
-# Build TypeScript
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-# Auth state persisted in /data (mount a Railway volume here)
 RUN mkdir -p /data/auth
 
 EXPOSE 3001
