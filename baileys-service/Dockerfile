@@ -5,11 +5,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ git \
     && rm -rf /var/lib/apt/lists/*
 
-# Force git to use HTTPS instead of SSH (no SSH keys in Docker)
+# Force git to use HTTPS instead of SSH (no SSH keys in Docker).
 # Baileys pulls libsignal-node via ssh://git@github.com/...
+# IMPORTANT: --add for repeated keys, otherwise the next one overwrites the previous.
 RUN git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
- && git config --global url."https://github.com/".insteadOf "git@github.com:" \
- && git config --global url."https://".insteadOf "git://"
+ && git config --global --add url."https://github.com/".insteadOf "git@github.com:" \
+ && git config --global --add url."https://".insteadOf "git://"
 
 WORKDIR /app
 
