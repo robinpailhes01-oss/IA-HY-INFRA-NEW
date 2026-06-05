@@ -5,10 +5,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ git \
     && rm -rf /var/lib/apt/lists/*
 
+# Force git to use HTTPS instead of SSH (no SSH keys in Docker)
+RUN git config --global url."https://".insteadOf git:// \
+ && git config --global url."https://github.com/".insteadOf "git@github.com:"
+
 WORKDIR /app
 
 COPY package.json ./
-RUN npm install
+RUN npm install --no-fund --no-audit
 
 COPY tsconfig.json ./
 COPY src ./src
