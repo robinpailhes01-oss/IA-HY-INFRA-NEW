@@ -122,7 +122,7 @@ export default function AgentPage() {
           {/* Conversation list */}
           <aside className="w-72 shrink-0 overflow-y-auto border-r border-border">
             {conversations.length === 0 && (
-              <p className="p-4 text-sm text-muted-foreground">Aucune conversation pour l'instant.</p>
+              <p className="p-4 text-sm text-muted-foreground">Aucune conversation pour le moment.</p>
             )}
             {conversations.map((conv) => (
               <button
@@ -245,7 +245,7 @@ function QRPanel({ state }: { state: QRState }) {
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {state.status === 'waiting' ? 'Attente du service Baileys…' : 'Service Baileys non disponible — vérifie le déploiement Railway.'}
+          {state.status === 'waiting' ? 'Attente du service Baileys...' : 'Service Baileys non disponible - verifie le deploiement Railway.'}
         </p>
       )}
     </div>
