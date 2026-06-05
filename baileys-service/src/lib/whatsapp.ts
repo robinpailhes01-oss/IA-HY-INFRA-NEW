@@ -4,7 +4,7 @@ import makeWASocket, {
   isJidBroadcast,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
-import pino from 'pino';
+import pinoModule from 'pino';
 import {
   useSupabaseAuthState,
   upsertConversation,
@@ -14,6 +14,8 @@ import {
 } from './supabase.js';
 import { askLea } from './lea.js';
 
+// pino's CJS default-import under NodeNext resolves to a namespace; unwrap .default at runtime
+const pino: any = (pinoModule as any).default ?? pinoModule;
 const logger = pino({ level: 'silent' });
 
 // IDs of messages Léa sent — used to ignore echoes
@@ -119,7 +121,7 @@ export async function connectToWhatsApp(): Promise<void> {
 
         const sent = await sock!.sendMessage(jid, { text: reply });
         if (sent?.key?.id) leaSentIds.add(sent.key.id);
-        await saveMessage(conv.id, true, reply, false, sent?.key?.id);
+        await saveMessage(conv.id, true, reply, false, sent?.key?.id ?? undefined);
         console.log(`🤖 Léa → ${customerPhone}: ${reply.slice(0, 80)}…`);
       } catch (err) {
         console.error('[whatsapp] erreur Léa:', err);

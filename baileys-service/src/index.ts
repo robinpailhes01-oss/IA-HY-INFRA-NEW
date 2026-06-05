@@ -50,7 +50,7 @@ app.post('/send', async (req, res) => {
     // Save + pause (human is taking over)
     const conv = await upsertConversation(phone);
     if (conv) {
-      await saveMessage(conv.id, true, message, true, sent?.key?.id);
+      await saveMessage(conv.id, true, message, true, sent?.key?.id ?? undefined);
       await pauseConversation(phone);
     }
     res.json({ ok: true });
