@@ -76,6 +76,7 @@ export async function connectToWhatsApp(): Promise<void> {
   });
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    console.log(`📨 messages.upsert reçu (type=${type}, count=${messages.length})`);
     if (type !== 'notify') return;
 
     for (const msg of messages) {
@@ -85,7 +86,9 @@ export async function connectToWhatsApp(): Promise<void> {
       if (isJidBroadcast(jid)) continue;
       if (jid.endsWith('@g.us')) continue; // ignore groups
 
-      const customerPhone = '+' + jid.replace('@s.whatsapp.net', '');
+      // WhatsApp donne soit "<phone>@s.whatsapp.net" (contact normal), soit
+      // "<lid>@lid" (privacy mode). On strip les deux pour avoir un identifiant clean.
+      const customerPhone = '+' + jid.replace(/@(s\.whatsapp\.net|lid)$/, '');
       const msgId = msg.key.id ?? '';
       const body =
         msg.message.conversation ??
