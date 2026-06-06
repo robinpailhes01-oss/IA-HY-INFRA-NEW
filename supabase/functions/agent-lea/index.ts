@@ -290,7 +290,26 @@ async function runTool(
         if (input[k] !== undefined && input[k] !== null) patch[k] = input[k];
       }
       const { error } = await supabase.from("leads").update(patch).eq("id", state.leadId);
-      return error ? `Erreur: ${error.message}` : "Informations enregistrées.";
+      if (error) return `Erreur: ${error.message}`;
+
+      // Auto-qualification : si on a maintenant offre + date, on bump le statut
+      // à "qualified" (sauf si déjà plus avancé : quote_sent / booked / lost).
+      const { data: refreshed } = await supabase
+        .from("leads")
+        .select("status, interested_offer, desired_date")
+        .eq("id", state.leadId)
+        .single();
+      if (refreshed?.interested_offer && refreshed?.desired_date) {
+        const earlier = ["new", "contacted"];
+        if (refreshed.status && earlier.includes(refreshed.status as string)) {
+          await supabase
+            .from("leads")
+            .update({ status: "qualified", updated_at: now })
+            .eq("id", state.leadId);
+          return "Informations enregistrées + statut → qualified (offre + date connues).";
+        }
+      }
+      return "Informations enregistrées.";
     }
     case "update_lead_status": {
       if (!state.leadId) return "Aucune fiche à mettre à jour.";
