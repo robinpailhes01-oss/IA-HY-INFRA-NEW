@@ -122,3 +122,11 @@ export async function resumeConversation(customerPhone: string) {
     .update({ is_paused: false, paused_until: null })
     .eq('customer_phone', customerPhone);
 }
+
+// Vide la table wa_auth_state — appelé quand WhatsApp invalide la session
+// (déconnexion de l'appareil lié dans WhatsApp Business). Sans ça, le service
+// resterait coincé avec des credentials morts au lieu de générer un nouveau QR.
+export async function clearSupabaseAuthState() {
+  const { error } = await supabase.from('wa_auth_state').delete().neq('id', '');
+  if (error) throw error;
+}

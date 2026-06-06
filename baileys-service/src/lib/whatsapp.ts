@@ -7,6 +7,7 @@ import { Boom } from '@hapi/boom';
 import pinoModule from 'pino';
 import {
   useSupabaseAuthState,
+  clearSupabaseAuthState,
   upsertConversation,
   saveMessage,
   isConversationPaused,
@@ -54,9 +55,18 @@ export async function connectToWhatsApp(): Promise<void> {
       connected = false;
       qrCode = null;
       const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
-      const reconnect = code !== DisconnectReason.loggedOut;
-      console.log(`🔌 Connexion fermée (code ${code}) — reconnexion: ${reconnect}`);
-      if (reconnect) setTimeout(() => connectToWhatsApp(), 5_000);
+      const loggedOut = code === DisconnectReason.loggedOut;
+      console.log(`🔌 Connexion fermée (code ${code}) — loggedOut: ${loggedOut}`);
+      if (loggedOut) {
+        // L'humain a déconnecté l'appareil lié dans WhatsApp Business. Les credentials
+        // sont invalides — on les efface et on relance pour générer un nouveau QR.
+        console.log('🧹 Session WhatsApp invalidée → nettoyage auth Supabase + nouveau QR');
+        clearSupabaseAuthState()
+          .catch((e) => console.error('[whatsapp] clearAuthState:', e))
+          .finally(() => setTimeout(() => connectToWhatsApp(), 2_000));
+      } else {
+        setTimeout(() => connectToWhatsApp(), 5_000);
+      }
     }
     if (connection === 'open') {
       connected = true;
