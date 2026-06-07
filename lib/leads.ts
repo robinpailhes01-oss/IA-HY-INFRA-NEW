@@ -29,6 +29,8 @@ export type Lead = {
   status: string | null;
   needs_human_intervention: boolean | null;
   last_interaction_at: string | null;
+  last_followup_at: string | null;
+  followup_count: number | null;
   ai_memo: string | null;
   notes: string | null;
   created_at: string | null;

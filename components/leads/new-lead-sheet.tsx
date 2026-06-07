@@ -92,6 +92,8 @@ export function NewLeadSheet({
         status: "qualified",
         needs_human_intervention: false,
         last_interaction_at: now,
+        last_followup_at: null,
+        followup_count: 0,
         ai_memo: null,
         notes: null,
         created_at: now,

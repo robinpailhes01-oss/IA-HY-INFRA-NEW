@@ -129,6 +129,48 @@ export async function markBooked(id: string) {
   return updateLeadStatus(id, "booked");
 }
 
+/**
+ * Déclenche une relance manuelle pour ce lead : appelle la Edge Function
+ * `lea-followups` avec un lead_id (bypass de l'intervalle). Léa génère un
+ * message court dans le ton maison et l'envoie via Baileys.
+ */
+export async function triggerManualFollowup(leadId: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/lea-followups`
+    : null;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) return fail("Supabase non configuré côté serveur.");
+
+  try {
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+    };
+    if (process.env.CRON_SECRET) headers["x-cron-secret"] = process.env.CRON_SECRET;
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ lead_id: leadId }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      sent?: number;
+      processed?: number;
+      results?: Array<{ sent: boolean; reason?: string }>;
+      error?: string;
+    };
+    if (!res.ok || data.error) return fail(data.error ?? `Edge ${res.status}`);
+    const r = data.results?.[0];
+    if (r && !r.sent) return fail(r.reason ?? "Envoi échoué");
+
+    revalidatePath("/leads");
+    return ok(null);
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : String(e));
+  }
+}
+
 /** Marque le lead perdu ; consigne la raison dans les notes. */
 export async function markLost(id: string, reason: string) {
   const supabase = await createClient();

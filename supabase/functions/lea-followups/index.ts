@@ -89,25 +89,41 @@ Deno.serve(async (req) => {
   if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY manquante" }, 500);
   if (!BAILEYS_SERVICE_URL) return json({ error: "BAILEYS_SERVICE_URL manquant" }, 500);
 
+  // Mode "manuel" : si lead_id est fourni dans le body, on traite uniquement ce
+  // lead, en bypassant le check d'intervalle (clic sur "Relancer" depuis la fiche).
+  let manualLeadId: string | null = null;
+  try {
+    const body = await req.json();
+    if (body && typeof body.lead_id === "string") manualLeadId = body.lead_id;
+  } catch { /* body vide = mode cron normal */ }
+
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   const { data: config } = await supabase.from("agent_config").select("offers, options, faq, max_followups, auto_followup_enabled").limit(1).single();
 
-  if (!config?.auto_followup_enabled) {
+  // En mode manuel, on ne respecte pas auto_followup_enabled (l'humain a cliqué).
+  if (!manualLeadId && !config?.auto_followup_enabled) {
     return json({ skipped: "auto_followup_enabled = false", processed: 0 });
   }
-  const maxFollowups = (config.max_followups as number) ?? 3;
-  const intervals = (config.faq as any)?.agent_settings?.followup_intervals_hours ?? DEFAULT_INTERVALS;
+  const maxFollowups = (config?.max_followups as number) ?? 3;
+  const intervals = (config?.faq as any)?.agent_settings?.followup_intervals_hours ?? DEFAULT_INTERVALS;
 
-  const { data: leads, error } = await supabase
+  let leadsQuery = supabase
     .from("leads")
-    .select("id, first_name, phone, interested_offer, occasion, party_size, desired_date, desired_time_slot, status, last_interaction_at, created_at, followup_count, last_followup_at, needs_human_intervention, archived")
-    .in("status", ACTIVE_STATUSES)
-    .eq("needs_human_intervention", false)
-    .not("phone", "is", null)
-    .or("archived.is.null,archived.eq.false")
-    .lt("followup_count", maxFollowups);
+    .select("id, first_name, phone, interested_offer, occasion, party_size, desired_date, desired_time_slot, status, last_interaction_at, created_at, followup_count, last_followup_at, needs_human_intervention, archived");
 
+  if (manualLeadId) {
+    leadsQuery = leadsQuery.eq("id", manualLeadId);
+  } else {
+    leadsQuery = leadsQuery
+      .in("status", ACTIVE_STATUSES)
+      .eq("needs_human_intervention", false)
+      .not("phone", "is", null)
+      .or("archived.is.null,archived.eq.false")
+      .lt("followup_count", maxFollowups);
+  }
+
+  const { data: leads, error } = await leadsQuery;
   if (error) return json({ error: error.message }, 500);
 
   const now = Date.now();
@@ -115,11 +131,20 @@ Deno.serve(async (req) => {
 
   for (const lead of leads ?? []) {
     const count = (lead.followup_count as number) ?? 0;
-    const ref = (lead.last_followup_at as string) ?? (lead.last_interaction_at as string) ?? (lead.created_at as string);
-    if (!ref) continue;
-    const hoursSince = (now - new Date(ref).getTime()) / 3_600_000;
-    const dueAfter = intervals[Math.min(count, intervals.length - 1)] ?? 24;
-    if (hoursSince < dueAfter) continue;
+    if (!manualLeadId) {
+      // Mode cron : on respecte l'intervalle.
+      const ref = (lead.last_followup_at as string) ?? (lead.last_interaction_at as string) ?? (lead.created_at as string);
+      if (!ref) continue;
+      const hoursSince = (now - new Date(ref).getTime()) / 3_600_000;
+      const dueAfter = intervals[Math.min(count, intervals.length - 1)] ?? 24;
+      if (hoursSince < dueAfter) continue;
+    } else {
+      // Mode manuel : on refuse uniquement si le lead n'a pas de téléphone.
+      if (!lead.phone) {
+        results.push({ lead_id: lead.id, sent: false, reason: "pas de téléphone" });
+        continue;
+      }
+    }
 
     try {
       const text = await writeFollowup(lead, count + 1, config);

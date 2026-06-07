@@ -48,6 +48,8 @@ function rowToLead(row: Record<string, unknown>): Lead {
     status: (row.status as string) ?? null,
     needs_human_intervention: (row.needs_human_intervention as boolean) ?? null,
     last_interaction_at: (row.last_interaction_at as string) ?? null,
+    last_followup_at: (row.last_followup_at as string) ?? null,
+    followup_count: (row.followup_count as number) ?? null,
     ai_memo: (row.ai_memo as string) ?? null,
     notes: (row.notes as string) ?? null,
     created_at: (row.created_at as string) ?? null,

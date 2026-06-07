@@ -10,7 +10,7 @@ import {
   archiveLead,
   markBooked,
   markLost,
-  updateLeadFields,
+  triggerManualFollowup,
 } from "@/app/(dashboard)/leads/actions";
 import type { Lead } from "@/lib/leads";
 
@@ -31,17 +31,19 @@ export function LeadActions({
 
   function relance() {
     startTransition(async () => {
-      const now = new Date().toISOString();
-      const res = await updateLeadFields(lead.id, {
-        status: "followed_up",
-        last_interaction_at: now,
-      });
+      const res = await triggerManualFollowup(lead.id);
       if (!res.ok) {
-        toast.error("Échec", { description: res.error });
+        toast.error("Échec de la relance", { description: res.error });
         return;
       }
-      onPatch({ status: "followed_up", last_interaction_at: now });
-      toast.success("Relance envoyée (mock)");
+      const now = new Date().toISOString();
+      onPatch({
+        status: "followed_up",
+        last_interaction_at: now,
+        last_followup_at: now,
+        followup_count: (lead.followup_count ?? 0) + 1,
+      });
+      toast.success("Relance envoyée par Léa ✉️");
     });
   }
 
