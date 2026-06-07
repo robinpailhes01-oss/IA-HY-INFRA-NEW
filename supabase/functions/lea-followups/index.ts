@@ -19,21 +19,18 @@ const json = (body: unknown, status = 200) =>
 
 type Lead = Record<string, any>;
 
-async function sendViaBaileys(phone: string, text: string): Promise<boolean> {
-  if (!BAILEYS_SERVICE_URL) {
-    console.error("BAILEYS_SERVICE_URL manquant");
-    return false;
-  }
+async function sendViaBaileys(phone: string, text: string): Promise<{ ok: boolean; error?: string }> {
+  if (!BAILEYS_SERVICE_URL) return { ok: false, error: "BAILEYS_SERVICE_URL manquant" };
   const res = await fetch(`${BAILEYS_SERVICE_URL}/send`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ phone, message: text }),
   });
   if (!res.ok) {
-    console.error("Baileys send error", res.status, await res.text());
-    return false;
+    const detail = await res.text().catch(() => "");
+    return { ok: false, error: `Baileys ${res.status}: ${detail.slice(0, 200)}` };
   }
-  return true;
+  return { ok: true };
 }
 
 async function writeFollowup(lead: Lead, followupNumber: number, config: Lead): Promise<string> {
@@ -152,7 +149,8 @@ Deno.serve(async (req) => {
         results.push({ lead_id: lead.id, sent: false, reason: "message vide" });
         continue;
       }
-      const ok = await sendViaBaileys(lead.phone, text);
+      const sendRes = await sendViaBaileys(lead.phone, text);
+      const ok = sendRes.ok;
       const nowIso = new Date().toISOString();
 
       if (ok) {
@@ -173,7 +171,7 @@ Deno.serve(async (req) => {
           await supabase.from("conversations").insert({ lead_id: lead.id, channel: "whatsapp", messages: [newMsg], created_at: nowIso, updated_at: nowIso });
         }
       }
-      results.push({ lead_id: lead.id, sent: ok });
+      results.push({ lead_id: lead.id, sent: ok, reason: ok ? undefined : sendRes.error });
     } catch (e) {
       console.error("followup failed", lead.id, e);
       results.push({ lead_id: lead.id, sent: false, reason: String(e) });

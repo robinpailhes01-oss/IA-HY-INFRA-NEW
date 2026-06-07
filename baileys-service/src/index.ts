@@ -44,8 +44,16 @@ app.post('/send', async (req, res) => {
   if (!sock || !isConnected()) {
     return res.status(503).json({ error: 'WhatsApp non connecté' });
   }
-  const jid = phone.replace('+', '') + '@s.whatsapp.net';
+  const cleanPhone = phone.replace('+', '');
   try {
+    // Vérifie d'abord que le numéro existe sur WhatsApp — sinon sendMessage
+    // accepte silencieusement et le message disparaît dans le néant.
+    const exists = await sock.onWhatsApp(cleanPhone);
+    const match = exists?.find((e) => e.exists);
+    if (!match) {
+      return res.status(404).json({ error: `Numéro ${phone} introuvable sur WhatsApp` });
+    }
+    const jid = match.jid;
     const sent = await sock.sendMessage(jid, { text: message });
     // Save + pause (human is taking over)
     const conv = await upsertConversation(phone);

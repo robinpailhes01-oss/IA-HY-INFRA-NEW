@@ -161,8 +161,11 @@ export async function triggerManualFollowup(leadId: string) {
       error?: string;
     };
     if (!res.ok || data.error) return fail(data.error ?? `Edge ${res.status}`);
+    if ((data.processed ?? 0) === 0) {
+      return fail("Lead introuvable ou téléphone manquant.");
+    }
     const r = data.results?.[0];
-    if (r && !r.sent) return fail(r.reason ?? "Envoi échoué");
+    if (r && !r.sent) return fail(r.reason ?? "Envoi échoué (Baileys n'a pas accepté ce numéro)");
 
     revalidatePath("/leads");
     return ok(null);
