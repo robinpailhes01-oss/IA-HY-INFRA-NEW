@@ -1,4 +1,4 @@
-import { Euro, Eye, Heart, Megaphone, Target, Users } from "lucide-react";
+import { Euro, Eye, Heart, Megaphone, Target, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
@@ -23,9 +23,34 @@ import { sourceChannelLabel } from "@/lib/status";
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
 
+// Classification des canaux pour distinguer Payant / Organique / Autre
+const PAID_CHANNELS = new Set([
+  "instagram_ads",
+  "tiktok_ads",
+  "meta_ads",
+  "google",
+  "google_ads",
+]);
+const ORGANIC_CHANNELS = new Set([
+  "instagram_organic",
+  "tiktok_organic",
+  "facebook_organic",
+  "website",
+  "word_of_mouth",
+]);
+
+type CanalCategory = "paid" | "organic" | "other";
+function canalCategory(channel: string | null): CanalCategory {
+  if (!channel) return "other";
+  if (PAID_CHANNELS.has(channel)) return "paid";
+  if (ORGANIC_CHANNELS.has(channel)) return "organic";
+  return "other";
+}
+
 const CHANNEL_LABELS: Record<string, string> = {
   meta_ads: "Meta Ads",
   google: "Google Ads",
+  google_ads: "Google Ads",
   instagram_ads: "Instagram Ads",
   tiktok_ads: "TikTok Ads",
 };
@@ -71,26 +96,10 @@ type ContentRow = {
   leads_attributed: number | null;
 };
 
-type LeadRow = {
-  id: string;
-  source_channel: string | null;
-  status: string | null;
-};
-
 type BookingAttrRow = {
-  id: string;
   source_channel: string | null;
-  lead_id: string | null;
   status: string | null;
   total_amount: number | null;
-};
-
-type AttributionRow = {
-  channel: string;
-  leadCount: number;
-  bookingCount: number;
-  revenue: number;
-  convRate: number | null;
 };
 
 function roasText(revenue: number, budget: number): string {
@@ -99,14 +108,14 @@ function roasText(revenue: number, budget: number): string {
 }
 
 function pct(n: number, total: number): string {
-  if (total === 0 || n === 0) return "—";
+  if (total === 0 || n === 0) return "0 %";
   return `${Math.round((n / total) * 100)} %`;
 }
 
 export default async function MarketingPage() {
   const supabase = await createClient();
 
-  const [adsRes, contentRes, leadsRes, bookingsAttrRes] = await Promise.all([
+  const [adsRes, contentRes, bookingsRes] = await Promise.all([
     supabase
       .from("ad_stats")
       .select(
@@ -120,69 +129,52 @@ export default async function MarketingPage() {
       .order("publish_date", { ascending: false })
       .returns<ContentRow[]>(),
     supabase
-      .from("leads")
-      .select("id, source_channel, status")
-      .eq("archived", false)
-      .returns<LeadRow[]>(),
-    supabase
       .from("bookings")
-      .select("id, source_channel, lead_id, status, total_amount")
+      .select("source_channel, status, total_amount")
       .returns<BookingAttrRow[]>(),
   ]);
 
   const ads = adsRes.data ?? [];
   const content = contentRes.data ?? [];
-  const leads = leadsRes.data ?? [];
-  const bookingsRaw = bookingsAttrRes.data ?? [];
+  const bookings = bookingsRes.data ?? [];
 
-  // ── Attribution: resolve each booking's source, fallback to lead's ──
-  const leadSourceMap = new Map<string, string | null>(
-    leads.map((l) => [l.id, l.source_channel]),
-  );
+  // ── Attribution : UNIQUEMENT bookings.source_channel (renseigné par toi) ──
+  const confirmedBookings = bookings.filter((b) => CONFIRMED.has(b.status ?? ""));
+  const taggedBookings = confirmedBookings.filter((b) => b.source_channel);
+  const untaggedCount = confirmedBookings.length - taggedBookings.length;
 
-  const confirmedBookings = bookingsRaw.filter((b) => CONFIRMED.has(b.status ?? ""));
-
-  const leadsBySource: Record<string, number> = {};
-  for (const l of leads) {
-    const ch = l.source_channel ?? "other";
-    leadsBySource[ch] = (leadsBySource[ch] ?? 0) + 1;
+  type ChannelStat = { count: number; revenue: number };
+  const byChannel: Record<string, ChannelStat> = {};
+  for (const b of taggedBookings) {
+    const ch = b.source_channel!;
+    if (!byChannel[ch]) byChannel[ch] = { count: 0, revenue: 0 };
+    byChannel[ch].count++;
+    byChannel[ch].revenue += b.total_amount ?? 0;
   }
 
-  const bookingsBySource: Record<string, { count: number; revenue: number }> = {};
-  for (const b of confirmedBookings) {
-    const ch =
-      b.source_channel ??
-      (b.lead_id ? (leadSourceMap.get(b.lead_id) ?? "other") : "other");
-    if (!bookingsBySource[ch]) bookingsBySource[ch] = { count: 0, revenue: 0 };
-    bookingsBySource[ch].count++;
-    bookingsBySource[ch].revenue += b.total_amount ?? 0;
-  }
-
-  const allChannels = new Set([
-    ...Object.keys(leadsBySource),
-    ...Object.keys(bookingsBySource),
-  ]);
-
-  const attribution: AttributionRow[] = [...allChannels]
-    .map((ch) => {
-      const lc = leadsBySource[ch] ?? 0;
-      const bc = bookingsBySource[ch]?.count ?? 0;
-      const convRate = lc > 0 && bc <= lc ? bc / lc : lc > 0 ? 1 : null;
-      return {
-        channel: ch,
-        leadCount: lc,
-        bookingCount: bc,
-        revenue: bookingsBySource[ch]?.revenue ?? 0,
-        convRate,
-      };
-    })
-    .sort((a, b) => b.bookingCount - a.bookingCount || b.leadCount - a.leadCount);
+  const attribution = Object.entries(byChannel)
+    .map(([channel, s]) => ({
+      channel,
+      category: canalCategory(channel),
+      count: s.count,
+      revenue: s.revenue,
+    }))
+    .sort((a, b) => b.revenue - a.revenue);
 
   const totalAttrRevenue = attribution.reduce((s, r) => s + r.revenue, 0);
-  const totalBookingsConfirmed = confirmedBookings.length;
-  const totalLeadCount = leads.length;
 
-  // ── Ads aggregates ────────────────────────────────────────────────
+  // Agrégats par catégorie (Payant vs Organique)
+  const catAgg: Record<CanalCategory, ChannelStat> = {
+    paid: { count: 0, revenue: 0 },
+    organic: { count: 0, revenue: 0 },
+    other: { count: 0, revenue: 0 },
+  };
+  for (const r of attribution) {
+    catAgg[r.category].count += r.count;
+    catAgg[r.category].revenue += r.revenue;
+  }
+
+  // ── Campagnes payantes (ad_stats, saisie manuelle) ──
   const totalBudget = ads.reduce((s, a) => s + (a.budget_spent ?? 0), 0);
   const totalAdsLeads = ads.reduce((s, a) => s + (a.leads_generated ?? 0), 0);
   const totalRevenue = ads.reduce((s, a) => s + (a.revenue_generated ?? 0), 0);
@@ -194,34 +186,69 @@ export default async function MarketingPage() {
       <header className="enter-up space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">Marketing</h1>
         <p className="text-sm text-muted-foreground">
-          Attribution des réservations & performance des campagnes
+          Sources de trafic & performance des campagnes
         </p>
       </header>
 
+      {/* ── KPI synthèse : Payant vs Organique ─────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <KpiCard
+          label="CA Payant"
+          value={catAgg.paid.revenue}
+          format="eur"
+          icon={TrendingUp}
+          accent="info"
+          hint={`${catAgg.paid.count} réservation${catAgg.paid.count !== 1 ? "s" : ""}`}
+          index={0}
+        />
+        <KpiCard
+          label="CA Organique"
+          value={catAgg.organic.revenue}
+          format="eur"
+          icon={Heart}
+          accent="success"
+          hint={`${catAgg.organic.count} réservation${catAgg.organic.count !== 1 ? "s" : ""}`}
+          index={1}
+        />
+        <KpiCard
+          label="Sans source"
+          value={untaggedCount}
+          icon={Users}
+          accent="gold"
+          hint="Réservations à étiqueter"
+          index={2}
+        />
+      </div>
+
       {/* ── D'où viennent nos clients ? ──────────────────────────── */}
-      <Card className="enter-up" style={{ animationDelay: "80ms" }}>
+      <Card className="enter-up" style={{ animationDelay: "160ms" }}>
         <CardHeader>
           <CardTitle>D&apos;où viennent nos clients ?</CardTitle>
           <CardDescription>
-            {totalBookingsConfirmed} réservation{totalBookingsConfirmed !== 1 ? "s" : ""}{" "}
-            confirmée{totalBookingsConfirmed !== 1 ? "s" : ""} · {totalLeadCount} lead
-            {totalLeadCount !== 1 ? "s" : ""} en pipeline · {formatEur(totalAttrRevenue)} de CA total
+            Basé sur le canal renseigné dans chaque réservation confirmée ·{" "}
+            {formatEur(totalAttrRevenue)} de CA attribué
+            {untaggedCount > 0 && (
+              <>
+                {" "}· <span className="text-warning">{untaggedCount} sans canal renseigné</span>
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {attribution.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
-              Aucune donnée pour le moment.
+              Aucune réservation avec source renseignée. Édite tes réservations pour indiquer le
+              canal d&apos;acquisition (Instagram Ads, organique, bouche à oreille…).
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Canal</TableHead>
-                  <TableHead className="text-right">Leads</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="text-right">Réservations</TableHead>
-                  <TableHead className="text-right">Taux de conv.</TableHead>
                   <TableHead className="text-right">CA</TableHead>
+                  <TableHead className="text-right">Panier moyen</TableHead>
                   <TableHead className="text-right">% du CA</TableHead>
                 </TableRow>
               </TableHeader>
@@ -231,19 +258,25 @@ export default async function MarketingPage() {
                     <TableCell className="font-medium text-foreground">
                       {sourceChannelLabel(r.channel)}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {r.leadCount}
+                    <TableCell>
+                      {r.category === "paid" ? (
+                        <Badge className="bg-info/15 text-info hover:bg-info/15">Payant</Badge>
+                      ) : r.category === "organic" ? (
+                        <Badge className="bg-success/15 text-success hover:bg-success/15">
+                          Organique
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Autre</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-medium text-foreground">
-                      {r.bookingCount > 0 ? r.bookingCount : "—"}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {r.convRate !== null
-                        ? `${Math.round(r.convRate * 100)} %`
-                        : "—"}
+                      {r.count}
                     </TableCell>
                     <TableCell className="text-right font-medium text-foreground">
-                      {r.revenue > 0 ? formatEur(r.revenue) : "—"}
+                      {formatEur(r.revenue)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {r.count > 0 ? formatEur(Math.round(r.revenue / r.count)) : "—"}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
                       {pct(r.revenue, totalAttrRevenue)}
@@ -256,7 +289,7 @@ export default async function MarketingPage() {
         </CardContent>
       </Card>
 
-      {/* ── KPI campagnes payantes ────────────────────────────────── */}
+      {/* ── KPI campagnes payantes (saisie manuelle ad_stats) ─────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Budget pub dépensé"

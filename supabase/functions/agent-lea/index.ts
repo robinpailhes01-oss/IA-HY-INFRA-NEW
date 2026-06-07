@@ -93,10 +93,6 @@ const TOOLS = [
         interested_offer: { type: "string" },
         occasion: { type: "string" },
         party_size: { type: "integer" },
-        source_channel: {
-          type: "string",
-          enum: ["instagram_organic", "instagram_ads", "tiktok_organic", "tiktok_ads", "meta_ads", "whatsapp", "email", "website", "phone", "word_of_mouth", "other"],
-        },
       },
     },
   },
@@ -187,6 +183,7 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 - Nuit Prestige le week-end (ven/sam/dim) → escalade humaine obligatoire.
 - Ne mentionne le skipper optionnel QUE si le client le demande explicitement.
 - Mentionne OBLIGATOIREMENT en confirmation que le retard empiète sur la durée du créneau.
+- **Ne demande JAMAIS comment le client nous a connu** (Instagram, bouche-à-oreille, etc.). C'est l'équipe humaine qui s'en occupe — pas ton rôle.
 - En cas de doute, de sujet sensible (PMR, météo, demande spéciale) ou hors de tes connaissances → utilise escalate_to_human. ⚠️ APRÈS cet outil, n'écris RIEN au client. Tu sors silencieusement, l'humain reprend la main. NE DIS PAS "je vérifie", "je reviens vers vous", "mon équipe va vous répondre" — tu te tais.
 
 # Réservations
@@ -253,7 +250,7 @@ async function runTool(
       // sinon crée une nouvelle fiche (canaux sans téléphone : web, etc.).
       if (state.leadId) {
         const patch: Record<string, unknown> = { updated_at: now, last_interaction_at: now };
-        for (const k of ["first_name", "interested_offer", "occasion", "party_size", "source_channel"]) {
+        for (const k of ["first_name", "interested_offer", "occasion", "party_size"]) {
           if (input[k] !== undefined && input[k] !== null) patch[k] = input[k];
         }
         // Passe de "new" (stub) à "contacted" dès qu'on a un prénom.
@@ -270,7 +267,7 @@ async function runTool(
           interested_offer: (input.interested_offer as string) ?? null,
           occasion: (input.occasion as string) ?? null,
           party_size: (input.party_size as number) ?? null,
-          source_channel: (input.source_channel as string) ?? "whatsapp",
+          source_channel: null,
           source_status: "to_ask",
           status: input.first_name ? "contacted" : "new",
           last_interaction_at: now,
@@ -513,7 +510,7 @@ Deno.serve(async (req) => {
       .from("leads")
       .insert({
         phone: normalizedPhone,
-        source_channel: "whatsapp",
+        source_channel: null,
         source_status: "to_ask",
         status: "new",
         created_at: nowStub,
@@ -600,6 +597,9 @@ Deno.serve(async (req) => {
   } catch (e) {
     return json({ error: String(e) }, 502);
   }
+
+  // Force-clear sur escalade silencieuse : le client ne doit recevoir AUCUN message.
+  if (state.escalated) reply = "";
 
   // Persistance de la conversation (format du dashboard : {from, text, at})
   if (state.leadId) {
