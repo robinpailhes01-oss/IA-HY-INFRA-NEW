@@ -71,15 +71,42 @@ type ContentRow = {
   leads_attributed: number | null;
 };
 
+type LeadRow = {
+  id: string;
+  source_channel: string | null;
+  status: string | null;
+};
+
+type BookingAttrRow = {
+  id: string;
+  source_channel: string | null;
+  lead_id: string | null;
+  status: string | null;
+  total_amount: number | null;
+};
+
+type AttributionRow = {
+  channel: string;
+  leadCount: number;
+  bookingCount: number;
+  revenue: number;
+  convRate: number | null;
+};
+
 function roasText(revenue: number, budget: number): string {
   if (budget <= 0) return "—";
   return `${(revenue / budget).toFixed(1).replace(".", ",")}×`;
 }
 
+function pct(n: number, total: number): string {
+  if (total === 0 || n === 0) return "—";
+  return `${Math.round((n / total) * 100)} %`;
+}
+
 export default async function MarketingPage() {
   const supabase = await createClient();
 
-  const [adsRes, contentRes, bookingsRes] = await Promise.all([
+  const [adsRes, contentRes, leadsRes, bookingsAttrRes] = await Promise.all([
     supabase
       .from("ad_stats")
       .select(
@@ -93,51 +120,163 @@ export default async function MarketingPage() {
       .order("publish_date", { ascending: false })
       .returns<ContentRow[]>(),
     supabase
+      .from("leads")
+      .select("id, source_channel, status")
+      .eq("archived", false)
+      .returns<LeadRow[]>(),
+    supabase
       .from("bookings")
-      .select("source_channel, total_amount, status")
-      .returns<{ source_channel: string | null; total_amount: number | null; status: string | null }[]>(),
+      .select("id, source_channel, lead_id, status, total_amount")
+      .returns<BookingAttrRow[]>(),
   ]);
 
   const ads = adsRes.data ?? [];
   const content = contentRes.data ?? [];
+  const leads = leadsRes.data ?? [];
+  const bookingsRaw = bookingsAttrRes.data ?? [];
 
-  const caByChannel = Object.entries(
-    (bookingsRes.data ?? [])
-      .filter((b) => CONFIRMED.has(b.status ?? ""))
-      .reduce<Record<string, number>>((acc, b) => {
-        const key = b.source_channel ?? "other";
-        acc[key] = (acc[key] ?? 0) + (b.total_amount ?? 0);
-        return acc;
-      }, {}),
-  )
-    .map(([channel, amount]) => ({ channel, amount }))
-    .sort((a, b) => b.amount - a.amount);
-  const maxChannel = caByChannel[0]?.amount ?? 1;
-  const totalChannelCa = caByChannel.reduce((s, c) => s + c.amount, 0);
+  // ── Attribution: resolve each booking's source, fallback to lead's ──
+  const leadSourceMap = new Map<string, string | null>(
+    leads.map((l) => [l.id, l.source_channel]),
+  );
 
+  const confirmedBookings = bookingsRaw.filter((b) => CONFIRMED.has(b.status ?? ""));
+
+  const leadsBySource: Record<string, number> = {};
+  for (const l of leads) {
+    const ch = l.source_channel ?? "other";
+    leadsBySource[ch] = (leadsBySource[ch] ?? 0) + 1;
+  }
+
+  const bookingsBySource: Record<string, { count: number; revenue: number }> = {};
+  for (const b of confirmedBookings) {
+    const ch =
+      b.source_channel ??
+      (b.lead_id ? (leadSourceMap.get(b.lead_id) ?? "other") : "other");
+    if (!bookingsBySource[ch]) bookingsBySource[ch] = { count: 0, revenue: 0 };
+    bookingsBySource[ch].count++;
+    bookingsBySource[ch].revenue += b.total_amount ?? 0;
+  }
+
+  const allChannels = new Set([
+    ...Object.keys(leadsBySource),
+    ...Object.keys(bookingsBySource),
+  ]);
+
+  const attribution: AttributionRow[] = [...allChannels]
+    .map((ch) => {
+      const lc = leadsBySource[ch] ?? 0;
+      const bc = bookingsBySource[ch]?.count ?? 0;
+      const convRate = lc > 0 && bc <= lc ? bc / lc : lc > 0 ? 1 : null;
+      return {
+        channel: ch,
+        leadCount: lc,
+        bookingCount: bc,
+        revenue: bookingsBySource[ch]?.revenue ?? 0,
+        convRate,
+      };
+    })
+    .sort((a, b) => b.bookingCount - a.bookingCount || b.leadCount - a.leadCount);
+
+  const totalAttrRevenue = attribution.reduce((s, r) => s + r.revenue, 0);
+  const totalBookingsConfirmed = confirmedBookings.length;
+  const totalLeadCount = leads.length;
+
+  // ── Ads aggregates ────────────────────────────────────────────────
   const totalBudget = ads.reduce((s, a) => s + (a.budget_spent ?? 0), 0);
-  const totalLeads = ads.reduce((s, a) => s + (a.leads_generated ?? 0), 0);
+  const totalAdsLeads = ads.reduce((s, a) => s + (a.leads_generated ?? 0), 0);
   const totalRevenue = ads.reduce((s, a) => s + (a.revenue_generated ?? 0), 0);
-  const totalBookings = ads.reduce((s, a) => s + (a.bookings_attributed ?? 0), 0);
-  const cpl = totalLeads > 0 ? Math.round(totalBudget / totalLeads) : 0;
+  const totalAdsBookings = ads.reduce((s, a) => s + (a.bookings_attributed ?? 0), 0);
+  const cpl = totalAdsLeads > 0 ? Math.round(totalBudget / totalAdsLeads) : 0;
 
   return (
     <div className="space-y-6">
       <header className="enter-up space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Marketing
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Marketing</h1>
         <p className="text-sm text-muted-foreground">
-          Acquisition payante & contenu organique · 30 derniers jours
+          Attribution des réservations & performance des campagnes
         </p>
       </header>
 
+      {/* ── D'où viennent nos clients ? ──────────────────────────── */}
+      <Card className="enter-up" style={{ animationDelay: "80ms" }}>
+        <CardHeader>
+          <CardTitle>D&apos;où viennent nos clients ?</CardTitle>
+          <CardDescription>
+            {totalBookingsConfirmed} réservation{totalBookingsConfirmed !== 1 ? "s" : ""}{" "}
+            confirmée{totalBookingsConfirmed !== 1 ? "s" : ""} · {totalLeadCount} lead
+            {totalLeadCount !== 1 ? "s" : ""} en pipeline · {formatEur(totalAttrRevenue)} de CA total
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {attribution.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Aucune donnée pour le moment.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Canal</TableHead>
+                  <TableHead className="text-right">Leads</TableHead>
+                  <TableHead className="text-right">Réservations</TableHead>
+                  <TableHead className="text-right">Taux de conv.</TableHead>
+                  <TableHead className="text-right">CA</TableHead>
+                  <TableHead className="text-right">% du CA</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attribution.map((r) => (
+                  <TableRow key={r.channel}>
+                    <TableCell className="font-medium text-foreground">
+                      {sourceChannelLabel(r.channel)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {r.leadCount}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-foreground">
+                      {r.bookingCount > 0 ? r.bookingCount : "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {r.convRate !== null
+                        ? `${Math.round(r.convRate * 100)} %`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-foreground">
+                      {r.revenue > 0 ? formatEur(r.revenue) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {pct(r.revenue, totalAttrRevenue)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── KPI campagnes payantes ────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Budget dépensé" value={totalBudget} format="eur" icon={Megaphone} accent="info" index={0} />
-        <KpiCard label="Leads générés" value={totalLeads} icon={Users} accent="primary" index={1} />
-        <KpiCard label="Coût par lead" value={cpl} format="eur" icon={Target} accent="gold" index={2} />
         <KpiCard
-          label="CA attribué"
+          label="Budget pub dépensé"
+          value={totalBudget}
+          format="eur"
+          icon={Megaphone}
+          accent="info"
+          index={0}
+        />
+        <KpiCard label="Leads (pub)" value={totalAdsLeads} icon={Users} accent="primary" index={1} />
+        <KpiCard
+          label="Coût par lead"
+          value={cpl}
+          format="eur"
+          icon={Target}
+          accent="gold"
+          index={2}
+        />
+        <KpiCard
+          label="CA attribué (pub)"
           value={totalRevenue}
           format="eur"
           icon={Euro}
@@ -147,44 +286,12 @@ export default async function MarketingPage() {
         />
       </div>
 
-      <Card className="enter-up" style={{ animationDelay: "240ms" }}>
-        <CardHeader>
-          <CardTitle>CA par canal d&apos;acquisition</CardTitle>
-          <CardDescription>
-            D&apos;où viennent les réservations confirmées · {formatEur(totalChannelCa)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {caByChannel.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              Aucune réservation pour le moment.
-            </p>
-          ) : (
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {caByChannel.map((c) => (
-                <li key={c.channel} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground">{sourceChannelLabel(c.channel)}</span>
-                    <span className="font-medium text-foreground">{formatEur(c.amount)}</span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                    <div
-                      className="h-full rounded-full bg-gold/70"
-                      style={{ width: `${Math.round((c.amount / maxChannel) * 100)}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* ── Performance campagnes ─────────────────────────────────── */}
       <Card className="enter-up" style={{ animationDelay: "320ms" }}>
         <CardHeader>
-          <CardTitle>Performance par canal</CardTitle>
+          <CardTitle>Performance des campagnes</CardTitle>
           <CardDescription>
-            ROAS global {roasText(totalRevenue, totalBudget)} · {totalBookings} réservations attribuées
+            ROAS global {roasText(totalRevenue, totalBudget)} · {totalAdsBookings} réservations attribuées
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -225,7 +332,9 @@ export default async function MarketingPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right text-foreground">{formatEur(budget)}</TableCell>
+                      <TableCell className="text-right text-foreground">
+                        {formatEur(budget)}
+                      </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {formatNumber(a.impressions)}
                       </TableCell>
@@ -251,6 +360,7 @@ export default async function MarketingPage() {
         </CardContent>
       </Card>
 
+      {/* ── Contenus organiques ───────────────────────────────────── */}
       <Card className="enter-up" style={{ animationDelay: "360ms" }}>
         <CardHeader>
           <CardTitle>Contenus</CardTitle>
