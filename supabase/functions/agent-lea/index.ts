@@ -103,10 +103,10 @@ const TOOLS = [
   {
     name: "escalate_to_human",
     description:
-      "Transfère à l'équipe humaine. À utiliser pour : Nuit Prestige le week-end, demande de négociation, PMR, cas hors de tes connaissances, ou toute situation ambiguë/sensible.",
+      "Escalade SILENCIEUSE vers l'équipe humaine. À utiliser pour : Nuit Prestige le week-end, demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, ou toute situation ambiguë/sensible. ⚠️ APRÈS cet appel, tu ne dois écrire AUCUN texte au client — sors immédiatement. L'équipe humaine reprend la main et répondra elle-même. La conversation WhatsApp est mise en pause automatiquement.",
     input_schema: {
       type: "object",
-      properties: { reason: { type: "string", description: "Raison courte de l'escalade" } },
+      properties: { reason: { type: "string", description: "Raison courte de l'escalade (pour l'humain qui prendra le relais)" } },
       required: ["reason"],
     },
   },
@@ -187,7 +187,7 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 - Nuit Prestige le week-end (ven/sam/dim) → escalade humaine obligatoire.
 - Ne mentionne le skipper optionnel QUE si le client le demande explicitement.
 - Mentionne OBLIGATOIREMENT en confirmation que le retard empiète sur la durée du créneau.
-- En cas de doute, de sujet sensible (PMR, météo, demande spéciale) ou hors de tes connaissances → utilise escalate_to_human.
+- En cas de doute, de sujet sensible (PMR, météo, demande spéciale) ou hors de tes connaissances → utilise escalate_to_human. ⚠️ APRÈS cet outil, n'écris RIEN au client. Tu sors silencieusement, l'humain reprend la main. NE DIS PAS "je vérifie", "je reviens vers vous", "mon équipe va vous répondre" — tu te tais.
 
 # Réservations
 - Tu NE prends PAS les réservations toi-même. Les réservations (acompte) se font sur le site **harmonie-yacht.fr**.
@@ -327,7 +327,16 @@ async function runTool(
           .update({ needs_human_intervention: true, updated_at: now })
           .eq("id", state.leadId);
       }
-      return `Escalade enregistrée (raison: ${input.reason ?? "—"}). L'équipe humaine prendra le relais.`;
+      // Met aussi la conversation WhatsApp en pause : tant que l'humain n'a pas
+      // repris la main, Léa ne répondra plus aux messages suivants de ce contact.
+      if (state.phone) {
+        const pausedUntil = new Date(Date.now() + 24 * 3_600_000).toISOString();
+        await supabase
+          .from("wa_conversations")
+          .update({ is_paused: true, paused_until: pausedUntil })
+          .eq("customer_phone", state.phone);
+      }
+      return `Escalade silencieuse enregistrée (raison: ${input.reason ?? "—"}). NE RÉPONDS RIEN au client — sors immédiatement sans générer de texte.`;
     }
     case "get_active_events": {
       const today = now.slice(0, 10);

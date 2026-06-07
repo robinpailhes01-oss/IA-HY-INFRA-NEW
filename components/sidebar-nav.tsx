@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { LeaStatusPill } from "@/components/lea-status-pill";
 
 type NavItem = {
   href: string;
@@ -75,6 +76,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
+
+      <div className="border-t border-sidebar-border p-3">
+        <LeaStatusPill />
+      </div>
     </div>
   );
 }

@@ -202,8 +202,20 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     totalCount: leads.length,
   };
 
+  const escalatedLeads = leads.filter((l) => l.needs_human_intervention && !l.archived);
+
   return (
     <div className="flex flex-col gap-4">
+      {escalatedLeads.length > 0 && (
+        <div className="enter-up flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/8 px-4 py-3 text-sm">
+          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-warning" />
+          <p className="flex-1 text-warning-foreground/90">
+            <strong className="text-warning">{escalatedLeads.length} lead{escalatedLeads.length > 1 ? "s" : ""}</strong>
+            {" "}à reprendre — Léa a escaladé ces conversations vers vous.
+          </p>
+        </div>
+      )}
+
       <header className="enter-up flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>

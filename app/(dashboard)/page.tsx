@@ -1,4 +1,5 @@
-import { Banknote, Ship, TrendingUp, Users } from "lucide-react";
+import Link from "next/link";
+import { Banknote, Bot, MessageCircle, Ship, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
@@ -98,6 +99,10 @@ export default async function OverviewPage() {
     weatherRes,
     revenuesRes,
     expensesRes,
+    leaTotalRes,
+    leaQualifiedRes,
+    leaFollowupsRes,
+    leaConvsRes,
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -155,6 +160,24 @@ export default async function OverviewPage() {
       .from("expenses")
       .select("amount, date")
       .returns<{ amount: number | null; date: string }[]>(),
+    // ── Stats Léa : compteurs sur leads WhatsApp ──
+    supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .eq("source_channel", "whatsapp"),
+    supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .eq("source_channel", "whatsapp")
+      .in("status", ["qualified", "quote_sent", "booked"]),
+    supabase
+      .from("leads")
+      .select("*", { count: "exact", head: true })
+      .eq("source_channel", "whatsapp")
+      .gte("followup_count", 1),
+    supabase
+      .from("wa_conversations")
+      .select("*", { count: "exact", head: true }),
   ]);
 
   const goal = goalRes.data;
@@ -256,6 +279,23 @@ export default async function OverviewPage() {
         </div>
       </header>
 
+      {(attentionLeadsRes.data?.length ?? 0) > 0 && (
+        <Link
+          href="/leads"
+          className="enter-up flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/8 px-4 py-3 text-sm transition-colors hover:bg-warning/12"
+        >
+          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-warning" />
+          <p className="flex-1 text-warning-foreground/90">
+            <strong className="text-warning">
+              {attentionLeadsRes.data?.length} lead
+              {(attentionLeadsRes.data?.length ?? 0) > 1 ? "s" : ""} à reprendre
+            </strong>
+            {" "}— Léa a escaladé ces conversations vers vous.
+          </p>
+          <span className="text-xs text-warning-foreground/70">Voir les leads →</span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <RevenueHero
@@ -282,6 +322,35 @@ export default async function OverviewPage() {
         <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="revenus − dépenses" index={2} />
         <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="revenus + soldes perçus" index={3} />
       </div>
+
+      <Card className="enter-up">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bot className="size-4 text-gold" />
+              Performance Léa
+            </CardTitle>
+            <CardDescription>Agent WhatsApp — depuis l&apos;activation</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <LeaStat label="Conversations" value={leaConvsRes.count ?? 0} icon={MessageCircle} />
+            <LeaStat label="Leads créés" value={leaTotalRes.count ?? 0} icon={Users} />
+            <LeaStat
+              label="Qualifiés / réservés"
+              value={leaQualifiedRes.count ?? 0}
+              subline={
+                (leaTotalRes.count ?? 0) > 0
+                  ? `${Math.round(((leaQualifiedRes.count ?? 0) / (leaTotalRes.count ?? 1)) * 100)}% de conversion`
+                  : "—"
+              }
+              icon={TrendingUp}
+            />
+            <LeaStat label="Relances envoyées" value={leaFollowupsRes.count ?? 0} icon={Bot} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
         <Card>
@@ -388,3 +457,29 @@ function buildAlerts(
 
   return alerts.slice(0, 5);
 }
+
+
+// ── Petit bloc de stats Léa (utilisé dans le panneau Performance) ──
+function LeaStat({
+  label,
+  value,
+  subline,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  subline?: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/40 p-3">
+      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
+        <Icon className="size-3.5" />
+        <span>{label}</span>
+      </div>
+      <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      {subline && <span className="text-xs text-muted-foreground">{subline}</span>}
+    </div>
+  );
+}
+
