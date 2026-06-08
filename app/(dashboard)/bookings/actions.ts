@@ -78,6 +78,7 @@ export async function createBooking(values: BookingCreate) {
 export async function settleBalance(
   bookingId: string,
   payments: BalancePayment[],
+  sourceChannel: string | null = null,
 ) {
   const supabase = await createClient();
 
@@ -104,9 +105,11 @@ export async function settleBalance(
   const newBalance = Math.max(0, (data.balance_due ?? 0) - added);
   const merged = [...existing, ...clean];
 
+  const baseUpdate = { balance_payments: merged, balance_due: newBalance };
   const { error } = await supabase
     .from("bookings")
-    .update({ balance_payments: merged, balance_due: newBalance })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update(sourceChannel ? { ...baseUpdate, source_channel: sourceChannel } : baseUpdate as any)
     .eq("id", bookingId);
 
   if (error) {

@@ -77,6 +77,7 @@ export default async function BookingsPage() {
       offerName: b.offer_name,
       date: b.date,
       balanceDue: b.balance_due ?? 0,
+      sourceChannel: b.source_channel,
     }));
 
   const tableItems: BookingTableItem[] = bookings.map((b) => ({

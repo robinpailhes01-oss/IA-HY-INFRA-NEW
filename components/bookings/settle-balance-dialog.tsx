@@ -27,6 +27,7 @@ import {
 import { settleBalance } from "@/app/(dashboard)/bookings/actions";
 import { PAYMENT_LABEL, PAYMENT_METHODS } from "@/lib/payments";
 import { formatDateLong, formatEur } from "@/lib/format";
+import { SOURCE_OPTIONS } from "@/lib/status";
 import { cn } from "@/lib/utils";
 
 export type SettleTarget = {
@@ -35,6 +36,7 @@ export type SettleTarget = {
   offerName: string | null;
   date: string;
   balanceDue: number;
+  sourceChannel: string | null;
 };
 
 type Line = { method: string; amount: string };
@@ -51,10 +53,12 @@ export function SettleBalanceDialog({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [lines, setLines] = useState<Line[]>([{ method: "cb", amount: "" }]);
+  const [channel, setChannel] = useState<string>("");
 
   useEffect(() => {
     if (booking && open) {
       setLines([{ method: "cb", amount: String(booking.balanceDue) }]);
+      setChannel(booking.sourceChannel ?? "");
     }
   }, [booking, open]);
 
@@ -81,7 +85,7 @@ export function SettleBalanceDialog({
       return;
     }
     startTransition(async () => {
-      const res = await settleBalance(booking.id, payments);
+      const res = await settleBalance(booking.id, payments, channel || null);
       if (!res.ok) {
         toast.error("Échec de l'encaissement", { description: res.error ?? undefined });
         return;
@@ -187,6 +191,23 @@ export function SettleBalanceDialog({
                 ? `Trop-perçu ${formatEur(-remaining)}`
                 : "Soldé ✓"}
           </span>
+        </div>
+
+        {/* Canal d'acquisition — demandé au client le jour J */}
+        <div className="grid gap-1.5 border-t border-border pt-3">
+          <Label>Comment nous avez-vous connu ? <span className="text-muted-foreground">(optionnel)</span></Label>
+          <Select value={channel} onValueChange={(v) => setChannel(v ?? "")}>
+            <SelectTrigger>
+              <SelectValue placeholder="Demander au client…" />
+            </SelectTrigger>
+            <SelectContent>
+              {SOURCE_OPTIONS.map(([val, label]) => (
+                <SelectItem key={val} value={val}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <DialogFooter>
