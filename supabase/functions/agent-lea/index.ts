@@ -145,6 +145,7 @@ function buildStableSystem(config: Record<string, unknown>): string {
 - Chaleureuse et SOBRE — pas pompeuse. Vouvoiement. Messages très courts (1-3 phrases), façon SMS pro.
 - Tu ne te présentes JAMAIS comme une IA ou un robot.
 - Tu ne dis JAMAIS "Bienvenue chez Harmonie Yacht, je suis Léa !" ni "Avec plaisir pour organiser ça !". Trop formel, ce n'est pas le ton de la maison.
+- Tu n'auto-corriges JAMAIS le nom de la marque ("Next Yacht" → "Harmonie Yacht"). Tu enchaînes naturellement comme si le client connaissait déjà la maison. Pas de "vous êtes bien chez Harmonie Yacht, au départ de Carnon" — c'est mécanique et froid.
 - Un seul emoji pertinent par message maximum. Préfère : 😊 👋🏼 🌊 ☀️ 🌇 👍🏼
 
 # Exemples de TON RÉEL à reproduire (style maison)
@@ -152,7 +153,9 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 
 [OUVERTURE — client demande tarifs ou infos]
 > "Bonjour 😊 plutôt pour une nuit ou une sortie en mer ?"
+> "Bonjour 😊 bien sûr ! Plutôt pour une nuit ou une sortie ?"
 > "Bonjour 👋🏼 voici nos tarifs : harmonie-yacht.fr — c'est pour combien de personnes ?"
+> "Bonjour 😊 avec plaisir, je vous explique. C'est pour combien de personnes ?"
 
 [ENVOI DU LIEN SITE]
 > "Voici tout nos tarifs : harmonie-yacht.fr"
@@ -169,9 +172,10 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 [CAS RÉEL — bug site ou créneau bloqué]
 > "Vous avez bien fait de nous faire la remarque, effectivement le créneau de l'après-midi n'est pas disponible car nous avons déjà une réservation. Je peux vous proposer 10-13h ou le soir 😊"
 
-⚠️ Compare avec ce qu'il ne faut PAS faire (trop fleuri, ce que tu fais aujourd'hui) :
+⚠️ Compare avec ce qu'il ne faut PAS faire (trop fleuri ou trop mécanique) :
 ❌ "Bonjour ! 🌊 Bienvenue chez Harmonie Yacht, je suis Léa ! Avec plaisir pour organiser ça ! Pour commencer, comment puis-je vous appeler, et quelle expérience vous fait envie — une sortie en mer, une nuit à bord… ?"
-✅ "Bonjour 😊 plutôt pour une nuit ou une sortie en mer ?"
+❌ "Bonjour 👋 vous êtes bien chez Harmonie Yacht, au départ de Carnon ! Plutôt une sortie en mer ou une nuit à bord ?" (correction de marque mécanique, manque de chaleur)
+✅ "Bonjour 😊 bien sûr ! Plutôt pour une nuit ou une sortie ?"
 
 # Règles strictes
 - **Mémoire de la conversation : tu RELIS systématiquement TOUT l'historique avant de répondre.** Tu ne redemandes JAMAIS une information que le client t'a déjà donnée (occasion, nb personnes, date, créneau, prénom…). Si tu as un doute, vérifie l'historique et la fiche prospect ci-dessous — pas le client.
@@ -199,7 +203,8 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 - send_booking_link : pour partager le lien de réservation du site (jamais inventé).
 - get_active_events : si le client demande des événements / soirées publiques.
 - escalate_to_human : selon les règles ci-dessus.
-Continue toujours à répondre naturellement au client APRÈS avoir utilisé un outil.
+
+⚠️ **RÈGLE ABSOLUE** : Après CHAQUE appel d'outil (sauf escalate_to_human), tu DOIS écrire un message texte au client. JAMAIS tu ne te tais après un tool : qualify_lead/create_lead/check_availability/send_booking_link/get_active_events/update_lead_status sont des actions silencieuses côté serveur — le client ne voit RIEN d'elles. Il a besoin de ta réponse texte pour avancer. Si tu appelles un tool et que tu sors sans texte, le client reçoit le silence et la conversation meurt. Seule exception : escalate_to_human.
 
 # Base de connaissances (faits — source de vérité)
 ${JSON.stringify(config, null, 2)}`;
@@ -431,7 +436,25 @@ async function runTool(
 }
 
 // ── Appel Anthropic (un tour) ───────────────────────────────────────
-async function callAnthropic(system: unknown[], messages: ApiMessage[]) {
+async function callAnthropic(
+  system: unknown[],
+  messages: ApiMessage[],
+  opts: { forceTextOnly?: boolean } = {},
+) {
+  const body: Record<string, unknown> = {
+    model: MODEL,
+    max_tokens: 2048,
+    thinking: { type: "adaptive" },
+    output_config: { effort: "medium" },
+    system,
+    tools: TOOLS,
+    messages,
+  };
+  // forceTextOnly : empêche le modèle de rappeler un tool — utilisé en filet
+  // de sécurité quand on a déjà fait des tools mais qu'aucun texte n'a été
+  // généré (sinon la conversation meurt en silence côté client).
+  if (opts.forceTextOnly) body.tool_choice = { type: "none" };
+
   const res = await fetch(ANTHROPIC_URL, {
     method: "POST",
     headers: {
@@ -439,15 +462,7 @@ async function callAnthropic(system: unknown[], messages: ApiMessage[]) {
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 2048,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
-      system,
-      tools: TOOLS,
-      messages,
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const detail = await res.text();
@@ -596,6 +611,27 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     return json({ error: String(e) }, 502);
+  }
+
+  // Filet de sécurité : si Léa a utilisé des outils mais n'a rien écrit au
+  // client, on relance UN tour en interdisant les tools pour forcer un texte.
+  // Sans ça, le client reçoit le silence et la conversation meurt (bug observé
+  // après qualify_lead notamment).
+  if (!reply && !state.escalated && usedTools.length > 0) {
+    try {
+      messages.push({
+        role: "user",
+        content: "(rappel système — invisible client) Tu viens d'utiliser un ou plusieurs outils mais tu n'as RIEN écrit au client. Rédige maintenant ta réponse texte (1-3 phrases, chaleureuse, façon SMS pro) en t'appuyant sur les résultats des outils ci-dessus. Ne redemande JAMAIS une info déjà connue. Enchaîne sur la prochaine étape logique.",
+      });
+      const final = await callAnthropic(system, messages, { forceTextOnly: true });
+      reply = (final.content as Array<Record<string, unknown>>)
+        .filter((b) => b.type === "text")
+        .map((b) => b.text as string)
+        .join("\n")
+        .trim();
+    } catch (e) {
+      console.error("[agent-lea] retry forceTextOnly failed:", e);
+    }
   }
 
   // Force-clear sur escalade silencieuse : le client ne doit recevoir AUCUN message.

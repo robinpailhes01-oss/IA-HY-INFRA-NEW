@@ -22,6 +22,7 @@ import {
   STATUS_LABEL,
   type Lead,
 } from "@/lib/leads";
+import { isWhatsAppLid } from "@/lib/whatsapp";
 import {
   updateLeadFields,
   type LeadFieldsUpdate,
@@ -108,6 +109,12 @@ export function TabInfos({
             onChange={(e) => setField("phone", e.target.value)}
             onBlur={(e) => commitText("phone", e.target.value)}
           />
+          {isWhatsAppLid(form.phone) && (
+            <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
+              📱 Identifiant WhatsApp privé — le client a masqué son vrai numéro.
+              Tu peux quand même lui répondre via WhatsApp.
+            </p>
+          )}
         </Field>
         <Field label="Email">
           <Input

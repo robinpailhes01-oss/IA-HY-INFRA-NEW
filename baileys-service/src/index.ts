@@ -46,14 +46,29 @@ app.post('/send', async (req, res) => {
   }
   const cleanPhone = phone.replace('+', '');
   try {
-    // Vérifie d'abord que le numéro existe sur WhatsApp — sinon sendMessage
-    // accepte silencieusement et le message disparaît dans le néant.
+    // Vérifie d'abord que le numéro existe sur WhatsApp via lookup E.164.
     const exists = await sock.onWhatsApp(cleanPhone);
     const match = exists?.find((e) => e.exists);
-    if (!match) {
-      return res.status(404).json({ error: `Numéro ${phone} introuvable sur WhatsApp` });
+
+    let jid: string;
+    if (match) {
+      jid = match.jid;
+    } else {
+      // Fallback LID (WhatsApp privacy mode) : si on a déjà une conversation
+      // avec ce "phone", le numéro est un LID valide qui ne se résout pas via
+      // onWhatsApp() mais sur lequel sendMessage(<digits>@lid) fonctionne quand
+      // même. C'est exactement ce que fait Baileys quand le client nous écrit.
+      const { data: conv } = await supabase
+        .from('wa_conversations')
+        .select('id')
+        .eq('customer_phone', phone)
+        .maybeSingle();
+      if (!conv) {
+        return res.status(404).json({ error: `Numéro ${phone} introuvable sur WhatsApp` });
+      }
+      jid = `${cleanPhone}@lid`;
     }
-    const jid = match.jid;
+
     const sent = await sock.sendMessage(jid, { text: message });
     // Save + pause (human is taking over)
     const conv = await upsertConversation(phone);
