@@ -613,15 +613,16 @@ Deno.serve(async (req) => {
     return json({ error: String(e) }, 502);
   }
 
-  // Filet de sécurité : si Léa a utilisé des outils mais n'a rien écrit au
-  // client, on relance UN tour en interdisant les tools pour forcer un texte.
-  // Sans ça, le client reçoit le silence et la conversation meurt (bug observé
-  // après qualify_lead notamment).
-  if (!reply && !state.escalated && usedTools.length > 0) {
+  // Filet de sécurité : si Léa n'a rien écrit au client, on relance UN tour
+  // en interdisant les tools pour forcer un texte. Couvre 2 cas observés :
+  //   1. Léa appelle un tool (qualify_lead, etc.) puis oublie de répondre
+  //   2. Léa renvoie un content vide dès le 1er tour, sans raison apparente
+  // Sans ce filet, le client reçoit le silence et la conversation meurt.
+  if (!reply && !state.escalated) {
     try {
       messages.push({
         role: "user",
-        content: "(rappel système — invisible client) Tu viens d'utiliser un ou plusieurs outils mais tu n'as RIEN écrit au client. Rédige maintenant ta réponse texte (1-3 phrases, chaleureuse, façon SMS pro) en t'appuyant sur les résultats des outils ci-dessus. Ne redemande JAMAIS une info déjà connue. Enchaîne sur la prochaine étape logique.",
+        content: "(rappel système — invisible client) Tu n'as RIEN écrit au client. Rédige maintenant ta réponse texte (1-3 phrases, chaleureuse, façon SMS pro). Si tu viens d'utiliser des outils, appuie-toi sur leurs résultats. Ne redemande JAMAIS une info déjà connue. Enchaîne sur la prochaine étape logique.",
       });
       const final = await callAnthropic(system, messages, { forceTextOnly: true });
       reply = (final.content as Array<Record<string, unknown>>)
