@@ -11,8 +11,19 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const BAILEYS_SERVICE_URL = Deno.env.get("BAILEYS_SERVICE_URL") ?? "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") ?? "";
 
-const DEFAULT_INTERVALS = [24, 72, 168]; // 1j, 3j, 7j
+// Intervalles de base — remplacés dynamiquement par getFirstFollowupHours() pour la 1ère relance.
+const DEFAULT_SECOND_INTERVAL = 72; // 3j entre 1ère et 2ème relance
+const MAX_FOLLOWUPS_DEFAULT = 2;    // 2 relances max par défaut (évite l'effet forcing)
 const ACTIVE_STATUSES = ["contacted", "qualified", "quote_sent", "followed_up"];
+
+// 1ère relance : délai adaptatif selon l'horizon de l'événement.
+function getFirstFollowupHours(lead: Lead): number {
+  if (!lead.desired_date) return 48; // pas de date → 2 jours
+  const daysUntil = (new Date(lead.desired_date).getTime() - Date.now()) / 86_400_000;
+  if (daysUntil < 7) return 24;   // urgence : événement dans la semaine
+  if (daysUntil < 30) return 72;  // moyen terme : 3 jours
+  return 120;                      // long terme (>30j) : 5 jours — pas de forcing
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -102,8 +113,8 @@ Deno.serve(async (req) => {
   if (!manualLeadId && !config?.auto_followup_enabled) {
     return json({ skipped: "auto_followup_enabled = false", processed: 0 });
   }
-  const maxFollowups = (config?.max_followups as number) ?? 3;
-  const intervals = (config?.faq as any)?.agent_settings?.followup_intervals_hours ?? DEFAULT_INTERVALS;
+  const maxFollowups = (config?.max_followups as number) ?? MAX_FOLLOWUPS_DEFAULT;
+  const secondInterval = (config?.faq as any)?.agent_settings?.followup_second_interval_hours ?? DEFAULT_SECOND_INTERVAL;
 
   let leadsQuery = supabase
     .from("leads")
@@ -133,7 +144,7 @@ Deno.serve(async (req) => {
       const ref = (lead.last_followup_at as string) ?? (lead.last_interaction_at as string) ?? (lead.created_at as string);
       if (!ref) continue;
       const hoursSince = (now - new Date(ref).getTime()) / 3_600_000;
-      const dueAfter = intervals[Math.min(count, intervals.length - 1)] ?? 24;
+      const dueAfter = count === 0 ? getFirstFollowupHours(lead) : secondInterval;
       if (hoursSince < dueAfter) continue;
     } else {
       // Mode manuel : on refuse uniquement si le lead n'a pas de téléphone.
