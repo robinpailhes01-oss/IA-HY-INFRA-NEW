@@ -14,9 +14,13 @@ export default async function LeadsPage() {
 
   // Le pushName WhatsApp du contact (conversation liée via FK) — sert de nom
   // affiché quand on n'a pas encore renseigné prénom/nom à la main.
-  const leads: Lead[] = (data ?? []).map((row: any) => {
+  type LeadRow = Omit<Lead, "whatsapp_name"> & {
+    wa_conversations: { customer_name: string | null } | { customer_name: string | null }[] | null;
+  };
+  const leads: Lead[] = ((data ?? []) as unknown as LeadRow[]).map((row) => {
     const conv = Array.isArray(row.wa_conversations) ? row.wa_conversations[0] : row.wa_conversations;
-    const { wa_conversations: _wa, ...lead } = row;
+    const { wa_conversations, ...lead } = row;
+    void wa_conversations;
     return { ...lead, whatsapp_name: conv?.customer_name ?? null };
   });
 

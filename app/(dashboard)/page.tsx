@@ -257,11 +257,7 @@ export default async function OverviewPage() {
     createdAt: l.created_at,
   }));
 
-  const recentTransactions = mergeTransactions(
-    revenuesData.map((r: any) => ({ id: r.id, amount: r.amount, date: r.date, type: r.type, note: r.note })),
-    expensesData.map((e: any) => ({ id: e.id, amount: e.amount, date: e.date, category: e.category, description: e.description })),
-    8,
-  );
+  const recentTransactions = mergeTransactions(revenuesData, expensesData, 8);
 
   const weatherDays = weatherRes.data ?? [];
   const newLeadsCount = newLeadsRes.count ?? 0;
