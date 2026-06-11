@@ -30,6 +30,10 @@ import {
   type RecentLead,
 } from "@/components/dashboard/recent-leads";
 import {
+  RecentTransactions,
+  mergeTransactions,
+} from "@/components/dashboard/recent-transactions";
+import {
   AlertsPanel,
   type AlertItem,
 } from "@/components/dashboard/alerts-panel";
@@ -154,12 +158,14 @@ export default async function OverviewPage() {
       .returns<WeatherDay[]>(),
     supabase
       .from("revenues")
-      .select("amount, date")
-      .returns<RevenueMetricRow[]>(),
+      .select("id, amount, date, type, note")
+      .order("date", { ascending: false })
+      .returns<(RevenueMetricRow & { id: string; type: string | null; note: string | null })[]>(),
     supabase
       .from("expenses")
-      .select("amount, date")
-      .returns<{ amount: number | null; date: string }[]>(),
+      .select("id, amount, date, category, description")
+      .order("date", { ascending: false })
+      .returns<{ id: string; amount: number | null; date: string; category: string | null; description: string | null }[]>(),
     // ── Stats Léa : compteurs sur leads WhatsApp ──
     supabase
       .from("leads")
@@ -250,6 +256,12 @@ export default async function OverviewPage() {
     status: l.status,
     createdAt: l.created_at,
   }));
+
+  const recentTransactions = mergeTransactions(
+    revenuesData.map((r: any) => ({ id: r.id, amount: r.amount, date: r.date, type: r.type, note: r.note })),
+    expensesData.map((e: any) => ({ id: e.id, amount: e.amount, date: e.date, category: e.category, description: e.description })),
+    8,
+  );
 
   const weatherDays = weatherRes.data ?? [];
   const newLeadsCount = newLeadsRes.count ?? 0;
@@ -396,7 +408,7 @@ export default async function OverviewPage() {
         </Card>
       </Reveal>
 
-      <Reveal>
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
         <Card>
           <CardHeader>
             <CardTitle>Leads récents</CardTitle>
@@ -404,6 +416,16 @@ export default async function OverviewPage() {
           </CardHeader>
           <CardContent>
             <RecentLeads leads={recentLeads} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Transactions récentes</CardTitle>
+            <CardDescription>Derniers revenus et dépenses enregistrés</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RecentTransactions transactions={recentTransactions} />
           </CardContent>
         </Card>
       </Reveal>
