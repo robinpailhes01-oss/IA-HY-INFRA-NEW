@@ -47,7 +47,7 @@ export function LeadDetailSheet({
         {lead && (
           <>
             <div className="border-b border-border p-4 pr-12">
-              <SheetTitle className="sr-only">{fullName(lead.first_name, lead.last_name)}</SheetTitle>
+              <SheetTitle className="sr-only">{fullName(lead.first_name, lead.last_name, lead.whatsapp_name)}</SheetTitle>
               <SheetDescription className="sr-only">Détail et édition du lead</SheetDescription>
               <LeadDetailHeader lead={lead} onStatusChange={handleStatus} />
             </div>

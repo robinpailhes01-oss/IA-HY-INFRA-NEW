@@ -98,6 +98,7 @@ export function NewLeadSheet({
         notes: null,
         created_at: now,
         archived: false,
+        whatsapp_name: null,
       });
       toast.success("Lead créé", { description: "Ajouté dans la colonne Qualifié." });
       setForm(EMPTY);

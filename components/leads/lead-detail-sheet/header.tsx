@@ -40,12 +40,15 @@ export function LeadDetailHeader({
             channel.className,
           )}
         >
-          {initials(lead.first_name, lead.last_name)}
+          {initials(lead.first_name, lead.last_name, lead.whatsapp_name)}
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-heading text-lg font-semibold text-foreground">
-            {fullName(lead.first_name, lead.last_name)}
+            {fullName(lead.first_name, lead.last_name, lead.whatsapp_name)}
           </h2>
+          {lead.whatsapp_name && !lead.first_name && !lead.last_name && (
+            <p className="truncate text-xs text-muted-foreground">Nom WhatsApp · à confirmer</p>
+          )}
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <ChannelIcon className="size-3" />

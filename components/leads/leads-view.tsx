@@ -54,6 +54,7 @@ function rowToLead(row: Record<string, unknown>): Lead {
     notes: (row.notes as string) ?? null,
     created_at: (row.created_at as string) ?? null,
     archived: (row.archived as boolean) ?? false,
+    whatsapp_name: (row.whatsapp_name as string) ?? null,
   };
 }
 

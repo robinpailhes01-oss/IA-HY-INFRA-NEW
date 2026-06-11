@@ -35,6 +35,7 @@ export type Lead = {
   notes: string | null;
   created_at: string | null;
   archived: boolean | null;
+  whatsapp_name: string | null;
 };
 
 /** Colonnes de référence (= contrainte CHECK leads.status), dans l'ordre du pipeline. */
@@ -133,13 +134,18 @@ export const SOURCE_STATUS_LABEL: Record<string, string> = {
   unknown: "Inconnue",
 };
 
-export function fullName(first: string | null, last: string | null): string {
-  return [first, last].filter(Boolean).join(" ").trim() || "Lead";
+export function fullName(first: string | null, last: string | null, fallback?: string | null): string {
+  const joined = [first, last].filter(Boolean).join(" ").trim();
+  return joined || fallback?.trim() || "Lead";
 }
 
-export function initials(first: string | null, last: string | null): string {
+export function initials(first: string | null, last: string | null, fallback?: string | null): string {
   const a = first?.trim()?.[0] ?? "";
   const b = last?.trim()?.[0] ?? "";
+  if (!a && !b && fallback?.trim()) {
+    const parts = fallback.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+  }
   return (a + b).toUpperCase() || "?";
 }
 

@@ -61,7 +61,7 @@ export function LeadsTableView({
     arr.sort((a, b) => {
       switch (sort.key) {
         case "name":
-          return dir * fullName(a.first_name, a.last_name).localeCompare(fullName(b.first_name, b.last_name));
+          return dir * fullName(a.first_name, a.last_name, a.whatsapp_name).localeCompare(fullName(b.first_name, b.last_name, b.whatsapp_name));
         case "channel":
           return dir * (a.source_channel ?? "").localeCompare(b.source_channel ?? "");
         case "score":
@@ -116,7 +116,7 @@ export function LeadsTableView({
     const header = ["Nom", "Téléphone", "Email", "Canal", "Offre", "Occasion", "Score", "Statut", "Date souhaitée"];
     const lines = target.map((l) =>
       [
-        fullName(l.first_name, l.last_name),
+        fullName(l.first_name, l.last_name, l.whatsapp_name),
         l.phone ?? "",
         l.email ?? "",
         channelMeta(l.source_channel).label,
@@ -219,7 +219,7 @@ export function LeadsTableView({
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-foreground">
-                        {fullName(lead.first_name, lead.last_name)}
+                        {fullName(lead.first_name, lead.last_name, lead.whatsapp_name)}
                       </span>
                       {relance && (
                         <span className="size-2 shrink-0 rounded-full bg-warning" title="À relancer" />

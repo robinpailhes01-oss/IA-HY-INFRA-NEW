@@ -53,13 +53,13 @@ export const LeadCard = React.forwardRef<HTMLDivElement, LeadCardProps>(
             )}
             aria-hidden
           >
-            {initials(lead.first_name, lead.last_name)}
+            {initials(lead.first_name, lead.last_name, lead.whatsapp_name)}
           </span>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="truncate text-sm font-semibold text-foreground">
-                {fullName(lead.first_name, lead.last_name)}
+                {fullName(lead.first_name, lead.last_name, lead.whatsapp_name)}
               </span>
               {relance && (
                 <span className="relative flex size-2 shrink-0" title="À relancer (> 48h)">
