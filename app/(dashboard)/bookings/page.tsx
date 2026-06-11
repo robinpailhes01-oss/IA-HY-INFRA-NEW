@@ -143,7 +143,7 @@ export default async function BookingsPage() {
           <CardTitle>Toutes les réservations</CardTitle>
         </CardHeader>
         <CardContent>
-          <BookingsTable bookings={tableItems} />
+          <BookingsTable bookings={tableItems} todayIso={todayIso} />
         </CardContent>
       </Card>
     </div>

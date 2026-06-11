@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -43,17 +43,32 @@ function payment(b: BookingTableItem): { label: string; className: string } {
   return { label: "Soldé", className: "text-success" };
 }
 
-export function BookingsTable({ bookings }: { bookings: BookingTableItem[] }) {
+type View = "upcoming" | "history";
+
+export function BookingsTable({
+  bookings,
+  todayIso,
+}: {
+  bookings: BookingTableItem[];
+  todayIso: string;
+}) {
   const [selected, setSelected] = useState<EditableBooking | null>(null);
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<View>("upcoming");
 
-  if (bookings.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        Aucune réservation pour le moment.
-      </p>
-    );
-  }
+  const { upcoming, history } = useMemo(() => {
+    const upcoming: BookingTableItem[] = [];
+    const history: BookingTableItem[] = [];
+    for (const b of bookings) {
+      if (b.date >= todayIso) upcoming.push(b);
+      else history.push(b);
+    }
+    // Historique : du plus récent au plus ancien (lecture inversée).
+    history.sort((a, b) => b.date.localeCompare(a.date));
+    return { upcoming, history };
+  }, [bookings, todayIso]);
+
+  const rows = view === "upcoming" ? upcoming : history;
 
   function edit(b: BookingTableItem) {
     setSelected({
@@ -70,7 +85,21 @@ export function BookingsTable({ bookings }: { bookings: BookingTableItem[] }) {
 
   return (
     <>
-      <Table>
+      <div className="mb-4 inline-flex rounded-lg border border-border bg-muted/40 p-0.5 text-sm">
+        <ViewTab active={view === "upcoming"} onClick={() => setView("upcoming")}>
+          À venir <span className="ml-1.5 text-xs text-muted-foreground">{upcoming.length}</span>
+        </ViewTab>
+        <ViewTab active={view === "history"} onClick={() => setView("history")}>
+          Historique <span className="ml-1.5 text-xs text-muted-foreground">{history.length}</span>
+        </ViewTab>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          {view === "upcoming" ? "Aucune réservation à venir." : "Aucune réservation passée."}
+        </p>
+      ) : (
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
@@ -84,7 +113,7 @@ export function BookingsTable({ bookings }: { bookings: BookingTableItem[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {bookings.map((b) => {
+          {rows.map((b) => {
             const status = bookingStatusBadge(b.status);
             const time = formatTimeRange(b.startTime, b.endTime);
             const pay = payment(b);
@@ -125,8 +154,32 @@ export function BookingsTable({ bookings }: { bookings: BookingTableItem[] }) {
           })}
         </TableBody>
       </Table>
+      )}
 
       <BookingEditDialog booking={selected} open={open} onOpenChange={setOpen} />
     </>
+  );
+}
+
+function ViewTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-md px-3 py-1.5 font-medium transition-colors",
+        active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
