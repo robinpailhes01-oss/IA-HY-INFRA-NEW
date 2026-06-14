@@ -60,9 +60,18 @@ export function BookingsTable({
     const upcoming: BookingTableItem[] = [];
     const history: BookingTableItem[] = [];
     for (const b of bookings) {
-      if (b.date >= todayIso) upcoming.push(b);
-      else history.push(b);
+      // Une résa part dans "Historique" uniquement si elle est PASSÉE et FERMÉE :
+      // soldée (acompte payé + balance à 0) ou annulée. Sinon on la garde dans
+      // "À traiter" pour ne pas oublier d'encaisser un solde ou un acompte.
+      const isPast = b.date < todayIso;
+      const isClosed =
+        b.status === "cancelled" ||
+        (b.depositPaid === true && (b.balanceDue ?? 0) === 0);
+      if (isPast && isClosed) history.push(b);
+      else upcoming.push(b);
     }
+    // À traiter : trié par date croissante (les passées-non-soldées en haut).
+    upcoming.sort((a, b) => a.date.localeCompare(b.date));
     // Historique : du plus récent au plus ancien (lecture inversée).
     history.sort((a, b) => b.date.localeCompare(a.date));
     return { upcoming, history };
@@ -87,7 +96,7 @@ export function BookingsTable({
     <>
       <div className="mb-4 inline-flex rounded-lg border border-border bg-muted/40 p-0.5 text-sm">
         <ViewTab active={view === "upcoming"} onClick={() => setView("upcoming")}>
-          À venir <span className="ml-1.5 text-xs text-muted-foreground">{upcoming.length}</span>
+          À traiter <span className="ml-1.5 text-xs text-muted-foreground">{upcoming.length}</span>
         </ViewTab>
         <ViewTab active={view === "history"} onClick={() => setView("history")}>
           Historique <span className="ml-1.5 text-xs text-muted-foreground">{history.length}</span>
@@ -96,7 +105,7 @@ export function BookingsTable({
 
       {rows.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          {view === "upcoming" ? "Aucune réservation à venir." : "Aucune réservation passée."}
+          {view === "upcoming" ? "Aucune réservation à traiter." : "Aucune réservation passée."}
         </p>
       ) : (
         <Table>
