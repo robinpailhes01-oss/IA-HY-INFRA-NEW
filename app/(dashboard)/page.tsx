@@ -218,8 +218,11 @@ export default async function OverviewPage() {
 
   const outstandingOf = (b: BookingMetricRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
+  // « Reste à encaisser » : tout ce qui n'est pas annulé ET n'est pas soldé,
+  // quelle que soit la date. Inclut les sorties passées dont le solde n'a pas
+  // encore été encaissé (sinon on oublie de réclamer).
   const outstanding = metrics
-    .filter((b) => b.status !== "cancelled" && b.date >= todayIso)
+    .filter((b) => b.status !== "cancelled")
     .reduce((s, b) => s + outstandingOf(b), 0);
   // « Déjà encaissé » = ce qui est entré dans la caisse cette année.
   const collected = caYtd;

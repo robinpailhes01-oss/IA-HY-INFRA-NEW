@@ -127,6 +127,8 @@ export type BookingUpdate = {
   status: string | null;
   party_size: number | null;
   offer_name: string | null;
+  discount_amount: number | null;
+  discount_reason: string | null;
 };
 
 export async function updateBooking(id: string, values: BookingUpdate) {
@@ -134,7 +136,8 @@ export async function updateBooking(id: string, values: BookingUpdate) {
 
   const { error } = await supabase
     .from("bookings")
-    .update({ ...values, updated_at: new Date().toISOString() })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update({ ...values, updated_at: new Date().toISOString() } as any)
     .eq("id", id);
 
   if (error) {

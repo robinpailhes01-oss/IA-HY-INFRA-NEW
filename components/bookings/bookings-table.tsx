@@ -33,6 +33,8 @@ export type BookingTableItem = {
   balanceDue: number | null;
   status: string | null;
   sourceChannel: string | null;
+  discountAmount: number | null;
+  discountReason: string | null;
 };
 
 function payment(b: BookingTableItem): { label: string; className: string } {
@@ -88,6 +90,8 @@ export function BookingsTable({
       sourceChannel: b.sourceChannel,
       partySize: b.partySize,
       status: b.status,
+      discountAmount: b.discountAmount,
+      discountReason: b.discountReason,
     });
     setOpen(true);
   }
@@ -146,8 +150,18 @@ export function BookingsTable({
                 <TableCell className="text-center text-muted-foreground">
                   {b.partySize ?? "—"}
                 </TableCell>
-                <TableCell className="text-right font-semibold text-foreground">
-                  {formatEur(b.amount)}
+                <TableCell className="text-right">
+                  <div className="flex flex-col items-end">
+                    <span className="font-semibold text-foreground">{formatEur(b.amount)}</span>
+                    {b.discountAmount && b.discountAmount > 0 && (
+                      <span
+                        className="text-[11px] text-success"
+                        title={b.discountReason ?? "Remise appliquée"}
+                      >
+                        −{formatEur(b.discountAmount)} promo
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <span className={cn("text-sm font-medium", pay.className)}>{pay.label}</span>

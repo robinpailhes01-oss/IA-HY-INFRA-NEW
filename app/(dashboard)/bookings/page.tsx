@@ -32,6 +32,8 @@ type BookingRow = {
   balance_due: number | null;
   status: string | null;
   source_channel: string | null;
+  discount_amount: number | null;
+  discount_reason: string | null;
   customers: { first_name: string | null; last_name: string | null } | null;
 };
 
@@ -46,7 +48,7 @@ export default async function BookingsPage() {
   const { data } = await supabase
     .from("bookings")
     .select(
-      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, status, source_channel, customers(first_name, last_name)",
+      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, status, source_channel, discount_amount, discount_reason, customers(first_name, last_name)",
     )
     .order("date", { ascending: true })
     .returns<BookingRow[]>();
@@ -96,6 +98,8 @@ export default async function BookingsPage() {
     balanceDue: b.balance_due,
     status: b.status,
     sourceChannel: b.source_channel,
+    discountAmount: b.discount_amount,
+    discountReason: b.discount_reason,
   }));
 
   return (

@@ -38,6 +38,8 @@ export type EditableBooking = {
   sourceChannel: string | null;
   partySize: number | null;
   status: string | null;
+  discountAmount: number | null;
+  discountReason: string | null;
 };
 
 const STATUS_OPTIONS: [string, string][] = [
@@ -66,6 +68,8 @@ export function BookingEditDialog({
     status: "",
     party_size: null,
     offer_name: "",
+    discount_amount: null,
+    discount_reason: "",
   });
 
   useEffect(() => {
@@ -75,6 +79,8 @@ export function BookingEditDialog({
         status: booking.status ?? "",
         party_size: booking.partySize ?? null,
         offer_name: booking.offerName ?? "",
+        discount_amount: booking.discountAmount,
+        discount_reason: booking.discountReason ?? "",
       });
     }
   }, [booking, open]);
@@ -91,6 +97,8 @@ export function BookingEditDialog({
         status: form.status || null,
         party_size: form.party_size,
         offer_name: form.offer_name || null,
+        discount_amount: form.discount_amount,
+        discount_reason: form.discount_reason || null,
       });
       if (!res.ok) {
         toast.error("Échec de l'enregistrement", { description: res.error ?? undefined });
@@ -173,6 +181,35 @@ export function BookingEditDialog({
                   set("party_size", e.target.value === "" ? null : Number(e.target.value))
                 }
               />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Promotion appliquée
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Remise (€)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0"
+                  value={form.discount_amount ?? ""}
+                  onChange={(e) =>
+                    set("discount_amount", e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+              </div>
+              <div className="col-span-2 grid gap-1.5">
+                <Label className="text-xs">Raison</Label>
+                <Input
+                  placeholder="Cliente fidèle, promo printemps…"
+                  value={form.discount_reason ?? ""}
+                  onChange={(e) => set("discount_reason", e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </div>
