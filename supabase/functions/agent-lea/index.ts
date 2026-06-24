@@ -638,13 +638,23 @@ Deno.serve(async (req) => {
   // Force-clear sur escalade silencieuse : le client ne doit recevoir AUCUN message.
   if (state.escalated) reply = "";
 
-  // Persistance de la conversation (format du dashboard : {from, text, at})
+  // Filet anti-leak : Léa génère parfois des notes méta entre parenthèses
+  // quand elle juge qu'aucune réponse n'est nécessaire (typiquement après
+  // un message duplicate où elle voit qu'elle vient déjà de répondre).
+  // Ces notes ne doivent JAMAIS partir au client.
+  const metaPhraseRe = /réponse d[ée]j[àa] envoy[ée]e|aucune action(?:\s+suppl[ée]mentaire)?\s+n[ée]cessaire|invisible client|pas de r[ée]ponse [àa] envoyer|rien [àa] r[ée]pondre|no reply needed/i;
+  if (reply && (/^\s*\(.*\)\s*$/s.test(reply) || metaPhraseRe.test(reply))) {
+    console.warn("[agent-lea] meta reply suppressed:", reply.slice(0, 200));
+    reply = "";
+  }
+
+  // Persistance de la conversation (format du dashboard : {from, text, at}).
+  // On n'insère le message AI que s'il y a un vrai contenu — éviter de polluer
+  // la conversation avec des messages vides (cas escalade ou méta supprimé).
   if (state.leadId) {
     const now = new Date().toISOString();
-    const newMsgs: ChatMsg[] = [
-      { from: "client", text: userText, at: now },
-      { from: "ai", text: reply, at: now },
-    ];
+    const newMsgs: ChatMsg[] = [{ from: "client", text: userText, at: now }];
+    if (reply) newMsgs.push({ from: "ai", text: reply, at: now });
     const { data: conv } = await supabase
       .from("conversations")
       .select("id, messages")

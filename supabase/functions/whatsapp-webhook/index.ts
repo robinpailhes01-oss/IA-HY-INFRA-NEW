@@ -2,21 +2,31 @@
 //
 // Rôle volontairement FIN : ce webhook ne contient aucune logique métier.
 //   1. GET  → vérification du webhook par Meta (hub.challenge).
-//   2. POST → réception d'un message client : on le transmet à la fonction
-//             `agent-lea` (le cerveau), puis on renvoie sa réponse au client
-//             via la Graph API WhatsApp.
+//   2. POST → réception d'un message client : on bufferise 6s, on regroupe
+//             les messages rapprochés du même numéro, puis on appelle
+//             `agent-lea` (le cerveau) UNE seule fois et on renvoie sa
+//             réponse au client via la Graph API WhatsApp.
 //
 // Toute l'intelligence (qualification, dispos, relances, CRM) vit dans
 // `agent-lea`. Ici on ne fait que brancher le canal WhatsApp.
+//
+// Debouncing : sans ce buffer, Meta peut appeler le webhook plusieurs fois
+// pour des messages rapprochés du même client. Léa était alors invoquée en
+// parallèle et envoyait plusieurs réponses redondantes. Avec le buffer, le
+// dernier message reçu dans la fenêtre de 6s déclenche un seul appel à Léa
+// avec tous les messages non-traités concaténés.
 //
 // Secrets attendus (Supabase → Edge Functions → Secrets) :
 //   WHATSAPP_VERIFY_TOKEN     chaîne secrète que tu choisis (config webhook Meta)
 //   WHATSAPP_TOKEN            access token permanent Meta (System User)
 //   WHATSAPP_PHONE_NUMBER_ID  ID du numéro WhatsApp (Meta)
-//   SUPABASE_URL              (injecté) — pour appeler agent-lea
-//   SUPABASE_SERVICE_ROLE_KEY (injecté) — pour autoriser l'appel à agent-lea
+//   SUPABASE_URL              (injecté) — pour appeler agent-lea + DB
+//   SUPABASE_SERVICE_ROLE_KEY (injecté) — pour autoriser l'appel à agent-lea + DB
 //   LEA_SHARED_SECRET         (optionnel) — si défini sur agent-lea
 //   GRAPH_API_VERSION         (optionnel) défaut "v21.0"
+//   WA_DEBOUNCE_MS            (optionnel) défaut 6000
+
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
@@ -25,6 +35,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const LEA_SHARED_SECRET = Deno.env.get("LEA_SHARED_SECRET") ?? "";
 const GRAPH_VERSION = Deno.env.get("GRAPH_API_VERSION") ?? "v21.0";
+const DEBOUNCE_MS = Number(Deno.env.get("WA_DEBOUNCE_MS") ?? "6000");
 
 const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`;
 const LEA_URL = `${SUPABASE_URL}/functions/v1/agent-lea`;
@@ -34,6 +45,10 @@ const LEA_URL = `${SUPABASE_URL}/functions/v1/agent-lea`;
 function toE164(waFrom: string): string {
   const digits = waFrom.replace(/[^\d]/g, "");
   return digits.startsWith("+") ? digits : `+${digits}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 // Demande à Léa (agent-lea) la réponse à envoyer au client.
@@ -78,12 +93,74 @@ async function sendWhatsApp(to: string, text: string): Promise<void> {
   if (!res.ok) console.error("WhatsApp send error", res.status, await res.text());
 }
 
-// Traitement asynchrone d'un message (hors du cycle de réponse à Meta).
-async function handleMessage(waFrom: string, text: string): Promise<void> {
+// Traitement debouncé d'un message :
+//   1. Insert dans wa_inbox (dédup sur wa_message_id : si Meta renvoie le
+//      même message, on no-op)
+//   2. Sleep DEBOUNCE_MS
+//   3. Si on est encore le DERNIER message non-traité pour ce numéro → on est
+//      "leader", on prend tous les messages non-traités, on les concatène,
+//      on appelle Léa, on répond. Sinon, un message plus récent prendra le
+//      relais (et nous traitera dans son lot).
+async function handleMessage(
+  waFrom: string,
+  text: string,
+  msgId: string,
+  receivedAtMs: number,
+): Promise<void> {
   try {
     const phone = toE164(waFrom);
-    const reply = await askLea(text, phone);
-    await sendWhatsApp(waFrom, reply);
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    const receivedAtIso = new Date(receivedAtMs).toISOString();
+    const { data: inserted, error: insErr } = await supabase
+      .from("wa_inbox")
+      .insert({ wa_message_id: msgId, phone, text, received_at: receivedAtIso })
+      .select("id")
+      .single();
+    if (insErr) {
+      // Code 23505 = unique_violation → Meta a renvoyé le même message, on ignore.
+      if ((insErr as { code?: string }).code === "23505") return;
+      console.error("[wa_inbox insert]", insErr);
+      return;
+    }
+    const myId = inserted.id as number;
+
+    await sleep(DEBOUNCE_MS);
+
+    const { data: pending, error: selErr } = await supabase
+      .from("wa_inbox")
+      .select("id, text, received_at")
+      .eq("phone", phone)
+      .is("processed_at", null)
+      .order("received_at", { ascending: true });
+    if (selErr) {
+      console.error("[wa_inbox select]", selErr);
+      return;
+    }
+    if (!pending || pending.length === 0) return; // déjà traité par un autre
+
+    const last = pending[pending.length - 1];
+    if (last.id !== myId) {
+      // Un message plus récent prendra le relais (et traitera notre msg
+      // dans son propre lot 6s plus tard).
+      return;
+    }
+
+    const ids = pending.map((p) => p.id as number);
+    const { error: updErr } = await supabase
+      .from("wa_inbox")
+      .update({ processed_at: new Date().toISOString() })
+      .in("id", ids);
+    if (updErr) {
+      console.error("[wa_inbox update]", updErr);
+      return;
+    }
+
+    const combined = pending.map((p) => (p.text as string).trim()).filter(Boolean).join("\n");
+    if (!combined) return;
+
+    const reply = await askLea(combined, phone);
+    if (reply) await sendWhatsApp(waFrom, reply);
   } catch (e) {
     console.error("handleMessage failed", e);
   }
@@ -124,11 +201,15 @@ Deno.serve(async (req) => {
           if (msg?.type !== "text") continue; // MVP : texte uniquement
           const from: string = msg.from;
           const text: string = msg.text?.body ?? "";
+          const msgId: string = msg.id ?? `${from}-${Date.now()}-${Math.random()}`;
+          // Meta envoie msg.timestamp en secondes Unix (string) ; fallback now.
+          const tsRaw = msg.timestamp ? Number(msg.timestamp) * 1000 : Date.now();
+          const receivedAtMs = Number.isFinite(tsRaw) ? tsRaw : Date.now();
           if (!from || !text.trim()) continue;
           // On répond 200 tout de suite à Meta et on traite en tâche de fond
-          // (l'appel à Léa + Anthropic peut dépasser le délai de Meta).
+          // (debounce 6s + appel Léa + envoi WhatsApp peut dépasser le délai).
           // @ts-ignore EdgeRuntime fourni par Supabase
-          EdgeRuntime.waitUntil(handleMessage(from, text));
+          EdgeRuntime.waitUntil(handleMessage(from, text, msgId, receivedAtMs));
         }
       }
     }
