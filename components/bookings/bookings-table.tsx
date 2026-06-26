@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BadgeCheck, Pencil } from "lucide-react";
+import { BadgeCheck, Gift, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 export type BookingTableItem = {
   id: string;
-  date: string;
+  date: string | null;
   startTime: string | null;
   endTime: string | null;
   offerName: string | null;
@@ -36,6 +36,9 @@ export type BookingTableItem = {
   discountAmount: number | null;
   discountReason: string | null;
   contractSigned: boolean;
+  isGiftCard: boolean;
+  giftCardCode: string | null;
+  giftCardRecipientName: string | null;
 };
 
 function payment(b: BookingTableItem): { label: string; className: string } {
@@ -63,9 +66,12 @@ export function BookingsTable({
     const upcoming: BookingTableItem[] = [];
     const history: BookingTableItem[] = [];
     for (const b of bookings) {
-      // Une résa part dans "Historique" uniquement si elle est PASSÉE et FERMÉE :
-      // soldée (acompte payé + balance à 0) ou annulée. Sinon on la garde dans
-      // "À traiter" pour ne pas oublier d'encaisser un solde ou un acompte.
+      // Une carte cadeau sans date = toujours à traiter (en attente de
+      // réservation par le bénéficiaire).
+      if (b.date === null) {
+        upcoming.push(b);
+        continue;
+      }
       const isPast = b.date < todayIso;
       const isClosed =
         b.status === "cancelled" ||
@@ -73,10 +79,14 @@ export function BookingsTable({
       if (isPast && isClosed) history.push(b);
       else upcoming.push(b);
     }
-    // À traiter : trié par date croissante (les passées-non-soldées en haut).
-    upcoming.sort((a, b) => a.date.localeCompare(b.date));
-    // Historique : du plus récent au plus ancien (lecture inversée).
-    history.sort((a, b) => b.date.localeCompare(a.date));
+    // À traiter : cartes cadeaux sans date en premier (à honorer), puis tri par date.
+    upcoming.sort((a, b) => {
+      if (a.date === null && b.date === null) return 0;
+      if (a.date === null) return -1;
+      if (b.date === null) return 1;
+      return a.date.localeCompare(b.date);
+    });
+    history.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     return { upcoming, history };
   }, [bookings, todayIso]);
 
@@ -87,12 +97,17 @@ export function BookingsTable({
       id: b.id,
       customerName: b.customerName,
       date: b.date,
+      startTime: b.startTime,
+      endTime: b.endTime,
       offerName: b.offerName,
       sourceChannel: b.sourceChannel,
       partySize: b.partySize,
       status: b.status,
       discountAmount: b.discountAmount,
       discountReason: b.discountReason,
+      isGiftCard: b.isGiftCard,
+      giftCardCode: b.giftCardCode,
+      giftCardRecipientName: b.giftCardRecipientName,
     });
     setOpen(true);
   }
@@ -140,15 +155,35 @@ export function BookingsTable({
               >
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="font-medium text-foreground">
-                      {formatDateLong(b.date)}
-                    </span>
-                    {time && <span className="text-xs text-muted-foreground">{time}</span>}
+                    {b.date ? (
+                      <>
+                        <span className="font-medium text-foreground">
+                          {formatDateLong(b.date)}
+                        </span>
+                        {time && <span className="text-xs text-muted-foreground">{time}</span>}
+                      </>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 font-medium text-amber-600">
+                        <Gift className="size-3.5" /> Date à fixer
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="text-foreground">
                   <div className="flex items-center gap-1.5">
                     {b.customerName}
+                    {b.isGiftCard && (
+                      <span
+                        className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
+                        title={
+                          b.giftCardRecipientName
+                            ? `Carte cadeau — bénéficiaire : ${b.giftCardRecipientName}${b.giftCardCode ? ` · ${b.giftCardCode}` : ""}`
+                            : `Carte cadeau${b.giftCardCode ? ` · ${b.giftCardCode}` : ""}`
+                        }
+                      >
+                        🎁 {b.giftCardCode ?? "Carte"}
+                      </span>
+                    )}
                     {b.contractSigned && (
                       <BadgeCheck
                         className="size-4 text-emerald-600"

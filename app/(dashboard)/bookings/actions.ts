@@ -129,15 +129,23 @@ export type BookingUpdate = {
   offer_name: string | null;
   discount_amount: number | null;
   discount_reason: string | null;
+  // Date / horaires : utile pour fixer une date sur une carte cadeau a posteriori.
+  date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
 };
 
 export async function updateBooking(id: string, values: BookingUpdate) {
   const supabase = await createClient();
 
+  // Si on attribue une date à une carte cadeau, balance_due_date doit suivre.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const patch: any = { ...values, updated_at: new Date().toISOString() };
+  if (values.date) patch.balance_due_date = values.date;
+
   const { error } = await supabase
     .from("bookings")
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .update({ ...values, updated_at: new Date().toISOString() } as any)
+    .update(patch)
     .eq("id", id);
 
   if (error) {
@@ -174,6 +182,92 @@ export async function markContractSigned(bookingId: string, signerName: string) 
 
   revalidatePath("/bookings");
   return { ok: true as const, error: null };
+}
+
+export type GiftCardCreate = {
+  buyer_first_name: string;
+  buyer_last_name: string;
+  buyer_email: string | null;
+  buyer_phone: string | null;
+  // Le bénéficiaire peut différer de l'acheteur (cadeau pour un proche).
+  recipient_name: string | null;
+  amount: number;
+  offer_name: string | null;
+  notes: string | null;
+};
+
+function generateGiftCardCode(): string {
+  // Code court lisible : HY-XXXXXX (alphanumérique sans caractères ambigus).
+  const alphabet = "ACDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 6; i++) {
+    s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return `HY-${s}`;
+}
+
+export async function createGiftCard(values: GiftCardCreate) {
+  if (!values.buyer_first_name.trim() || !values.buyer_last_name.trim()) {
+    return { ok: false as const, error: "Prénom et nom de l'acheteur requis" };
+  }
+  if (!(values.amount > 0)) {
+    return { ok: false as const, error: "Le montant doit être supérieur à 0" };
+  }
+
+  const supabase = await createClient();
+
+  const { data: customer, error: custErr } = await supabase
+    .from("customers")
+    .insert({
+      first_name: values.buyer_first_name.trim(),
+      last_name: values.buyer_last_name.trim(),
+      email: values.buyer_email?.trim() || null,
+      phone: values.buyer_phone?.trim() || null,
+    })
+    .select("id")
+    .single();
+
+  if (custErr || !customer) {
+    return { ok: false as const, error: custErr?.message ?? "Erreur création client" };
+  }
+
+  const code = generateGiftCardCode();
+
+  // Carte cadeau = booking payée entièrement, sans date, à honorer plus tard.
+  const insertPayload = {
+    customer_id: customer.id,
+    date: null,
+    start_time: null,
+    end_time: null,
+    offer_name: values.offer_name || null,
+    booking_type: "sortie_privative",
+    party_size: null,
+    total_amount: values.amount,
+    deposit_amount: values.amount,
+    deposit_paid: true,
+    balance_due: 0,
+    balance_due_date: null,
+    status: "confirmed",
+    source_channel: null,
+    is_gift_card: true,
+    gift_card_code: code,
+    gift_card_recipient_name: values.recipient_name?.trim() || null,
+    notes: values.notes?.trim() || null,
+  };
+
+  const { error: bookErr } = await supabase
+    .from("bookings")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .insert(insertPayload as any);
+
+  if (bookErr) {
+    return { ok: false as const, error: bookErr.message };
+  }
+
+  revalidatePath("/bookings");
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null, code };
 }
 
 export async function unmarkContractSigned(bookingId: string) {

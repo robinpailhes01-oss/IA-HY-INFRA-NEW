@@ -34,13 +34,18 @@ import { SOURCE_OPTIONS } from "@/lib/status";
 export type EditableBooking = {
   id: string;
   customerName: string;
-  date: string;
+  date: string | null;
+  startTime: string | null;
+  endTime: string | null;
   offerName: string | null;
   sourceChannel: string | null;
   partySize: number | null;
   status: string | null;
   discountAmount: number | null;
   discountReason: string | null;
+  isGiftCard: boolean;
+  giftCardCode: string | null;
+  giftCardRecipientName: string | null;
 };
 
 const STATUS_OPTIONS: [string, string][] = [
@@ -71,6 +76,9 @@ export function BookingEditDialog({
     offer_name: "",
     discount_amount: null,
     discount_reason: "",
+    date: null,
+    start_time: null,
+    end_time: null,
   });
 
   useEffect(() => {
@@ -82,6 +90,9 @@ export function BookingEditDialog({
         offer_name: booking.offerName ?? "",
         discount_amount: booking.discountAmount,
         discount_reason: booking.discountReason ?? "",
+        date: booking.date,
+        start_time: booking.startTime,
+        end_time: booking.endTime,
       });
     }
   }, [booking, open]);
@@ -100,6 +111,9 @@ export function BookingEditDialog({
         offer_name: form.offer_name || null,
         discount_amount: form.discount_amount,
         discount_reason: form.discount_reason || null,
+        date: form.date || null,
+        start_time: form.start_time || null,
+        end_time: form.end_time || null,
       });
       if (!res.ok) {
         toast.error("Échec de l'enregistrement", { description: res.error ?? undefined });
@@ -115,13 +129,62 @@ export function BookingEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Modifier la réservation</DialogTitle>
+          <DialogTitle>
+            {booking?.isGiftCard ? "Carte cadeau" : "Modifier la réservation"}
+          </DialogTitle>
           <DialogDescription>
             {booking ? booking.customerName : ""}
+            {booking?.isGiftCard && booking.giftCardCode && (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                🎁 {booking.giftCardCode}
+              </span>
+            )}
+            {booking?.isGiftCard && booking.giftCardRecipientName && (
+              <span className="block text-xs text-muted-foreground">
+                Bénéficiaire : {booking.giftCardRecipientName}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4">
+          {booking?.isGiftCard && !booking.date && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="font-medium">Carte cadeau en attente d&apos;utilisation</p>
+              <p className="mt-1 text-xs">
+                Renseigne la date (et idéalement les horaires) ci-dessous pour la
+                convertir en réservation.
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Date de sortie</Label>
+              <Input
+                type="date"
+                value={form.date ?? ""}
+                onChange={(e) => set("date", e.target.value || null)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Début</Label>
+              <Input
+                type="time"
+                value={form.start_time ?? ""}
+                onChange={(e) => set("start_time", e.target.value || null)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Fin</Label>
+              <Input
+                type="time"
+                value={form.end_time ?? ""}
+                onChange={(e) => set("end_time", e.target.value || null)}
+              />
+            </div>
+          </div>
+
           <div className="grid gap-1.5">
             <Label>D&apos;où nous a-t-il connu ?</Label>
             <Select

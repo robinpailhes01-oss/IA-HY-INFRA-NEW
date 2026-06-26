@@ -8,7 +8,7 @@ import { ContractActions } from "./contract-actions";
 
 type BookingRow = {
   id: string;
-  date: string;
+  date: string | null;
   start_time: string | null;
   end_time: string | null;
   duration_hours: number | null;
@@ -147,7 +147,7 @@ export default async function ContractPage({
               </tr>
               <tr>
                 <td className="text-zinc-500">Date</td>
-                <td className="font-medium">{formatDateLong(data.date)}</td>
+                <td className="font-medium">{data.date ? formatDateLong(data.date) : "Date à fixer (carte cadeau)"}</td>
               </tr>
               <tr>
                 <td className="text-zinc-500">Horaires</td>

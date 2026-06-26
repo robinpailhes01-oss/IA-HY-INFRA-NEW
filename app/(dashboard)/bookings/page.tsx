@@ -16,12 +16,13 @@ import {
   type BookingTableItem,
 } from "@/components/bookings/bookings-table";
 import { AddBookingDialog } from "@/components/bookings/add-booking-dialog";
+import { AddGiftCardDialog } from "@/components/bookings/add-gift-card-dialog";
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
 
 type BookingRow = {
   id: string;
-  date: string;
+  date: string | null;
   start_time: string | null;
   end_time: string | null;
   offer_name: string | null;
@@ -35,6 +36,9 @@ type BookingRow = {
   discount_amount: number | null;
   discount_reason: string | null;
   contract_signed_at: string | null;
+  is_gift_card: boolean | null;
+  gift_card_code: string | null;
+  gift_card_recipient_name: string | null;
   customers: { first_name: string | null; last_name: string | null } | null;
 };
 
@@ -49,15 +53,16 @@ export default async function BookingsPage() {
   const { data } = await supabase
     .from("bookings")
     .select(
-      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, status, source_channel, discount_amount, discount_reason, contract_signed_at, customers(first_name, last_name)",
+      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, status, source_channel, discount_amount, discount_reason, contract_signed_at, is_gift_card, gift_card_code, gift_card_recipient_name, customers(first_name, last_name)",
     )
     .order("date", { ascending: true })
     .returns<BookingRow[]>();
 
   const bookings = data ?? [];
   const confirmees = bookings.filter((b) => CONFIRMED.has(b.status ?? "")).length;
+  // À venir : on exclut les cartes cadeaux sans date (= en attente de réservation).
   const aVenir = bookings.filter(
-    (b) => b.date >= todayIso && b.status !== "cancelled",
+    (b) => b.date !== null && b.date >= todayIso && b.status !== "cancelled",
   ).length;
   const resteAEncaisser = bookings
     .filter((b) => b.status !== "cancelled")
@@ -69,7 +74,11 @@ export default async function BookingsPage() {
 
   const toCollect: SettleTarget[] = bookings
     .filter(
-      (b) => b.status !== "cancelled" && b.date >= todayIso && (b.balance_due ?? 0) > 0,
+      (b) =>
+        b.status !== "cancelled" &&
+        b.date !== null &&
+        b.date >= todayIso &&
+        (b.balance_due ?? 0) > 0,
     )
     .map((b) => ({
       id: b.id,
@@ -78,7 +87,7 @@ export default async function BookingsPage() {
         b.customers?.last_name ?? null,
       ),
       offerName: b.offer_name,
-      date: b.date,
+      date: b.date!,
       balanceDue: b.balance_due ?? 0,
       sourceChannel: b.source_channel,
     }));
@@ -102,6 +111,9 @@ export default async function BookingsPage() {
     discountAmount: b.discount_amount,
     discountReason: b.discount_reason,
     contractSigned: Boolean(b.contract_signed_at),
+    isGiftCard: Boolean(b.is_gift_card),
+    giftCardCode: b.gift_card_code,
+    giftCardRecipientName: b.gift_card_recipient_name,
   }));
 
   return (
@@ -116,7 +128,10 @@ export default async function BookingsPage() {
             {bookings.length > 1 ? "s" : ""} · clique sur une ligne pour modifier
           </p>
         </div>
-        <AddBookingDialog />
+        <div className="flex flex-wrap items-center gap-2">
+          <AddGiftCardDialog />
+          <AddBookingDialog />
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
