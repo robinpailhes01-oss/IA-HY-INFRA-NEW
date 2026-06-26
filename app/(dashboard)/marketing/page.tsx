@@ -1,4 +1,4 @@
-import { Euro, Eye, Heart, Megaphone, Target, TrendingUp, Users } from "lucide-react";
+import { Euro, Eye, Heart, Megaphone, TrendingDown, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
@@ -47,14 +47,6 @@ function canalCategory(channel: string | null): CanalCategory {
   return "other";
 }
 
-const CHANNEL_LABELS: Record<string, string> = {
-  meta_ads: "Meta Ads",
-  google: "Google Ads",
-  google_ads: "Google Ads",
-  instagram_ads: "Instagram Ads",
-  tiktok_ads: "TikTok Ads",
-};
-
 const CONTENT_CHANNEL: Record<string, string> = {
   instagram_reel: "Reel",
   instagram_post: "Post",
@@ -74,15 +66,11 @@ const CONTENT_STATUS: Record<
   idea: { label: "Idée", variant: "secondary" },
 };
 
-type AdRow = {
-  channel: string;
-  campaign_name: string | null;
-  budget_spent: number | null;
-  impressions: number | null;
-  clicks: number | null;
-  leads_generated: number | null;
-  bookings_attributed: number | null;
-  revenue_generated: number | null;
+type AdExpenseRow = {
+  id: string;
+  date: string;
+  description: string | null;
+  amount: number | null;
 };
 
 type ContentRow = {
@@ -115,14 +103,17 @@ function pct(n: number, total: number): string {
 export default async function MarketingPage() {
   const supabase = await createClient();
 
-  const [adsRes, contentRes, bookingsRes] = await Promise.all([
+  const [adExpensesRes, contentRes, bookingsRes] = await Promise.all([
+    // Budget pub réel : on lit les dépenses catégorisées "marketing".
+    // (Avant on lisait `ad_stats` mais cette table demandait une saisie
+    // manuelle dédiée que personne ne faisait. Maintenant le coût pub
+    // vient directement de tes dépenses, sans double saisie.)
     supabase
-      .from("ad_stats")
-      .select(
-        "channel, campaign_name, budget_spent, impressions, clicks, leads_generated, bookings_attributed, revenue_generated",
-      )
-      .order("budget_spent", { ascending: false })
-      .returns<AdRow[]>(),
+      .from("expenses")
+      .select("id, date, description, amount")
+      .eq("category", "marketing")
+      .order("date", { ascending: false })
+      .returns<AdExpenseRow[]>(),
     supabase
       .from("content_marketing")
       .select("id, channel, title, status, publish_date, views, likes, leads_attributed")
@@ -134,7 +125,7 @@ export default async function MarketingPage() {
       .returns<BookingAttrRow[]>(),
   ]);
 
-  const ads = adsRes.data ?? [];
+  const adExpenses = adExpensesRes.data ?? [];
   const content = contentRes.data ?? [];
   const bookings = bookingsRes.data ?? [];
 
@@ -174,12 +165,12 @@ export default async function MarketingPage() {
     catAgg[r.category].revenue += r.revenue;
   }
 
-  // ── Campagnes payantes (ad_stats, saisie manuelle) ──
-  const totalBudget = ads.reduce((s, a) => s + (a.budget_spent ?? 0), 0);
-  const totalAdsLeads = ads.reduce((s, a) => s + (a.leads_generated ?? 0), 0);
-  const totalRevenue = ads.reduce((s, a) => s + (a.revenue_generated ?? 0), 0);
-  const totalAdsBookings = ads.reduce((s, a) => s + (a.bookings_attributed ?? 0), 0);
-  const cpl = totalAdsLeads > 0 ? Math.round(totalBudget / totalAdsLeads) : 0;
+  // ── Budget pub réel (depuis tes dépenses category=marketing) ──
+  const totalAdSpend = adExpenses.reduce((s, e) => s + Number(e.amount ?? 0), 0);
+  const paidAdsRevenue = catAgg.paid.revenue;
+  const paidAdsBookings = catAgg.paid.count;
+  const netAdMargin = paidAdsRevenue - totalAdSpend;
+  const cpa = paidAdsBookings > 0 ? Math.round(totalAdSpend / paidAdsBookings) : 0;
 
   return (
     <div className="space-y-6">
@@ -289,104 +280,97 @@ export default async function MarketingPage() {
         </CardContent>
       </Card>
 
-      {/* ── KPI campagnes payantes (saisie manuelle ad_stats) ─────── */}
+      {/* ── KPI publicité (dépenses réelles vs CA payant) ─────────── */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Budget pub dépensé"
-          value={totalBudget}
+          value={totalAdSpend}
           format="eur"
           icon={Megaphone}
           accent="info"
+          hint={`${adExpenses.length} dépense${adExpenses.length !== 1 ? "s" : ""} marketing`}
           index={0}
         />
-        <KpiCard label="Leads (pub)" value={totalAdsLeads} icon={Users} accent="primary" index={1} />
         <KpiCard
-          label="Coût par lead"
-          value={cpl}
-          format="eur"
-          icon={Target}
-          accent="gold"
-          index={2}
-        />
-        <KpiCard
-          label="CA attribué (pub)"
-          value={totalRevenue}
+          label="CA généré par la pub"
+          value={paidAdsRevenue}
           format="eur"
           icon={Euro}
           accent="success"
-          hint={`ROAS ${roasText(totalRevenue, totalBudget)}`}
+          hint={`${paidAdsBookings} réservation${paidAdsBookings !== 1 ? "s" : ""}`}
+          index={1}
+        />
+        <KpiCard
+          label="Coût par réservation"
+          value={cpa}
+          format="eur"
+          icon={TrendingUp}
+          accent="gold"
+          hint={
+            totalAdSpend > 0
+              ? `ROAS ${roasText(paidAdsRevenue, totalAdSpend)}`
+              : "Aucune dépense pub"
+          }
+          index={2}
+        />
+        <KpiCard
+          label="Marge nette pub"
+          value={netAdMargin}
+          format="eur"
+          icon={netAdMargin >= 0 ? TrendingUp : TrendingDown}
+          accent={netAdMargin >= 0 ? "success" : "gold"}
+          hint="CA payant − budget pub"
           index={3}
         />
       </div>
 
-      {/* ── Performance campagnes ─────────────────────────────────── */}
+      {/* ── Détail des dépenses pub ───────────────────────────────── */}
       <Card className="enter-up" style={{ animationDelay: "320ms" }}>
         <CardHeader>
-          <CardTitle>Performance des campagnes</CardTitle>
+          <CardTitle>Détail des dépenses publicitaires</CardTitle>
           <CardDescription>
-            ROAS global {roasText(totalRevenue, totalBudget)} · {totalAdsBookings} réservations attribuées
+            Tirées de tes dépenses (catégorie « Marketing »).{" "}
+            {totalAdSpend > 0 && paidAdsRevenue > 0 ? (
+              <>
+                Chaque € investi a rapporté{" "}
+                <strong className="text-foreground">
+                  {(paidAdsRevenue / totalAdSpend).toFixed(2).replace(".", ",")} €
+                </strong>{" "}
+                de CA.
+              </>
+            ) : (
+              "Ajoute tes pubs dans /finances avec la catégorie Marketing."
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {ads.length === 0 ? (
+          {adExpenses.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              Aucune campagne pour le moment.
+              Aucune dépense marketing enregistrée.
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Canal</TableHead>
-                  <TableHead className="text-right">Budget</TableHead>
-                  <TableHead className="text-right">Impressions</TableHead>
-                  <TableHead className="text-right">Clics</TableHead>
-                  <TableHead className="text-right">Leads</TableHead>
-                  <TableHead className="text-right">CPL</TableHead>
-                  <TableHead className="text-right">CA attribué</TableHead>
-                  <TableHead className="text-right">ROAS</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Libellé</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ads.map((a) => {
-                  const leads = a.leads_generated ?? 0;
-                  const budget = a.budget_spent ?? 0;
-                  const adCpl = leads > 0 ? Math.round(budget / leads) : 0;
-                  return (
-                    <TableRow key={`${a.channel}-${a.campaign_name}`}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">
-                            {CHANNEL_LABELS[a.channel] ?? a.channel}
-                          </span>
-                          {a.campaign_name && (
-                            <span className="text-xs text-muted-foreground">
-                              {a.campaign_name}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right text-foreground">
-                        {formatEur(budget)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatNumber(a.impressions)}
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatNumber(a.clicks)}
-                      </TableCell>
-                      <TableCell className="text-right text-foreground">{leads}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatEur(adCpl)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-foreground">
-                        {formatEur(a.revenue_generated)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-success">
-                        {roasText(a.revenue_generated ?? 0, budget)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {adExpenses.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="text-muted-foreground">
+                      {formatDateLong(e.date)}
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">
+                      {e.description ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-foreground">
+                      {formatEur(e.amount)}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}

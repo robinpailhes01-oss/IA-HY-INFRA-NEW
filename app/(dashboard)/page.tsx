@@ -93,6 +93,19 @@ export default async function OverviewPage() {
   const todayIso = now.toISOString().slice(0, 10);
   const ago30Iso = new Date(now.getTime() - 30 * DAY_MS).toISOString();
 
+  // ── Liste des leads créés par Léa = leads liés à une conversation WhatsApp ──
+  // On ne peut pas utiliser source_channel='whatsapp' : ce champ représente
+  // « comment le client nous a connu » (Insta, BAO…), pas le canal de contact.
+  // La vraie source de vérité est wa_conversations.lead_id.
+  const { data: leaLinks } = await supabase
+    .from("wa_conversations")
+    .select("lead_id")
+    .not("lead_id", "is", null);
+  const leaLeadIds = Array.from(
+    new Set((leaLinks ?? []).map((c) => c.lead_id as string)),
+  );
+  const hasLeaLeads = leaLeadIds.length > 0;
+
   const [
     goalRes,
     metricsRes,
@@ -166,21 +179,29 @@ export default async function OverviewPage() {
       .select("id, amount, date, category, description")
       .order("date", { ascending: false })
       .returns<{ id: string; amount: number | null; date: string; category: string | null; description: string | null }[]>(),
-    // ── Stats Léa : compteurs sur leads WhatsApp ──
-    supabase
-      .from("leads")
-      .select("*", { count: "exact", head: true })
-      .eq("source_channel", "whatsapp"),
-    supabase
-      .from("leads")
-      .select("*", { count: "exact", head: true })
-      .eq("source_channel", "whatsapp")
-      .in("status", ["qualified", "quote_sent", "booked"]),
-    supabase
-      .from("leads")
-      .select("*", { count: "exact", head: true })
-      .eq("source_channel", "whatsapp")
-      .gte("followup_count", 1),
+    // ── Stats Léa : compteurs sur les leads liés à une conversation WA ──
+    // Si pas de lead lié (DB neuve), on évite .in('id', []) qui peut faire
+    // matcher tout selon la version Supabase — on force un count à 0.
+    hasLeaLeads
+      ? supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .in("id", leaLeadIds)
+      : Promise.resolve({ count: 0 }),
+    hasLeaLeads
+      ? supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .in("id", leaLeadIds)
+          .in("status", ["qualified", "quote_sent", "booked"])
+      : Promise.resolve({ count: 0 }),
+    hasLeaLeads
+      ? supabase
+          .from("leads")
+          .select("*", { count: "exact", head: true })
+          .in("id", leaLeadIds)
+          .gte("followup_count", 1)
+      : Promise.resolve({ count: 0 }),
     supabase
       .from("wa_conversations")
       .select("*", { count: "exact", head: true }),
