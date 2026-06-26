@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil } from "lucide-react";
+import { BadgeCheck, Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,6 +35,7 @@ export type BookingTableItem = {
   sourceChannel: string | null;
   discountAmount: number | null;
   discountReason: string | null;
+  contractSigned: boolean;
 };
 
 function payment(b: BookingTableItem): { label: string; className: string } {
@@ -145,7 +146,17 @@ export function BookingsTable({
                     {time && <span className="text-xs text-muted-foreground">{time}</span>}
                   </div>
                 </TableCell>
-                <TableCell className="text-foreground">{b.customerName}</TableCell>
+                <TableCell className="text-foreground">
+                  <div className="flex items-center gap-1.5">
+                    {b.customerName}
+                    {b.contractSigned && (
+                      <BadgeCheck
+                        className="size-4 text-emerald-600"
+                        aria-label="Contrat signé"
+                      />
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-muted-foreground">{b.offerName ?? "—"}</TableCell>
                 <TableCell className="text-center text-muted-foreground">
                   {b.partySize ?? "—"}

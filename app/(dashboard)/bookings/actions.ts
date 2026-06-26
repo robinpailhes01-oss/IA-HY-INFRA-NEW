@@ -153,3 +153,44 @@ export async function updateBooking(id: string, values: BookingUpdate) {
   revalidatePath("/");
   return { ok: true as const, error: null };
 }
+
+export async function markContractSigned(bookingId: string, signerName: string) {
+  const name = signerName.trim();
+  if (!name) return { ok: false as const, error: "Nom du signataire requis" };
+
+  const supabase = await createClient();
+  const patch = {
+    contract_signed_at: new Date().toISOString(),
+    contract_signed_by_name: name,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from("bookings")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update(patch as any)
+    .eq("id", bookingId);
+
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/bookings");
+  return { ok: true as const, error: null };
+}
+
+export async function unmarkContractSigned(bookingId: string) {
+  const supabase = await createClient();
+  const patch = {
+    contract_signed_at: null,
+    contract_signed_by_name: null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase
+    .from("bookings")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .update(patch as any)
+    .eq("id", bookingId);
+
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/bookings");
+  return { ok: true as const, error: null };
+}

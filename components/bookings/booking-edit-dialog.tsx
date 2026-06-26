@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -214,12 +215,26 @@ export function BookingEditDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-          <Button onClick={handleSave} disabled={pending}>
-            {pending && <Loader2 className="animate-spin" />}
-            Enregistrer
-          </Button>
+        <DialogFooter className="sm:justify-between">
+          {booking ? (
+            <Link
+              href={`/contrats/${booking.id}`}
+              target="_blank"
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <FileText className="size-4" />
+              Contrat de location
+            </Link>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
+            <Button onClick={handleSave} disabled={pending}>
+              {pending && <Loader2 className="animate-spin" />}
+              Enregistrer
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
