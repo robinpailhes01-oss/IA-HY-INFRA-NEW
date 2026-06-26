@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Wallet } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, FileText, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatDateRelative, formatEur } from "@/lib/format";
@@ -45,15 +46,26 @@ export function BalanceAgenda({ items }: { items: SettleTarget[] }) {
                 <span className="font-medium text-foreground">{formatEur(b.balanceDue)}</span>
               </p>
             </div>
-            <Button
-              size="sm"
-              onClick={() => {
-                setSelected(b);
-                setOpen(true);
-              }}
-            >
-              <Wallet /> Encaisser
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={`/contrats/${b.id}`}
+                target="_blank"
+                title="Voir le contrat de location"
+                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <FileText className="size-4" />
+                <span className="sr-only">Contrat</span>
+              </Link>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setSelected(b);
+                  setOpen(true);
+                }}
+              >
+                <Wallet /> Encaisser
+              </Button>
+            </div>
           </li>
         ))}
       </ul>
