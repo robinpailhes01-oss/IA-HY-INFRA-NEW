@@ -76,15 +76,21 @@ export function AddGiftCardDialog() {
     };
 
     startTransition(async () => {
-      const res = await createGiftCard(payload);
-      if (!res.ok) {
-        toast.error("Échec", { description: res.error ?? undefined });
-        return;
+      try {
+        const res = await createGiftCard(payload);
+        if (!res.ok) {
+          toast.error("Échec", { description: res.error ?? undefined });
+          return;
+        }
+        toast.success(`Carte cadeau créée — code ${res.code}`, { duration: 8000 });
+        setOpen(false);
+        setForm(EMPTY);
+        router.refresh();
+      } catch (err) {
+        toast.error("Erreur inattendue", {
+          description: err instanceof Error ? err.message : "Veuillez réessayer.",
+        });
       }
-      toast.success(`Carte cadeau créée — code ${res.code}`);
-      setOpen(false);
-      setForm(EMPTY);
-      router.refresh();
     });
   }
 
