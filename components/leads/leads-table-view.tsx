@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, ArrowDown, ArrowUp, ChevronsUpDown, Download } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, ChevronsUpDown, Download, MessageCircle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,8 +49,8 @@ export function LeadsTableView({
   onBulkArchive: (ids: string[]) => void;
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "last",
-    dir: "desc",
+    key: "desired_date",
+    dir: "asc",
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(0);
@@ -68,8 +68,12 @@ export function LeadsTableView({
           return dir * ((a.score ?? -1) - (b.score ?? -1));
         case "status":
           return dir * (a.status ?? "").localeCompare(b.status ?? "");
-        case "desired_date":
-          return dir * (Date.parse(a.desired_date ?? "") || 0) - dir * (Date.parse(b.desired_date ?? "") || 0);
+        case "desired_date": {
+          if (!a.desired_date && !b.desired_date) return 0;
+          if (!a.desired_date) return 1;
+          if (!b.desired_date) return -1;
+          return dir * (Date.parse(a.desired_date) - Date.parse(b.desired_date));
+        }
         case "last":
         default:
           return (
@@ -224,10 +228,38 @@ export function LeadsTableView({
                       {relance && (
                         <span className="size-2 shrink-0 rounded-full bg-warning" title="À relancer" />
                       )}
+                      {lead.source_channel === "whatsapp" && lead.phone && (
+                        <a
+                          href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Ouvrir WhatsApp"
+                          className="text-success/60 transition-colors hover:text-success"
+                        >
+                          <MessageCircle className="size-3.5" />
+                        </a>
+                      )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {lead.phone ?? lead.email ?? "—"}
-                    </span>
+                    {lead.phone ? (
+                      <a
+                        href={`tel:${lead.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {lead.phone}
+                      </a>
+                    ) : lead.email ? (
+                      <a
+                        href={`mailto:${lead.email}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {lead.email}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">

@@ -43,6 +43,15 @@ export function LeadsKanban({
     for (const lead of leads) {
       if (lead.status && map[lead.status]) map[lead.status].push(lead);
     }
+    // Trier chaque colonne par date souhaitée croissante (sans date = en bas).
+    for (const col of LEAD_COLUMNS) {
+      map[col.status].sort((a, b) => {
+        if (!a.desired_date && !b.desired_date) return 0;
+        if (!a.desired_date) return 1;
+        if (!b.desired_date) return -1;
+        return Date.parse(a.desired_date) - Date.parse(b.desired_date);
+      });
+    }
     return map;
   }, [leads]);
 

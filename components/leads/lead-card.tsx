@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, Users } from "lucide-react";
+import { CalendarDays, Mail, MessageCircle, Phone, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -92,6 +92,40 @@ export const LeadCard = React.forwardRef<HTMLDivElement, LeadCardProps>(
 
         {lead.interested_offer && (
           <p className="mt-2.5 truncate text-sm text-foreground/90">{lead.interested_offer}</p>
+        )}
+
+        {(lead.phone || lead.email) && (
+          <div className="mt-1.5">
+            {lead.phone ? (
+              <a
+                href={
+                  lead.source_channel === "whatsapp"
+                    ? `https://wa.me/${lead.phone.replace(/\D/g, "")}`
+                    : `tel:${lead.phone}`
+                }
+                target={lead.source_channel === "whatsapp" ? "_blank" : undefined}
+                rel={lead.source_channel === "whatsapp" ? "noopener noreferrer" : undefined}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {lead.source_channel === "whatsapp" ? (
+                  <MessageCircle className="size-3" />
+                ) : (
+                  <Phone className="size-3" />
+                )}
+                {lead.phone}
+              </a>
+            ) : (
+              <a
+                href={`mailto:${lead.email}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Mail className="size-3" />
+                {lead.email}
+              </a>
+            )}
+          </div>
         )}
 
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
