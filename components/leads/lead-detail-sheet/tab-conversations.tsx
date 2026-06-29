@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { Check, Loader2, MessageSquare, Send, Sparkles } from "lucide-react";
+import { Check, Loader2, Mail, MessageSquare, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,9 @@ export function TabConversations({
     if (!res.ok) {
       toast.error("Échec de l'envoi", { description: res.error });
       return;
+    }
+    if (lead.source_channel === "email") {
+      toast.success("Email envoyé");
     }
     setConversations((prev) => {
       if (prev.length === 0) {
@@ -160,11 +163,21 @@ export function TabConversations({
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSend();
           }}
-          placeholder="Écrire un message (mock)…"
+          placeholder={
+            lead.source_channel === "email"
+              ? "Écrire un email…"
+              : "Écrire un message…"
+          }
           className="min-h-[44px] flex-1 resize-none"
         />
         <Button size="icon" onClick={handleSend} disabled={sending || !draft.trim()}>
-          {sending ? <Loader2 className="animate-spin" /> : <Send />}
+          {sending ? (
+            <Loader2 className="animate-spin" />
+          ) : lead.source_channel === "email" ? (
+            <Mail />
+          ) : (
+            <Send />
+          )}
         </Button>
       </div>
     </div>

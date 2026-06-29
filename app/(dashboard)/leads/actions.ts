@@ -249,7 +249,10 @@ export async function getConversations(leadId: string): Promise<Result<Conversat
   return ok(rows);
 }
 
-/** Mock V1 : enregistre un message manuel dans la conversation et bump l'interaction. */
+/**
+ * Enregistre un message manuel (équipe humaine) dans la conversation.
+ * Pour les leads email : envoie aussi un vrai email via Resend.
+ */
 export async function sendMessage(
   leadId: string,
   text: string,
@@ -261,13 +264,21 @@ export async function sendMessage(
   const now = new Date().toISOString();
   const message: ConversationMessage = { from: "human", text: trimmed, at: now };
 
-  const { data: existing } = await supabase
-    .from("conversations")
-    .select("id, messages, channel")
-    .eq("lead_id", leadId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Récupère la conversation la plus récente + le lead pour savoir le canal.
+  const [{ data: existing }, { data: lead }] = await Promise.all([
+    supabase
+      .from("conversations")
+      .select("id, messages, channel")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("leads")
+      .select("source_channel, email, first_name, last_name")
+      .eq("id", leadId)
+      .single(),
+  ]);
 
   let messages: ConversationMessage[];
 
@@ -282,11 +293,6 @@ export async function sendMessage(
       .eq("id", existing.id);
     if (error) return fail(error.message);
   } else {
-    const { data: lead } = await supabase
-      .from("leads")
-      .select("source_channel")
-      .eq("id", leadId)
-      .single();
     messages = [message];
     const { error } = await supabase.from("conversations").insert({
       lead_id: leadId,
@@ -296,6 +302,65 @@ export async function sendMessage(
       updated_at: now,
     });
     if (error) return fail(error.message);
+  }
+
+  // ── Envoi email réel si le canal est "email" ──────────────────────
+  const isEmail = (existing?.channel ?? lead?.source_channel) === "email";
+  if (isEmail && lead?.email) {
+    const resendKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM ?? "Harmonie Yacht <reservations@harmonie-yacht.fr>";
+
+    if (resendKey) {
+      // Cherche le dernier Message-ID sortant pour le header In-Reply-To.
+      let inReplyTo: string | null = null;
+      if (existing) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: thread } = await (supabase as any)
+          .from("email_threads")
+          .select("last_outbound_message_id, subject")
+          .eq("conversation_id", existing.id)
+          .maybeSingle();
+        inReplyTo = (thread as { last_outbound_message_id: string | null } | null)?.last_outbound_message_id ?? null;
+      }
+
+      const headers: Record<string, string> = {};
+      if (inReplyTo) {
+        headers["In-Reply-To"] = inReplyTo;
+        headers["References"]  = inReplyTo;
+      }
+
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from:    fromEmail,
+            to:      [lead.email],
+            subject: inReplyTo ? "Re: Harmonie Yacht" : "Message de l'équipe Harmonie Yacht",
+            text:    trimmed,
+            headers: Object.keys(headers).length ? headers : undefined,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json() as { id?: string };
+          if (data.id && existing) {
+            const newMsgId = `<${data.id}@resend.dev>`;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+              .from("email_threads")
+              .update({ last_outbound_message_id: newMsgId, updated_at: now })
+              .eq("conversation_id", existing.id);
+          }
+        }
+      } catch (e) {
+        console.error("Resend send error", e);
+        // Non bloquant : le message est déjà dans le CRM.
+      }
+    }
   }
 
   await supabase
