@@ -36,8 +36,28 @@ const REVENUE_LABELS: Record<string, string> = {
   other: "Autre",
 };
 
-type ExpenseRow = { category: string; amount: number };
-type RevenueRow = { type: string; amount: number };
+type ExpenseRow = {
+  id: string;
+  date: string;
+  category: string;
+  amount: number;
+  description: string | null;
+};
+type RevenueRow = {
+  id: string;
+  date: string;
+  type: string;
+  amount: number;
+  note: string | null;
+};
+type TxItem = {
+  id: string;
+  date: string;
+  kind: "revenue" | "expense";
+  label: string;
+  note: string | null;
+  amount: number;
+};
 
 function pct(part: number, whole: number): number {
   return whole > 0 ? Math.round((part / whole) * 100) : 0;
@@ -73,15 +93,17 @@ export default async function FinancesPage({
   const [expensesRes, revenuesRes] = await Promise.all([
     supabase
       .from("expenses")
-      .select("category, amount")
+      .select("id, date, category, amount, description")
       .gte("date", from)
       .lte("date", to)
+      .order("date", { ascending: false })
       .returns<ExpenseRow[]>(),
     supabase
       .from("revenues")
-      .select("type, amount")
+      .select("id, date, type, amount, note")
       .gte("date", from)
       .lte("date", to)
+      .order("date", { ascending: false })
       .returns<RevenueRow[]>(),
   ]);
 
@@ -111,6 +133,25 @@ export default async function FinancesPage({
     .map(([type, amount]) => ({ type, amount }))
     .sort((a, b) => b.amount - a.amount);
   const maxRevenue = byRevenueType[0]?.amount ?? 1;
+
+  const transactions: TxItem[] = [
+    ...revenues.map((r) => ({
+      id: r.id,
+      date: r.date,
+      kind: "revenue" as const,
+      label: REVENUE_LABELS[r.type] ?? r.type,
+      note: r.note,
+      amount: r.amount,
+    })),
+    ...expenses.map((e) => ({
+      id: e.id,
+      date: e.date,
+      kind: "expense" as const,
+      label: EXPENSE_LABELS[e.category] ?? e.category,
+      note: e.description,
+      amount: e.amount,
+    })),
+  ].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
   const segments = [
     { label: "Dépenses opé.", value: opex, color: "bg-warning" },
@@ -266,6 +307,64 @@ export default async function FinancesPage({
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="enter-up" style={{ animationDelay: "520ms" }}>
+        <CardHeader>
+          <CardTitle>Historique des transactions</CardTitle>
+          <CardDescription>
+            {transactions.length} opération{transactions.length !== 1 ? "s" : ""} · {formatDateLong(from)} → {formatDateLong(to)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune transaction sur cette période.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs text-muted-foreground">
+                    <th className="pb-2 pr-4 text-left font-medium">Date</th>
+                    <th className="pb-2 pr-4 text-left font-medium">Libellé</th>
+                    <th className="pb-2 pr-4 text-left font-medium hidden sm:table-cell">Note</th>
+                    <th className="pb-2 text-right font-medium">Montant</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {transactions.map((tx) => (
+                    <tr key={`${tx.kind}-${tx.id}`} className="group">
+                      <td className="py-2.5 pr-4 tabular-nums text-muted-foreground whitespace-nowrap">
+                        {formatDateLong(tx.date)}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "inline-block size-1.5 shrink-0 rounded-full",
+                              tx.kind === "revenue" ? "bg-success" : "bg-gold",
+                            )}
+                          />
+                          {tx.label}
+                        </span>
+                      </td>
+                      <td className="py-2.5 pr-4 text-muted-foreground hidden sm:table-cell max-w-[200px] truncate">
+                        {tx.note ?? "—"}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-2.5 text-right tabular-nums font-medium whitespace-nowrap",
+                          tx.kind === "revenue" ? "text-success" : "text-gold",
+                        )}
+                      >
+                        {tx.kind === "revenue" ? "+" : "−"} {formatEur(tx.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
