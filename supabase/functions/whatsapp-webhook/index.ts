@@ -35,7 +35,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const LEA_SHARED_SECRET = Deno.env.get("LEA_SHARED_SECRET") ?? "";
 const GRAPH_VERSION = Deno.env.get("GRAPH_API_VERSION") ?? "v21.0";
-const DEBOUNCE_MS = Number(Deno.env.get("WA_DEBOUNCE_MS") ?? "6000");
+// 15 s : fenêtre large pour regrouper les messages tapés en plusieurs fois.
+// Si le client envoie 3 messages en 20 s, ils arrivent tous dans le même lot.
+const DEBOUNCE_MS = Number(Deno.env.get("WA_DEBOUNCE_MS") ?? "15000");
+// Après avoir été désigné leader, on attend encore GRACE_MS avant de traiter
+// pour attraper les messages qui arrivent en fin de fenêtre debounce.
+const GRACE_MS = Number(Deno.env.get("WA_GRACE_MS") ?? "4000");
 
 const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`;
 const LEA_URL = `${SUPABASE_URL}/functions/v1/agent-lea`;
@@ -141,12 +146,32 @@ async function handleMessage(
 
     const last = pending[pending.length - 1];
     if (last.id !== myId) {
-      // Un message plus récent prendra le relais (et traitera notre msg
-      // dans son propre lot 6s plus tard).
+      // Un message plus récent prendra le relais dans son propre lot.
       return;
     }
 
-    const ids = pending.map((p) => p.id as number);
+    // ── Queue de grâce : on est leader mais on attend GRACE_MS de plus ──
+    // Cas typique : client a tapé 2e message juste APRÈS notre debounce.
+    // En attendant encore un peu on peut l'attraper avant d'envoyer.
+    await sleep(GRACE_MS);
+
+    // Re-lire les messages en attente (de nouveaux ont peut-être rejoint la file).
+    const { data: freshPending } = await supabase
+      .from("wa_inbox")
+      .select("id, text, received_at")
+      .eq("phone", phone)
+      .is("processed_at", null)
+      .order("received_at", { ascending: true });
+
+    const toProcess = freshPending && freshPending.length > 0 ? freshPending : pending;
+    const freshLast = toProcess[toProcess.length - 1];
+    if (freshLast.id !== myId) {
+      // Un message plus récent est arrivé pendant la queue de grâce ;
+      // son handler sera le leader et nous inclura dans son lot.
+      return;
+    }
+
+    const ids = toProcess.map((p) => p.id as number);
     const { error: updErr } = await supabase
       .from("wa_inbox")
       .update({ processed_at: new Date().toISOString() })
@@ -156,7 +181,7 @@ async function handleMessage(
       return;
     }
 
-    const combined = pending.map((p) => (p.text as string).trim()).filter(Boolean).join("\n");
+    const combined = toProcess.map((p) => (p.text as string).trim()).filter(Boolean).join("\n");
     if (!combined) return;
 
     const reply = await askLea(combined, phone);
