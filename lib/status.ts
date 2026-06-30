@@ -25,6 +25,8 @@ export const SOURCE_OPTIONS: [string, string][] = [
   ["tiktok_organic", "TikTok"],
   ["tiktok_ads", "TikTok Ads"],
   ["meta_ads", "Meta Ads"],
+  ["google_ads", "Google Ads"],
+  ["google_organic", "Google (recherche)"],
   ["whatsapp", "WhatsApp"],
   ["email", "Email"],
   ["website", "Site web"],
