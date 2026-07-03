@@ -102,6 +102,7 @@ export function BookingsTable({
       offerName: b.offerName,
       sourceChannel: b.sourceChannel,
       partySize: b.partySize,
+      totalAmount: b.amount,
       status: b.status,
       discountAmount: b.discountAmount,
       discountReason: b.discountReason,

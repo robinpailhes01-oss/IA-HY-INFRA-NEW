@@ -127,6 +127,7 @@ export type BookingUpdate = {
   status: string | null;
   party_size: number | null;
   offer_name: string | null;
+  total_amount?: number | null;
   discount_amount: number | null;
   discount_reason: string | null;
   // Date / horaires : utile pour fixer une date sur une carte cadeau a posteriori.
@@ -138,10 +139,26 @@ export type BookingUpdate = {
 export async function updateBooking(id: string, values: BookingUpdate) {
   const supabase = await createClient();
 
-  // Si on attribue une date à une carte cadeau, balance_due_date doit suivre.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const patch: any = { ...values, updated_at: new Date().toISOString() };
   if (values.date) patch.balance_due_date = values.date;
+
+  // Si le montant total change, recalculer le solde restant dû.
+  if (values.total_amount != null) {
+    const { data: current } = await supabase
+      .from("bookings")
+      .select("deposit_amount, deposit_paid, balance_payments")
+      .eq("id", id)
+      .single();
+    if (current) {
+      const depositPaid = current.deposit_paid ? (current.deposit_amount ?? 0) : 0;
+      const balancePaid = parsePayments(current.balance_payments).reduce(
+        (s: number, p: { amount: number }) => s + p.amount,
+        0,
+      );
+      patch.balance_due = Math.max(0, values.total_amount - depositPaid - balancePaid);
+    }
+  }
 
   const { error } = await supabase
     .from("bookings")

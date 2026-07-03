@@ -40,6 +40,7 @@ export type EditableBooking = {
   offerName: string | null;
   sourceChannel: string | null;
   partySize: number | null;
+  totalAmount: number | null;
   status: string | null;
   discountAmount: number | null;
   discountReason: string | null;
@@ -74,6 +75,7 @@ export function BookingEditDialog({
     status: "",
     party_size: null,
     offer_name: "",
+    total_amount: null,
     discount_amount: null,
     discount_reason: "",
     date: null,
@@ -88,6 +90,7 @@ export function BookingEditDialog({
         status: booking.status ?? "",
         party_size: booking.partySize ?? null,
         offer_name: booking.offerName ?? "",
+        total_amount: booking.totalAmount ?? null,
         discount_amount: booking.discountAmount,
         discount_reason: booking.discountReason ?? "",
         date: booking.date,
@@ -214,7 +217,7 @@ export function BookingEditDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-1.5">
               <Label>Statut</Label>
               <Select
@@ -243,6 +246,18 @@ export function BookingEditDialog({
                 value={form.party_size ?? ""}
                 onChange={(e) =>
                   set("party_size", e.target.value === "" ? null : Number(e.target.value))
+                }
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Montant (€)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="1"
+                value={form.total_amount ?? ""}
+                onChange={(e) =>
+                  set("total_amount", e.target.value === "" ? null : Number(e.target.value))
                 }
               />
             </div>
