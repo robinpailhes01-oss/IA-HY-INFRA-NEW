@@ -33,6 +33,16 @@ const json = (body: unknown, status = 200) =>
 // ── Types ───────────────────────────────────────────────────────────
 type ChatMsg = { from: "client" | "ai" | "human"; text: string; at: string };
 type ApiMessage = { role: "user" | "assistant"; content: unknown };
+type Booking = {
+  date: string;
+  offer_name: string;
+  status: string;
+  start_time: string | null;
+  end_time: string | null;
+  total_amount: number | null;
+  balance_due: number | null;
+  notes: string | null;
+};
 
 // ── Normalisation téléphone (E.164, biais France) ────────────────────
 // Évite les doublons quand un même client est saisi en "06xx xx", "+33…", "33…".
@@ -217,7 +227,7 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 ${JSON.stringify(config, null, 2)}`;
 }
 
-function buildDynamicSystem(lead: Record<string, unknown> | null, nowIso: string): string {
+function buildDynamicSystem(lead: Record<string, unknown> | null, nowIso: string, bookings: Booking[]): string {
   if (!lead) {
     return `Date et heure actuelles : ${nowIso} (Europe/Paris).\nAucune fiche prospect connue pour ce contact (nouveau lead potentiel — pense à create_lead).`;
   }
@@ -236,6 +246,13 @@ function buildDynamicSystem(lead: Record<string, unknown> | null, nowIso: string
   add("offre_visée", lead.interested_offer);
   const statut = lead.status ?? "new";
   const score = lead.score ?? "—";
+
+  const bookingSection = bookings.length > 0
+    ? `\n# Réservations existantes de ce client (NE PAS redemander ces infos)\n${bookings.map((b) =>
+        `  - ${b.date} | ${b.offer_name} | ${b.start_time?.slice(0, 5) ?? "?"}h-${b.end_time?.slice(0, 5) ?? "?"}h | statut: ${b.status} | total: ${b.total_amount ?? "?"}EUR${b.balance_due && Number(b.balance_due) > 0 ? ` | solde dû: ${b.balance_due}EUR` : ""}${b.notes ? ` | notes: ${b.notes}` : ""}`
+      ).join("\n")}\nCe client a déjà réservé. Adapte ton ton en conséquence (client connu, pas prospect). Ne lui pose pas de questions de qualification déjà répondues par la réservation.`
+    : "";
+
   return `Date et heure actuelles : ${nowIso} (Europe/Paris).
 
 # Fiche prospect (id ${lead.id}, statut ${statut}, score ${score})
@@ -245,7 +262,7 @@ ${known.length ? known.map((k) => "  - " + k).join("\n") : "  (aucune info colle
 Infos encore à collecter au fil de la conversation (si pertinent) :
 ${missing.length ? missing.map((m) => "  - " + m).join("\n") : "  (tout est collecté ✓)"}
 
-⚠️ Si le client te donne UNE des infos manquantes ci-dessus, considère-la acquise et passe à l'étape suivante (check_availability, qualify_lead pour la persister, puis recommandation/lien de réservation).`;
+⚠️ Si le client te donne UNE des infos manquantes ci-dessus, considère-la acquise et passe à l'étape suivante (check_availability, qualify_lead pour la persister, puis recommandation/lien de réservation).${bookingSection}`;
 }
 
 // ── Exécution des outils côté Supabase ──────────────────────────────
@@ -584,11 +601,23 @@ Deno.serve(async (req) => {
   }));
   messages.push({ role: "user", content: userText });
 
+  // Réservations existantes du client (contexte pour Léa)
+  let existingBookings: Booking[] = [];
+  if (state.leadId) {
+    const { data: bks } = await supabase
+      .from("bookings")
+      .select("date,offer_name,status,start_time,end_time,total_amount,balance_due,notes")
+      .eq("lead_id", state.leadId)
+      .order("date", { ascending: false })
+      .limit(5);
+    existingBookings = (bks ?? []) as Booking[];
+  }
+
   // System : bloc stable (caché) + bloc dynamique
   const nowIso = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
   const system = [
     { type: "text", text: buildStableSystem(config), cache_control: { type: "ephemeral" } },
-    { type: "text", text: buildDynamicSystem(lead, nowIso) },
+    { type: "text", text: buildDynamicSystem(lead, nowIso, existingBookings) },
   ];
 
   // Boucle tool_use / tool_result

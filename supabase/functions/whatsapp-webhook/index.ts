@@ -35,6 +35,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const LEA_SHARED_SECRET = Deno.env.get("LEA_SHARED_SECRET") ?? "";
 const GRAPH_VERSION = Deno.env.get("GRAPH_API_VERSION") ?? "v21.0";
+// Mettre LEA_PAUSED=true dans les secrets Supabase pour couper toutes les réponses de Léa.
+const LEA_PAUSED = Deno.env.get("LEA_PAUSED") === "true";
 // 15 s : fenêtre large pour regrouper les messages tapés en plusieurs fois.
 // Si le client envoie 3 messages en 20 s, ils arrivent tous dans le même lot.
 const DEBOUNCE_MS = Number(Deno.env.get("WA_DEBOUNCE_MS") ?? "15000");
@@ -183,6 +185,26 @@ async function handleMessage(
 
     const combined = toProcess.map((p) => (p.text as string).trim()).filter(Boolean).join("\n");
     if (!combined) return;
+
+    // Pause globale (LEA_PAUSED=true dans les secrets) ou pause individuelle.
+    if (LEA_PAUSED) {
+      console.log(`[pause] Léa en pause globale — message ignoré pour ${phone}`);
+      return;
+    }
+    const { data: waConv } = await supabase
+      .from("wa_conversations")
+      .select("is_paused, paused_until")
+      .eq("customer_phone", phone)
+      .maybeSingle();
+    if (waConv?.is_paused) {
+      const pausedUntil = waConv.paused_until ? new Date(waConv.paused_until as string) : null;
+      if (!pausedUntil || pausedUntil > new Date()) {
+        console.log(`[pause] Conversation en pause pour ${phone} — message ignoré`);
+        return;
+      }
+      // Délai expiré : reprendre automatiquement.
+      await supabase.from("wa_conversations").update({ is_paused: false, paused_until: null }).eq("customer_phone", phone);
+    }
 
     const reply = await askLea(combined, phone);
     if (reply) await sendWhatsApp(waFrom, reply);
