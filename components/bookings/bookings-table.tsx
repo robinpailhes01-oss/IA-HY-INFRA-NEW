@@ -192,10 +192,9 @@ export function BookingsTable({
                       />
                     )}
                     {!b.sourceChannel && b.status !== "cancelled" && (
-                      <TriangleAlert
-                        className="size-3.5 text-warning"
-                        title="Canal d'acquisition manquant — à renseigner"
-                      />
+                      <span title="Canal d'acquisition manquant — à renseigner">
+                        <TriangleAlert className="size-3.5 text-warning" />
+                      </span>
                     )}
                   </div>
                 </TableCell>
