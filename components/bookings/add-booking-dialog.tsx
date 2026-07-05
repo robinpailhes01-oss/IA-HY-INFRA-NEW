@@ -35,6 +35,8 @@ const OFFER_OPTIONS: { value: string; label: string; type: string }[] = [
   { value: "Sortie privative 6h", label: "Sortie privative 6h", type: "sortie_privative" },
   { value: "Nuit insolite", label: "Nuit insolite", type: "nuit_insolite" },
   { value: "Nuit prestige", label: "Nuit prestige", type: "nuit_prestige" },
+  { value: "E-Foil 1h", label: "E-Foil 1h", type: "efoil" },
+  { value: "E-Foil 2h", label: "E-Foil 2h", type: "efoil" },
   { value: "__autre__", label: "Autre…", type: "sortie_privative" },
 ];
 
