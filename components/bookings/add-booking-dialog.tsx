@@ -131,6 +131,12 @@ export function AddBookingDialog() {
       toast.error("Le montant total doit être supérieur à 0.");
       return;
     }
+    if (!form.source_channel) {
+      toast.error("Le canal d'acquisition est requis.", {
+        description: "Choisissez la source ou « Je ne sais pas ».",
+      });
+      return;
+    }
 
     const payload: BookingCreate = {
       first_name: form.first_name.trim(),
@@ -357,7 +363,7 @@ export function AddBookingDialog() {
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Canal d&apos;acquisition</Label>
+            <Label>Canal d&apos;acquisition *</Label>
             <Select
               value={form.source_channel}
               onValueChange={(v) => set("source_channel", (v as string) ?? "")}

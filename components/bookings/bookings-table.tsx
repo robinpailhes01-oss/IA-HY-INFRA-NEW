@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { BadgeCheck, Gift, Pencil } from "lucide-react";
+import { BadgeCheck, Gift, Pencil, TriangleAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -189,6 +189,12 @@ export function BookingsTable({
                       <BadgeCheck
                         className="size-4 text-emerald-600"
                         aria-label="Contrat signé"
+                      />
+                    )}
+                    {!b.sourceChannel && b.status !== "cancelled" && (
+                      <TriangleAlert
+                        className="size-3.5 text-warning"
+                        title="Canal d'acquisition manquant — à renseigner"
                       />
                     )}
                   </div>

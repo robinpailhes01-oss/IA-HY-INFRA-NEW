@@ -106,6 +106,12 @@ export function BookingEditDialog({
 
   function handleSave() {
     if (!booking) return;
+    if (!form.source_channel) {
+      toast.error("Canal d'acquisition requis", {
+        description: "Choisissez la source ou « Je ne sais pas ».",
+      });
+      return;
+    }
     startTransition(async () => {
       const res = await updateBooking(booking.id, {
         source_channel: form.source_channel || null,
@@ -189,7 +195,7 @@ export function BookingEditDialog({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>D&apos;où nous a-t-il connu ?</Label>
+            <Label>D&apos;où nous a-t-il connu ? *</Label>
             <Select
               value={form.source_channel ?? ""}
               onValueChange={(v) => set("source_channel", (v as string) ?? "")}

@@ -33,6 +33,7 @@ export const SOURCE_OPTIONS: [string, string][] = [
   ["phone", "Téléphone"],
   ["word_of_mouth", "Bouche à oreille"],
   ["other", "Autre"],
+  ["unknown", "Je ne sais pas"],
 ];
 
 const SOURCE_CHANNEL: Record<string, string> = Object.fromEntries(SOURCE_OPTIONS);
