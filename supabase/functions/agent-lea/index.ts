@@ -17,6 +17,10 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // Lien de réservation du site (les résa se font sur le site, pas via Léa).
 const SITE_BOOKING_URL = Deno.env.get("SITE_BOOKING_URL") ?? "";
 const MAX_TOOL_TURNS = 6;
+// Numéro WhatsApp du propriétaire pour les notifications d'escalade.
+const OWNER_PHONE = Deno.env.get("OWNER_PHONE") ?? "";
+const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
+const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -109,10 +113,13 @@ const TOOLS = [
   {
     name: "escalate_to_human",
     description:
-      "Escalade SILENCIEUSE vers l'équipe humaine. À utiliser pour : Nuit Prestige le week-end, demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, ou toute situation ambiguë/sensible. ⚠️ APRÈS cet appel, tu ne dois écrire AUCUN texte au client — sors immédiatement. L'équipe humaine reprend la main et répondra elle-même. La conversation WhatsApp est mise en pause automatiquement.",
+      "Passe la main à l'équipe humaine. À utiliser pour : (1) intérêt pour un ÉVÉNEMENT PUBLIC (soirée DJ, Feux d'Artifice…) — le client veut s'inscrire ou en savoir plus, (2) Nuit Prestige le week-end, (3) demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, situation ambiguë/sensible. La conversation WhatsApp est mise en pause automatiquement. Robin reçoit une notification WhatsApp. Si tu fournis un `final_message`, ce texte sera envoyé au client avant la mise en pause — sinon l'escalade est totalement silencieuse. APRÈS cet appel, n'écris RIEN d'autre : le `final_message` suffit.",
     input_schema: {
       type: "object",
-      properties: { reason: { type: "string", description: "Raison courte de l'escalade (pour l'humain qui prendra le relais)" } },
+      properties: {
+        reason: { type: "string", description: "Raison courte (pour Robin qui reprend la main)" },
+        final_message: { type: "string", description: "Message optionnel à envoyer au client avant la mise en pause. Exemples : 'Super ! Je transmets votre intérêt à l'équipe, on revient vers vous rapidement 😊' pour un événement. Laisser vide pour une escalade totalement silencieuse." },
+      },
       required: ["reason"],
     },
   },
@@ -155,13 +162,15 @@ function buildStableSystem(config: Record<string, unknown>): string {
 - Chaleureuse et SOBRE — pas pompeuse. Vouvoiement. Messages très courts (1-3 phrases MAX), façon SMS pro.
 - **UN SEUL message par réponse.** Jamais plusieurs paragraphes distincts, jamais plusieurs idées empilées les unes après les autres. Si tu as plusieurs choses à dire, choisis LA plus importante pour ce moment de la conversation.
 - **Pas de listes à puces.** Jamais de "• 2h → 400€ / • 3h → 600€…". Si le client demande tous les tarifs, envoie le lien du site et dis-lui de regarder. Une seule formule suffit — pas toute la grille.
-- **Pas de markdown.** Jamais de **gras**, *italique*, `code`, ni # titres dans tes messages. WhatsApp n'affiche pas le markdown : les asterisques et dièses apparaissent tels quels et donnent une impression de bug. Écris du texte brut uniquement.
+- **Pas de markdown.** Jamais de **gras**, *italique*, ni # titres dans tes messages. WhatsApp n'affiche pas le markdown : les asterisques et dièses apparaissent tels quels et donnent une impression de bug. Écris du texte brut uniquement.
 - **Pas d'avertissements ou précisions non demandés** (délai de départ, annulation, etc.). Ces informations se donnent au moment de la confirmation, pas avant. Ne surcharge pas le client de disclaimers pro-actifs.
 - **Pas de "Bonjour" si la conversation a déjà commencé.** "Bonjour" uniquement en tout premier message. Si l'historique montre déjà un échange, enchaîne directement sans re-saluer — sinon ça fait doublon et ça semble robotique.
+- **ZÉRO répétition** : si tu as déjà annoncé une information (date prise, prix, créneau libre), ne la répète JAMAIS dans le message suivant. Le client a lu. Enchaîne directement sur la prochaine étape (proposer une alternative, envoyer le lien…).
+- **Silence quand le client réfléchit** : si le client dit "attendez", "je regarde", "ok", "je vois ça", "un moment"… → ne réponds PAS avec des messages de soutien inutiles ("prenez le temps", "pas de souci", "je suis là"…). C'est du bruit qui surcharge le client. Un seul message de ta part, puis tu attends qu'il revienne avec une vraie demande.
 - Tu ne te présentes JAMAIS comme une IA ou un robot.
 - Tu ne dis JAMAIS "Bienvenue chez Harmonie Yacht, je suis Léa !" ni "Avec plaisir pour organiser ça !". Trop formel, ce n'est pas le ton de la maison.
 - Tu n'auto-corriges JAMAIS le nom de la marque ("Next Yacht" → "Harmonie Yacht"). Tu enchaînes naturellement comme si le client connaissait déjà la maison. Pas de "vous êtes bien chez Harmonie Yacht, au départ de Carnon" — c'est mécanique et froid.
-- Un seul emoji pertinent par message maximum. Préfère : 😊 👋🏼 🌊 ☀️ 🌇 👍🏼
+- **Zéro emoji pour les messages factuels** (disponibilité, date prise, prix, refus). Un seul emoji max uniquement dans les messages d'accueil ou de conclusion chaleureuse. Préfère : 😊 👋🏼 👍🏼. Si tu hésites → pas d'emoji.
 
 # Exemples de TON RÉEL à reproduire (style maison)
 Voici comment l'équipe répond IRL — calque toujours ce ton :
@@ -201,11 +210,22 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 - **Tapas Una Mas** : ne JAMAIS mentionner les tapas au client, ni en argumentaire ni en relance. C'est une attention discrète qu'on réserve uniquement pour les sorties à 2 personnes le soir — surprise faite sur place, pas un argument de vente. Si le client te pose la question des tapas (parce qu'il en a entendu parler), réponds qu'on ne propose pas de restauration à bord mais qu'il peut apporter ce qu'il souhaite (frigos à bord) — n'évoque pas les tapas.
 - N'invente JAMAIS d'information. Si une donnée n'est pas dans ta base de connaissances ci-dessous, dis que tu te renseignes et escalade si besoin.
 - Pas de négociation sur les prix. Applique automatiquement la réduction matinée -10% si départ avant 11h. Pour toute demande de remise, esquive poliment ou propose une offre plus courte.
-- Nuit Prestige le week-end (ven/sam/dim) → escalade humaine obligatoire.
+- Nuit Prestige le week-end (ven/sam/dim) → escalade humaine obligatoire (silencieuse, sans message au client).
+- **Intérêt pour un événement public** (soirée DJ, Feux d'Artifice, brunch en mer…) → dès que le client dit qu'il est intéressé ou veut s'inscrire, appelle l'outil escalate_to_human avec final_message = "Super ! Je transmets votre intérêt à l'équipe, on revient vers vous rapidement 😊". L'équipe gère les inscriptions aux événements — pas toi.
 - Ne mentionne le skipper optionnel QUE si le client le demande explicitement.
 - Mentionne que le retard empiète sur la durée du créneau UNIQUEMENT au moment où tu envoies le lien de réservation (send_booking_link). Pas avant. Pas dans les échanges de qualification.
 - **Ne demande JAMAIS comment le client nous a connu** (Instagram, bouche-à-oreille, etc.). C'est l'équipe humaine qui s'en occupe — pas ton rôle.
-- En cas de doute, de sujet sensible (PMR, météo, demande spéciale) ou hors de tes connaissances → utilise escalate_to_human. ⚠️ APRÈS cet outil, n'écris RIEN au client. Tu sors silencieusement, l'humain reprend la main. NE DIS PAS "je vérifie", "je reviens vers vous", "mon équipe va vous répondre" — tu te tais.
+- En cas de doute, de sujet sensible (PMR, météo, demande spéciale) ou hors de tes connaissances → utilise l'outil escalate_to_human (sans final_message = silence total). ⚠️ APRÈS cet outil, n'écris RIEN au client supplémentaire — le final_message suffit si tu en as fourni un, sinon silence complet.
+
+# Interprétation de check_availability — RÈGLES ABSOLUES
+check_availability retourne deux listes distinctes :
+- db_bookings : réservations confirmées dans la base (sorties privatives, événements publics) — SOURCE DE VÉRITÉ. Un créneau dans db_bookings est DÉFINITIVEMENT pris.
+- gcal_events : entrées du calendrier Google — peuvent être des rappels, notes, anniversaires, événements divers. Ce ne sont PAS forcément des réservations. Ne jamais dire au client qu'une date est prise à cause de gcal_events seul.
+
+Règles :
+1. db_bookings non vide → créneaux bloqués. Annonce précisément les créneaux pris et propose ce qui reste.
+2. db_bookings vide + gcal_events présents → la date est disponible. Traite-la comme libre. Ne mentionne pas le GCal au client.
+3. Tout vide (fully_free: true) → date libre. Dis-le clairement, sans hésitation : "Cette date est disponible !"
 
 # Réservations
 - Tu NE prends PAS les réservations toi-même. Les réservations (acompte) se font sur le site **harmonie-yacht.fr**.
@@ -219,7 +239,7 @@ Voici comment l'équipe répond IRL — calque toujours ce ton :
 - check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
 - send_booking_link : pour partager le lien de réservation du site (jamais inventé).
 - get_active_events : si le client demande des événements / soirées publiques.
-- escalate_to_human : selon les règles ci-dessus.
+- escalate_to_human : selon les règles ci-dessus. Pour un intérêt événement, fournis toujours un final_message court et chaleureux. Pour les cas sensibles (PMR, négo, Nuit Prestige WE), pas de final_message = silence.
 
 ⚠️ **RÈGLE ABSOLUE** : Après CHAQUE appel d'outil (sauf escalate_to_human), tu DOIS écrire un message texte au client. JAMAIS tu ne te tais après un tool : qualify_lead/create_lead/check_availability/send_booking_link/get_active_events/update_lead_status sont des actions silencieuses côté serveur — le client ne voit RIEN d'elles. Il a besoin de ta réponse texte pour avancer. Si tu appelles un tool et que tu sors sans texte, le client reçoit le silence et la conversation meurt. Seule exception : escalate_to_human.
 
@@ -266,11 +286,25 @@ ${missing.length ? missing.map((m) => "  - " + m).join("\n") : "  (tout est coll
 }
 
 // ── Exécution des outils côté Supabase ──────────────────────────────
+async function notifyOwner(reason: string, customerPhone: string | null): Promise<void> {
+  if (!OWNER_PHONE || !WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) return;
+  const body = `🚨 Escalade Léa\n${reason}${customerPhone ? `\nClient : ${customerPhone}` : ""}`;
+  try {
+    await fetch(`https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "content-type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: OWNER_PHONE, type: "text", text: { body } }),
+    });
+  } catch (e) {
+    console.warn("[agent-lea] notifyOwner failed:", e);
+  }
+}
+
 async function runTool(
   supabase: ReturnType<typeof createClient>,
   name: string,
   input: Record<string, unknown>,
-  state: { leadId: string | null; escalated: boolean; phone: string | null; bookingUrl: string },
+  state: { leadId: string | null; escalated: boolean; escalationFinalMessage: string; phone: string | null; bookingUrl: string },
 ): Promise<string> {
   const now = new Date().toISOString();
   switch (name) {
@@ -347,14 +381,14 @@ async function runTool(
     }
     case "escalate_to_human": {
       state.escalated = true;
+      state.escalationFinalMessage = (input.final_message as string) ?? "";
       if (state.leadId) {
         await supabase
           .from("leads")
           .update({ needs_human_intervention: true, updated_at: now })
           .eq("id", state.leadId);
       }
-      // Met aussi la conversation WhatsApp en pause : tant que l'humain n'a pas
-      // repris la main, Léa ne répondra plus aux messages suivants de ce contact.
+      // Met la conversation WhatsApp en pause 24h.
       if (state.phone) {
         const pausedUntil = new Date(Date.now() + 24 * 3_600_000).toISOString();
         await supabase
@@ -362,7 +396,10 @@ async function runTool(
           .update({ is_paused: true, paused_until: pausedUntil })
           .eq("customer_phone", state.phone);
       }
-      return `Escalade silencieuse enregistrée (raison: ${input.reason ?? "—"}). NE RÉPONDS RIEN au client — sors immédiatement sans générer de texte.`;
+      // Notifie Robin par WhatsApp.
+      await notifyOwner(String(input.reason ?? "—"), state.phone);
+      const hasFinal = !!state.escalationFinalMessage;
+      return `Escalade enregistrée (raison: ${input.reason ?? "—"}). ${hasFinal ? `Message final au client : "${state.escalationFinalMessage}"` : "Escalade silencieuse — ne génère AUCUN texte."} Sors immédiatement.`;
     }
     case "get_active_events": {
       const today = now.slice(0, 10);
@@ -417,7 +454,7 @@ async function runTool(
         console.warn("check_availability: GCal indisponible, lecture ignorée.", e);
       }
 
-      const occupied = [
+      const dbBookings = [
         ...(bk ?? []).map((b) => ({
           type: "sortie privative",
           from: (b.start_time as string)?.slice(0, 5),
@@ -430,17 +467,20 @@ async function runTool(
           to: (e.end_time as string)?.slice(0, 5),
           label: e.title,
         })),
-        ...gcalOccupied,
       ];
 
+      // db_bookings = réservations confirmées (source de vérité, créneaux vraiment bloqués).
+      // gcal_events = entrées du calendrier Google (rappels, notes diverses — NON bloquants par défaut).
       return JSON.stringify({
         date,
-        fully_free: occupied.length === 0,
-        occupied,
-        note:
-          occupied.length === 0
-            ? "Aucun créneau réservé ce jour — le bateau est disponible."
-            : "Créneaux déjà pris ci-dessus. Le reste de la journée peut rester disponible (un seul bateau).",
+        fully_free: dbBookings.length === 0,
+        db_bookings: dbBookings,
+        gcal_events: gcalOccupied,
+        note: dbBookings.length === 0 && gcalOccupied.length === 0
+          ? "Aucune réservation ce jour — le bateau est libre."
+          : dbBookings.length === 0
+          ? `Aucune réservation confirmée ce jour (le bateau est disponible). Remarque GCal uniquement : ${gcalOccupied.map((e) => `${e.label} (${e.from}-${e.to})`).join(", ")} — ce ne sont pas des réservations, ne les mentionne pas au client.`
+          : `Créneaux pris (source DB) : ${dbBookings.map((b) => `${b.from}-${b.to} (${b.label})`).join(", ")}. Le reste de la journée peut rester libre.`,
       });
     }
     case "send_booking_link": {
@@ -564,6 +604,7 @@ Deno.serve(async (req) => {
   const state = {
     leadId: (lead?.id as string) ?? null,
     escalated: false,
+    escalationFinalMessage: "",
     phone: normalizedPhone ?? (lead?.phone as string) ?? null,
     bookingUrl: SITE_BOOKING_URL || ((config.faq as Record<string, any>)?.booking_process?.deposit_link ?? ""),
   };
@@ -671,8 +712,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Force-clear sur escalade silencieuse : le client ne doit recevoir AUCUN message.
-  if (state.escalated) reply = "";
+  // Sur escalade : utilise le message final fourni par Léa, ou vide (silence total).
+  if (state.escalated) reply = state.escalationFinalMessage || "";
 
   // Filet anti-leak : Léa génère parfois des notes méta entre parenthèses
   // quand elle juge qu'aucune réponse n'est nécessaire (typiquement après
