@@ -69,7 +69,7 @@ export function EventBookingsDialog({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [tab, setTab] = useState<"list" | "add">("list");
+  const [tab, setTab] = useState<"list" | "add">(bookings.length === 0 ? "add" : "list");
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
