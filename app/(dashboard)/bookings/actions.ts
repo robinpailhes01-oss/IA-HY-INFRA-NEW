@@ -179,6 +179,28 @@ export async function updateBooking(id: string, values: BookingUpdate) {
   return { ok: true as const, error: null };
 }
 
+/**
+ * Annule une réservation : passe le statut à "cancelled". Le trigger Postgres
+ * `trg_bookings_sync_gcal` déclenche alors la suppression de l'événement Google
+ * Agenda (la ligne est conservée en base pour l'historique / la comptabilité).
+ * La réservation disparaît des listes actives (filtrées sur status ≠ cancelled).
+ */
+export async function cancelBooking(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/bookings");
+  revalidatePath("/marketing");
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null };
+}
+
 export async function markContractSigned(bookingId: string, signerName: string) {
   const name = signerName.trim();
   if (!name) return { ok: false as const, error: "Nom du signataire requis" };

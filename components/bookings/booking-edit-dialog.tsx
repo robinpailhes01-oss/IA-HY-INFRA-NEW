@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  cancelBooking,
   updateBooking,
   type BookingUpdate,
 } from "@/app/(dashboard)/bookings/actions";
@@ -70,6 +71,7 @@ export function BookingEditDialog({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [form, setForm] = useState<BookingUpdate>({
     source_channel: "",
     status: "",
@@ -85,6 +87,7 @@ export function BookingEditDialog({
 
   useEffect(() => {
     if (booking && open) {
+      setConfirmDelete(false);
       setForm({
         source_channel: booking.sourceChannel ?? "",
         status: booking.status ?? "",
@@ -129,6 +132,23 @@ export function BookingEditDialog({
         return;
       }
       toast.success("Réservation mise à jour");
+      onOpenChange(false);
+      router.refresh();
+    });
+  }
+
+  function handleDelete() {
+    if (!booking) return;
+    startTransition(async () => {
+      const res = await cancelBooking(booking.id);
+      if (!res.ok) {
+        toast.error("Échec de la suppression", { description: res.error ?? undefined });
+        return;
+      }
+      toast.success("Réservation supprimée", {
+        description: "Retirée de Google Agenda.",
+      });
+      setConfirmDelete(false);
       onOpenChange(false);
       router.refresh();
     });
@@ -299,21 +319,43 @@ export function BookingEditDialog({
           </div>
         </div>
 
-        <DialogFooter className="sm:justify-between">
-          {booking ? (
-            <Link
-              href={`/contrats/${booking.id}`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <FileText className="size-4" />
-              Contrat de location
-            </Link>
-          ) : (
-            <span />
-          )}
+        <DialogFooter className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            {booking && (
+              <Link
+                href={`/contrats/${booking.id}`}
+                target="_blank"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <FileText className="size-4" />
+                Contrat
+              </Link>
+            )}
+            {booking && !confirmDelete && (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center gap-1.5 text-sm text-destructive transition-colors hover:underline"
+              >
+                <Trash2 className="size-4" />
+                Supprimer
+              </button>
+            )}
+            {booking && confirmDelete && (
+              <span className="inline-flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Confirmer&nbsp;?</span>
+                <Button size="sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+                  {pending && <Loader2 className="animate-spin" />}
+                  Oui, supprimer
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={pending}>
+                  Non
+                </Button>
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
-            <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
+            <DialogClose render={<Button variant="outline" />}>Fermer</DialogClose>
             <Button onClick={handleSave} disabled={pending}>
               {pending && <Loader2 className="animate-spin" />}
               Enregistrer

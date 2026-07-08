@@ -92,7 +92,10 @@ export default async function BookingsPage() {
       sourceChannel: b.source_channel,
     }));
 
-  const tableItems: BookingTableItem[] = bookings.map((b) => ({
+  // Les réservations annulées disparaissent de la liste (trace conservée en base).
+  const tableItems: BookingTableItem[] = bookings
+    .filter((b) => b.status !== "cancelled")
+    .map((b) => ({
     id: b.id,
     date: b.date,
     startTime: b.start_time,
@@ -124,8 +127,8 @@ export default async function BookingsPage() {
             Réservations
           </h1>
           <p className="text-sm text-muted-foreground">
-            {bookings.length} sortie{bookings.length > 1 ? "s" : ""} enregistrée
-            {bookings.length > 1 ? "s" : ""} · clique sur une ligne pour modifier
+            {tableItems.length} sortie{tableItems.length > 1 ? "s" : ""} enregistrée
+            {tableItems.length > 1 ? "s" : ""} · clique sur une ligne pour modifier
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
