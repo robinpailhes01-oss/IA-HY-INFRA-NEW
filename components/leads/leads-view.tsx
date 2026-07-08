@@ -22,6 +22,7 @@ import {
   updateLeadStatus,
 } from "@/app/(dashboard)/leads/actions";
 import { LeadsKanban } from "@/components/leads/leads-kanban";
+import { LeadsPriority } from "@/components/leads/leads-priority";
 import { LeadsTableView } from "@/components/leads/leads-table-view";
 import { LeadsFilters } from "@/components/leads/leads-filters";
 import { LeadsFiltersMobile } from "@/components/leads/leads-filters-mobile";
@@ -70,11 +71,14 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     minScore: Number(search.get("score") ?? 0) || 0,
     followUpOnly: search.get("relance") === "1",
   }));
-  const [view, setView] = useState<ViewMode>(() =>
-    search.get("view") === "table" ? "table" : "kanban",
-  );
+  const [view, setView] = useState<ViewMode>(() => {
+    const v = search.get("view");
+    if (v === "table" || v === "kanban") return v;
+    return "priority";
+  });
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTab, setDetailTab] = useState<string>("infos");
   const [createOpen, setCreateOpen] = useState(false);
 
   // ── Realtime ────────────────────────────────────────────────
@@ -118,7 +122,7 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     if (f.offer) params.set("offre", f.offer);
     if (f.minScore > 0) params.set("score", String(f.minScore));
     if (f.followUpOnly) params.set("relance", "1");
-    if (v === "table") params.set("view", v);
+    if (v !== "priority") params.set("view", v);
     const qs = params.toString();
     router.replace(qs ? `/leads?${qs}` : "/leads", { scroll: false });
   }, 400);
@@ -157,8 +161,9 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     });
   }, []);
 
-  function openLead(lead: Lead) {
+  function openLead(lead: Lead, tab: string = "infos") {
     setSelectedLead(lead);
+    setDetailTab(tab);
     setDetailOpen(true);
   }
 
@@ -221,8 +226,12 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
           <p className="text-sm text-muted-foreground">
-            {leads.length} prospect{leads.length > 1 ? "s" : ""} dans le pipeline · glisse une carte
-            pour changer son statut
+            {leads.length} prospect{leads.length > 1 ? "s" : ""} dans le pipeline
+            {view === "priority"
+              ? " · triés par urgence, les plus chauds en haut"
+              : view === "kanban"
+                ? " · glisse une carte pour changer son statut"
+                : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -254,6 +263,8 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
             ) : undefined
           }
         />
+      ) : view === "priority" ? (
+        <LeadsPriority leads={filtered} now={now} onOpen={openLead} />
       ) : view === "kanban" ? (
         <LeadsKanban leads={filtered} now={now} onOpen={openLead} onMove={moveLead} />
       ) : (
@@ -272,6 +283,7 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
         onOpenChange={setDetailOpen}
         onPatch={patchLead}
         onRemove={removeLead}
+        initialTab={detailTab}
       />
       <NewLeadSheet open={createOpen} onOpenChange={setCreateOpen} onCreated={handleCreated} />
       <NewLeadFab onClick={() => setCreateOpen(true)} />

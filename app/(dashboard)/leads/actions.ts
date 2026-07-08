@@ -249,14 +249,43 @@ export async function getConversations(leadId: string): Promise<Result<Conversat
   return ok(rows);
 }
 
+/** Résultat d'un envoi manuel : les messages + si le message a réellement quitté le CRM. */
+export type SendOutcome = {
+  messages: ConversationMessage[];
+  /** true si le message a réellement été transmis (WhatsApp/Baileys ou email/Resend). */
+  delivered: boolean;
+  channel: string | null;
+};
+
+/** Envoie un message WhatsApp via le service Baileys (Railway). */
+async function sendViaBaileys(phone: string, text: string): Promise<boolean> {
+  const base = process.env.BAILEYS_SERVICE_URL;
+  if (!base) return false;
+  try {
+    const res = await fetch(`${base}/send`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phone, message: text }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("Baileys send error", e);
+    return false;
+  }
+}
+
 /**
- * Enregistre un message manuel (équipe humaine) dans la conversation.
- * Pour les leads email : envoie aussi un vrai email via Resend.
+ * Enregistre un message manuel (équipe humaine) dans la conversation et le
+ * transmet réellement au client :
+ *   - canal whatsapp → service Baileys (si BAILEYS_SERVICE_URL configuré)
+ *   - canal email    → Resend (avec threading In-Reply-To)
+ * Répondre depuis le dashboard = « reprendre la main » : Léa est mise en pause
+ * sur cette conversation et l'indicateur d'escalade est levé.
  */
 export async function sendMessage(
   leadId: string,
   text: string,
-): Promise<Result<ConversationMessage[]>> {
+): Promise<Result<SendOutcome>> {
   const trimmed = text.trim();
   if (!trimmed) return fail("Message vide");
 
@@ -275,11 +304,12 @@ export async function sendMessage(
       .maybeSingle(),
     supabase
       .from("leads")
-      .select("source_channel, email, first_name, last_name")
+      .select("source_channel, email, phone, first_name, last_name")
       .eq("id", leadId)
       .single(),
   ]);
 
+  const channel = (existing?.channel ?? lead?.source_channel) ?? null;
   let messages: ConversationMessage[];
 
   if (existing) {
@@ -296,7 +326,7 @@ export async function sendMessage(
     messages = [message];
     const { error } = await supabase.from("conversations").insert({
       lead_id: leadId,
-      channel: lead?.source_channel ?? null,
+      channel,
       messages: messages as unknown as never,
       created_at: now,
       updated_at: now,
@@ -304,8 +334,16 @@ export async function sendMessage(
     if (error) return fail(error.message);
   }
 
+  // Indique si le message a réellement quitté le CRM (Baileys / Resend).
+  let delivered = false;
+
+  // ── Envoi WhatsApp réel via Baileys ───────────────────────────────
+  if (channel === "whatsapp" && lead?.phone) {
+    delivered = await sendViaBaileys(lead.phone, trimmed);
+  }
+
   // ── Envoi email réel si le canal est "email" ──────────────────────
-  const isEmail = (existing?.channel ?? lead?.source_channel) === "email";
+  const isEmail = channel === "email";
   if (isEmail && lead?.email) {
     const resendKey = process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM ?? "Harmonie Yacht <reservations@harmonie-yacht.fr>";
@@ -346,6 +384,7 @@ export async function sendMessage(
         });
 
         if (res.ok) {
+          delivered = true;
           const data = await res.json() as { id?: string };
           if (data.id && existing) {
             const newMsgId = `<${data.id}@resend.dev>`;
@@ -363,13 +402,26 @@ export async function sendMessage(
     }
   }
 
+  // ── Reprendre la main : mettre Léa en pause + lever l'escalade ─────
+  // Répondre depuis le dashboard signifie que l'humain gère la conversation.
+  // On coupe les réponses automatiques de Léa pour 8 h (reprise auto ensuite)
+  // et on retire l'indicateur d'escalade pour sortir le lead de « À reprendre ».
+  if (channel === "whatsapp" && lead?.phone) {
+    const pausedUntil = new Date(Date.now() + 8 * 3_600_000).toISOString();
+    await supabase
+      .from("wa_conversations")
+      .update({ is_paused: true, paused_until: pausedUntil })
+      .eq("customer_phone", lead.phone);
+  }
+
   await supabase
     .from("leads")
-    .update(touch({ last_interaction_at: now }))
+    .update(touch({ last_interaction_at: now, needs_human_intervention: false }))
     .eq("id", leadId);
 
   revalidatePath("/leads");
-  return ok(messages);
+  revalidatePath("/");
+  return ok({ messages, delivered, channel });
 }
 
 /** Actions groupées (vue tableau). */

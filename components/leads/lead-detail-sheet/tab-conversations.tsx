@@ -70,9 +70,7 @@ export function TabConversations({
       toast.error("Échec de l'envoi", { description: res.error });
       return;
     }
-    if (lead.source_channel === "email") {
-      toast.success("Email envoyé");
-    }
+    const { messages, delivered, channel } = res.data;
     setConversations((prev) => {
       if (prev.length === 0) {
         return [
@@ -81,19 +79,32 @@ export function TabConversations({
             channel: lead.source_channel,
             summary: null,
             outcome: null,
-            messages: res.data,
+            messages,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
         ];
       }
       const next = [...prev];
-      next[next.length - 1] = { ...next[next.length - 1], messages: res.data };
+      next[next.length - 1] = { ...next[next.length - 1], messages };
       return next;
     });
-    onPatch({ last_interaction_at: new Date().toISOString() });
+    // Répondre = reprendre la main : Léa est mise en pause et l'escalade levée.
+    onPatch({ last_interaction_at: new Date().toISOString(), needs_human_intervention: false });
     setDraft("");
-    toast.success("Message enregistré (mock)");
+
+    if (delivered && channel === "whatsapp") {
+      toast.success("Message WhatsApp envoyé", { description: "Léa est en pause sur cette conversation." });
+    } else if (delivered && channel === "email") {
+      toast.success("Email envoyé");
+    } else {
+      toast.warning("Message enregistré, non transmis", {
+        description:
+          channel === "whatsapp"
+            ? "Service WhatsApp non configuré — envoyez-le manuellement."
+            : "Ce canal n'est pas encore branché à l'envoi automatique.",
+      });
+    }
   }
 
   return (

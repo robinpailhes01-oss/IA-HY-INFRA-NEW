@@ -1,10 +1,10 @@
 "use client";
 
-import { LayoutGrid, Table2 } from "lucide-react";
+import { LayoutGrid, ListChecks, Table2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type ViewMode = "kanban" | "table";
+export type ViewMode = "priority" | "kanban" | "table";
 
 export function ViewToggle({
   view,
@@ -17,6 +17,7 @@ export function ViewToggle({
     <div className="inline-flex items-center rounded-lg border border-border bg-background p-0.5">
       {(
         [
+          { mode: "priority" as const, label: "Priorité", Icon: ListChecks },
           { mode: "kanban" as const, label: "Kanban", Icon: LayoutGrid },
           { mode: "table" as const, label: "Tableau", Icon: Table2 },
         ]

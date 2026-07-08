@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -24,14 +24,22 @@ export function LeadDetailSheet({
   onOpenChange,
   onPatch,
   onRemove,
+  initialTab,
 }: {
   lead: Lead | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPatch: (id: string, patch: Partial<Lead>) => void;
   onRemove: (id: string) => void;
+  /** Onglet à afficher à l'ouverture (ex. "conversations" pour répondre). */
+  initialTab?: string;
 }) {
   const [tab, setTab] = useState("infos");
+
+  // À chaque (ré)ouverture ou changement de lead, on repositionne l'onglet.
+  useEffect(() => {
+    if (open) setTab(initialTab ?? "infos");
+  }, [open, lead?.id, initialTab]);
 
   function handleStatus(status: LeadStatus) {
     if (!lead) return;

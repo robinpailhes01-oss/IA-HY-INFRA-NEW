@@ -93,6 +93,121 @@ export function needsFollowUp(lead: Lead, now: number): boolean {
   return now - new Date(ref).getTime() > FOLLOW_UP_THRESHOLD_MS;
 }
 
+// ── Priorité (vue « Priorité ») ─────────────────────────────────────
+// Regroupe chaque lead actionnable dans un « seau » d'urgence, du plus
+// urgent au moins urgent. Les leads réservés/perdus ne sont pas actionnables
+// et sont exclus de la vue Priorité (visibles dans Kanban/Tableau).
+export type PriorityBucket = "takeover" | "overdue" | "hot" | "new" | "active";
+
+export const PRIORITY_BUCKETS: PriorityBucket[] = [
+  "takeover",
+  "overdue",
+  "hot",
+  "new",
+  "active",
+];
+
+type PriorityMeta = {
+  label: string;
+  hint: string;
+  /** Accent texte. */
+  accent: string;
+  /** Point/badge de fond. */
+  dot: string;
+  ring: string;
+};
+
+export const PRIORITY_META: Record<PriorityBucket, PriorityMeta> = {
+  takeover: {
+    label: "À reprendre",
+    hint: "Léa a escaladé — reprenez la main",
+    accent: "text-destructive",
+    dot: "bg-destructive",
+    ring: "border-destructive/30 bg-destructive/5",
+  },
+  overdue: {
+    label: "Relances à faire",
+    hint: "Sans réponse depuis +48 h",
+    accent: "text-warning",
+    dot: "bg-warning",
+    ring: "border-warning/30 bg-warning/5",
+  },
+  hot: {
+    label: "Leads chauds",
+    hint: "Score élevé — à traiter vite",
+    accent: "text-gold",
+    dot: "bg-gold",
+    ring: "border-gold/30 bg-gold/5",
+  },
+  new: {
+    label: "Nouveaux",
+    hint: "Jamais contactés",
+    accent: "text-info",
+    dot: "bg-info",
+    ring: "border-info/30 bg-info/5",
+  },
+  active: {
+    label: "En cours",
+    hint: "Suivi en cours",
+    accent: "text-primary",
+    dot: "bg-primary",
+    ring: "border-border bg-card/40",
+  },
+};
+
+/** Retourne le seau de priorité d'un lead, ou null s'il n'est pas actionnable. */
+export function priorityBucket(lead: Lead, now: number): PriorityBucket | null {
+  if (lead.status === "booked" || lead.status === "lost") return null;
+  if (lead.needs_human_intervention) return "takeover";
+  if (needsFollowUp(lead, now)) return "overdue";
+  if ((lead.score ?? 0) >= 7) return "hot";
+  if (lead.status === "new") return "new";
+  return "active";
+}
+
+/**
+ * Clé de tri décroissante à l'intérieur d'un seau : score prioritaire, puis
+ * ancienneté de la dernière interaction (le plus « froid » remonte).
+ */
+export function prioritySortKey(lead: Lead, now: number): number {
+  const ref = lead.last_interaction_at ?? lead.created_at;
+  const ageMs = ref ? Math.max(0, now - new Date(ref).getTime()) : 0;
+  return (lead.score ?? 0) * 1e12 + ageMs;
+}
+
+/** Courte raison affichée sur la ligne (chip). */
+export function priorityReason(lead: Lead, now: number): string {
+  const bucket = priorityBucket(lead, now);
+  if (bucket === "takeover") return "Escaladé par Léa";
+  if (bucket === "overdue") {
+    const ref = lead.last_interaction_at ?? lead.created_at;
+    return ref ? `Silence ${relativeDays(ref, now)}` : "Relance due";
+  }
+  if (bucket === "hot") return `Score ${lead.score}`;
+  if (bucket === "new") return "À contacter";
+  return STATUS_LABEL[lead.status ?? ""] ?? "Suivi";
+}
+
+/** Regroupe les leads par seau, triés, dans l'ordre PRIORITY_BUCKETS. */
+export function groupByPriority(
+  leads: Lead[],
+  now: number,
+): Array<{ bucket: PriorityBucket; leads: Lead[] }> {
+  const map = new Map<PriorityBucket, Lead[]>();
+  for (const lead of leads) {
+    const bucket = priorityBucket(lead, now);
+    if (!bucket) continue;
+    if (!map.has(bucket)) map.set(bucket, []);
+    map.get(bucket)!.push(lead);
+  }
+  return PRIORITY_BUCKETS.filter((b) => map.has(b)).map((bucket) => ({
+    bucket,
+    leads: map
+      .get(bucket)!
+      .sort((a, b) => prioritySortKey(b, now) - prioritySortKey(a, now)),
+  }));
+}
+
 /** Classe de couleur du badge de score (≥7 vert · 5-6 or · 3-4 orange · <3 rouge). */
 export function scoreClasses(score: number | null): string {
   if (score == null) return "bg-muted text-muted-foreground";
