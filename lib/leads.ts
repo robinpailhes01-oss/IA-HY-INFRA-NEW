@@ -166,13 +166,15 @@ export function priorityBucket(lead: Lead, now: number): PriorityBucket | null {
 }
 
 /**
- * Clé de tri décroissante à l'intérieur d'un seau : score prioritaire, puis
- * ancienneté de la dernière interaction (le plus « froid » remonte).
+ * Clé de tri décroissante à l'intérieur d'un seau : ancienneté du dernier
+ * contact d'abord (le plus « froid » / à relancer remonte), le score ne
+ * sert que de départage à égalité de date.
  */
 export function prioritySortKey(lead: Lead, now: number): number {
   const ref = lead.last_interaction_at ?? lead.created_at;
   const ageMs = ref ? Math.max(0, now - new Date(ref).getTime()) : 0;
-  return (lead.score ?? 0) * 1e12 + ageMs;
+  // Ancienneté dominante (jours) ; score en centièmes pour départager.
+  return Math.floor(ageMs / 60000) + (lead.score ?? 0) / 100;
 }
 
 /** Courte raison affichée sur la ligne (chip). */

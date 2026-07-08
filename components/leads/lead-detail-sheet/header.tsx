@@ -1,8 +1,9 @@
 "use client";
 
-import { CalendarDays, Phone, Users } from "lucide-react";
+import { CalendarDays, Mail, MessageCircle, Phone, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { ChannelLogo } from "@/components/leads/channel-logo";
 import {
   LEAD_COLUMNS,
   STATUS_LABEL,
@@ -29,7 +30,8 @@ export function LeadDetailHeader({
   onStatusChange: (status: LeadStatus) => void;
 }) {
   const channel = channelMeta(lead.source_channel);
-  const ChannelIcon = channel.Icon;
+  const waDigits = lead.phone?.replace(/\D/g, "") ?? "";
+  const isWhatsapp = lead.source_channel === "whatsapp";
 
   return (
     <div className="flex flex-col gap-3">
@@ -51,14 +53,38 @@ export function LeadDetailHeader({
           )}
           <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
-              <ChannelIcon className="size-3" />
+              <ChannelLogo channel={lead.source_channel} className="size-3" />
               {channel.label}
             </span>
             {lead.phone && (
-              <span className="inline-flex items-center gap-1">
-                <Phone className="size-3" />
-                {lead.phone}
-              </span>
+              isWhatsapp ? (
+                <a
+                  href={`https://wa.me/${waDigits}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md bg-success/10 px-1.5 py-0.5 font-medium text-success transition-colors hover:bg-success/20"
+                >
+                  <MessageCircle className="size-3" />
+                  Ouvrir la conversation
+                </a>
+              ) : (
+                <a
+                  href={`tel:${lead.phone}`}
+                  className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                >
+                  <Phone className="size-3" />
+                  {lead.phone}
+                </a>
+              )
+            )}
+            {lead.email && (
+              <a
+                href={`mailto:${lead.email}`}
+                className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+              >
+                <Mail className="size-3" />
+                {lead.email}
+              </a>
             )}
           </div>
         </div>

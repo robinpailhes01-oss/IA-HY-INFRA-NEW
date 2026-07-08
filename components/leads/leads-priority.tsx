@@ -4,6 +4,7 @@ import { CalendarDays, MessageSquareReply, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ChannelLogo } from "@/components/leads/channel-logo";
 import {
   channelMeta,
   fullName,
@@ -95,7 +96,6 @@ function PriorityRow({
   first: boolean;
 }) {
   const channel = channelMeta(lead.source_channel);
-  const ChannelIcon = channel.Icon;
   const name = fullName(lead.first_name, lead.last_name, lead.whatsapp_name);
 
   return (
@@ -106,26 +106,26 @@ function PriorityRow({
         !first && "border-t border-border/60",
       )}
     >
-      <span
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-          channel.className,
-        )}
-        aria-hidden
-      >
-        {initials(lead.first_name, lead.last_name, lead.whatsapp_name)}
-      </span>
+      <div className="relative shrink-0">
+        <span
+          className={cn(
+            "flex size-9 items-center justify-center rounded-full text-xs font-semibold",
+            channel.className,
+          )}
+          aria-hidden
+        >
+          {initials(lead.first_name, lead.last_name, lead.whatsapp_name)}
+        </span>
+        <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
+          <ChannelLogo channel={lead.source_channel} className="size-2.5" />
+        </span>
+      </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-foreground">{name}</span>
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
-              channel.className,
-            )}
-          >
-            <ChannelIcon className="size-2.5" />
+          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <ChannelLogo channel={lead.source_channel} className="size-2.5" />
             <span className="hidden sm:inline">{channel.label}</span>
           </span>
         </div>
