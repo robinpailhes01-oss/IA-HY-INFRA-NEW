@@ -12,10 +12,19 @@ import {
   EMPTY_FILTERS,
   filterLeads,
   filtersActive,
+  PRIORITY_SORTS,
   type Lead,
   type LeadFilters,
   type LeadStatus,
+  type PrioritySort,
 } from "@/lib/leads";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   bulkArchive,
   bulkUpdateStatus,
@@ -76,6 +85,10 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     if (v === "table" || v === "kanban") return v;
     return "priority";
   });
+  const [prioritySort, setPrioritySort] = useState<PrioritySort>(() => {
+    const t = search.get("tri");
+    return t === "contact_new" || t === "score" || t === "desired_date" ? t : "contact_old";
+  });
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<string>("infos");
@@ -115,7 +128,7 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
 
   // ── URL sync (shareable) ────────────────────────────────────
   const mounted = useRef(false);
-  const syncUrl = useDebouncedCallback((f: LeadFilters, v: ViewMode) => {
+  const syncUrl = useDebouncedCallback((f: LeadFilters, v: ViewMode, sort: PrioritySort) => {
     const params = new URLSearchParams();
     if (f.q.trim()) params.set("q", f.q.trim());
     if (f.channels.length) params.set("canal", f.channels.join(","));
@@ -123,14 +136,15 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     if (f.minScore > 0) params.set("score", String(f.minScore));
     if (f.followUpOnly) params.set("relance", "1");
     if (v !== "priority") params.set("view", v);
+    if (v === "priority" && sort !== "contact_old") params.set("tri", sort);
     const qs = params.toString();
     router.replace(qs ? `/leads?${qs}` : "/leads", { scroll: false });
   }, 400);
 
   useEffect(() => {
-    if (mounted.current) syncUrl(filters, view);
+    if (mounted.current) syncUrl(filters, view, prioritySort);
     else mounted.current = true;
-  }, [filters, view, syncUrl]);
+  }, [filters, view, prioritySort, syncUrl]);
 
   // ── Optimistic mutations ────────────────────────────────────
   const patchLead = useCallback((id: string, patch: Partial<Lead>) => {
@@ -234,7 +248,23 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
                 : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {view === "priority" && (
+            <Select value={prioritySort} onValueChange={(v) => setPrioritySort(v as PrioritySort)}>
+              <SelectTrigger size="sm" className="w-auto">
+                <SelectValue>
+                  {(v) => PRIORITY_SORTS.find((s) => s.value === v)?.label ?? "Trier"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORITY_SORTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <ViewToggle view={view} onChange={setView} />
           <Button onClick={() => setCreateOpen(true)} className="hidden md:inline-flex">
             <Plus />
@@ -264,7 +294,7 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
           }
         />
       ) : view === "priority" ? (
-        <LeadsPriority leads={filtered} now={now} onOpen={openLead} />
+        <LeadsPriority leads={filtered} now={now} onOpen={openLead} sort={prioritySort} />
       ) : view === "kanban" ? (
         <LeadsKanban leads={filtered} now={now} onOpen={openLead} onMove={moveLead} />
       ) : (

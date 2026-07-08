@@ -165,16 +165,42 @@ export function priorityBucket(lead: Lead, now: number): PriorityBucket | null {
   return "active";
 }
 
-/**
- * Clé de tri décroissante à l'intérieur d'un seau : ancienneté du dernier
- * contact d'abord (le plus « froid » / à relancer remonte), le score ne
- * sert que de départage à égalité de date.
- */
-export function prioritySortKey(lead: Lead, now: number): number {
+/** Modes de tri proposés dans la vue Priorité. */
+export type PrioritySort = "contact_old" | "contact_new" | "score" | "desired_date";
+
+export const PRIORITY_SORTS: Array<{ value: PrioritySort; label: string }> = [
+  { value: "contact_old", label: "Dernier contact : plus ancien" },
+  { value: "contact_new", label: "Dernier contact : plus récent" },
+  { value: "score", label: "Score : plus chaud" },
+  { value: "desired_date", label: "Date souhaitée : plus proche" },
+];
+
+/** Ancienneté (ms) du dernier contact d'un lead. */
+function contactAgeMs(lead: Lead, now: number): number {
   const ref = lead.last_interaction_at ?? lead.created_at;
-  const ageMs = ref ? Math.max(0, now - new Date(ref).getTime()) : 0;
-  // Ancienneté dominante (jours) ; score en centièmes pour départager.
-  return Math.floor(ageMs / 60000) + (lead.score ?? 0) / 100;
+  return ref ? Math.max(0, now - new Date(ref).getTime()) : 0;
+}
+
+/** Comparateur de tri intra-seau selon le mode choisi. */
+export function comparePriority(a: Lead, b: Lead, now: number, sort: PrioritySort): number {
+  switch (sort) {
+    case "contact_new":
+      // Le plus récemment contacté d'abord.
+      return contactAgeMs(a, now) - contactAgeMs(b, now);
+    case "score":
+      // Le plus chaud d'abord, ancienneté en départage.
+      return (b.score ?? 0) - (a.score ?? 0) || contactAgeMs(b, now) - contactAgeMs(a, now);
+    case "desired_date": {
+      // Date souhaitée la plus proche d'abord ; sans date → en dernier.
+      const da = a.desired_date ?? "9999-12-31";
+      const db = b.desired_date ?? "9999-12-31";
+      return da.localeCompare(db);
+    }
+    case "contact_old":
+    default:
+      // Le plus « froid » / à relancer d'abord (dernier contact le plus ancien).
+      return contactAgeMs(b, now) - contactAgeMs(a, now);
+  }
 }
 
 /** Courte raison affichée sur la ligne (chip). */
@@ -190,10 +216,11 @@ export function priorityReason(lead: Lead, now: number): string {
   return STATUS_LABEL[lead.status ?? ""] ?? "Suivi";
 }
 
-/** Regroupe les leads par seau, triés, dans l'ordre PRIORITY_BUCKETS. */
+/** Regroupe les leads par seau, triés selon `sort`, dans l'ordre PRIORITY_BUCKETS. */
 export function groupByPriority(
   leads: Lead[],
   now: number,
+  sort: PrioritySort = "contact_old",
 ): Array<{ bucket: PriorityBucket; leads: Lead[] }> {
   const map = new Map<PriorityBucket, Lead[]>();
   for (const lead of leads) {
@@ -204,9 +231,7 @@ export function groupByPriority(
   }
   return PRIORITY_BUCKETS.filter((b) => map.has(b)).map((bucket) => ({
     bucket,
-    leads: map
-      .get(bucket)!
-      .sort((a, b) => prioritySortKey(b, now) - prioritySortKey(a, now)),
+    leads: map.get(bucket)!.sort((a, b) => comparePriority(a, b, now, sort)),
   }));
 }
 

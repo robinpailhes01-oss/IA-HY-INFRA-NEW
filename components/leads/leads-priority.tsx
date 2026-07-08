@@ -15,6 +15,7 @@ import {
   relativeDays,
   scoreClasses,
   type Lead,
+  type PrioritySort,
 } from "@/lib/leads";
 
 /**
@@ -26,13 +27,15 @@ export function LeadsPriority({
   leads,
   now,
   onOpen,
+  sort = "contact_old",
 }: {
   leads: Lead[];
   now: number;
   /** tab optionnel : "conversations" pour répondre directement. */
   onOpen: (lead: Lead, tab?: string) => void;
+  sort?: PrioritySort;
 }) {
-  const groups = groupByPriority(leads, now);
+  const groups = groupByPriority(leads, now, sort);
 
   if (groups.length === 0) {
     return (

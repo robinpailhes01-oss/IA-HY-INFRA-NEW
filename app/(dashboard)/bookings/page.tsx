@@ -11,6 +11,7 @@ import {
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { BalanceAgenda } from "@/components/bookings/balance-agenda";
 import type { SettleTarget } from "@/components/bookings/settle-balance-dialog";
+import type { EditableBooking } from "@/components/bookings/booking-edit-dialog";
 import {
   BookingsTable,
   type BookingTableItem,
@@ -119,6 +120,31 @@ export default async function BookingsPage() {
     giftCardRecipientName: b.gift_card_recipient_name,
   }));
 
+  // Données éditables indexées par id — permet d'ouvrir l'édition depuis
+  // « Soldes à encaisser » (clic sur une ligne) comme depuis la table.
+  const editableById: Record<string, EditableBooking> = Object.fromEntries(
+    tableItems.map((b) => [
+      b.id,
+      {
+        id: b.id,
+        customerName: b.customerName,
+        date: b.date,
+        startTime: b.startTime,
+        endTime: b.endTime,
+        offerName: b.offerName,
+        sourceChannel: b.sourceChannel,
+        partySize: b.partySize,
+        totalAmount: b.amount,
+        status: b.status,
+        discountAmount: b.discountAmount,
+        discountReason: b.discountReason,
+        isGiftCard: b.isGiftCard,
+        giftCardCode: b.giftCardCode,
+        giftCardRecipientName: b.giftCardRecipientName,
+      },
+    ]),
+  );
+
   return (
     <div className="space-y-6">
       <header className="enter-up flex flex-wrap items-start justify-between gap-3">
@@ -158,7 +184,7 @@ export default async function BookingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BalanceAgenda items={toCollect} />
+          <BalanceAgenda items={toCollect} editableById={editableById} />
         </CardContent>
       </Card>
 

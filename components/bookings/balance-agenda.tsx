@@ -5,15 +5,29 @@ import Link from "next/link";
 import { CheckCircle2, FileText, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatDateRelative, formatEur } from "@/lib/format";
 import {
   SettleBalanceDialog,
   type SettleTarget,
 } from "@/components/bookings/settle-balance-dialog";
+import {
+  BookingEditDialog,
+  type EditableBooking,
+} from "@/components/bookings/booking-edit-dialog";
 
-export function BalanceAgenda({ items }: { items: SettleTarget[] }) {
+export function BalanceAgenda({
+  items,
+  editableById = {},
+}: {
+  items: SettleTarget[];
+  /** Données éditables par id — active le clic sur une ligne pour modifier/supprimer. */
+  editableById?: Record<string, EditableBooking>;
+}) {
   const [selected, setSelected] = useState<SettleTarget | null>(null);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<EditableBooking | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -27,8 +41,18 @@ export function BalanceAgenda({ items }: { items: SettleTarget[] }) {
   return (
     <>
       <ul className="divide-y divide-border/60">
-        {items.map((b) => (
-          <li key={b.id} className="flex items-center gap-3 py-3">
+        {items.map((b) => {
+          const editable = editableById[b.id];
+          return (
+          <li
+            key={b.id}
+            onClick={editable ? () => { setEditing(editable); setEditOpen(true); } : undefined}
+            title={editable ? "Modifier cette réservation" : undefined}
+            className={cn(
+              "flex items-center gap-3 py-3",
+              editable && "-mx-2 cursor-pointer rounded-lg px-2 transition-colors hover:bg-muted/50",
+            )}
+          >
             <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-secondary text-center">
               <span className="text-[10px] font-medium capitalize leading-none text-muted-foreground">
                 {formatDateRelative(b.date).split(" ")[0]}
@@ -51,6 +75,7 @@ export function BalanceAgenda({ items }: { items: SettleTarget[] }) {
                 href={`/contrats/${b.id}`}
                 target="_blank"
                 title="Voir le contrat de location"
+                onClick={(e) => e.stopPropagation()}
                 className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <FileText className="size-4" />
@@ -58,7 +83,8 @@ export function BalanceAgenda({ items }: { items: SettleTarget[] }) {
               </Link>
               <Button
                 size="sm"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setSelected(b);
                   setOpen(true);
                 }}
@@ -67,10 +93,12 @@ export function BalanceAgenda({ items }: { items: SettleTarget[] }) {
               </Button>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <SettleBalanceDialog booking={selected} open={open} onOpenChange={setOpen} />
+      <BookingEditDialog booking={editing} open={editOpen} onOpenChange={setEditOpen} />
     </>
   );
 }
