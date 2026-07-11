@@ -146,6 +146,20 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     else mounted.current = true;
   }, [filters, view, prioritySort, syncUrl]);
 
+  // ── Ouverture directe d'une fiche via ?lead=<id> (depuis le dashboard) ──
+  const openedFromUrl = useRef(false);
+  useEffect(() => {
+    if (openedFromUrl.current) return;
+    const id = search.get("lead");
+    if (!id) return;
+    const lead = initialLeads.find((l) => l.id === id);
+    if (lead) {
+      openedFromUrl.current = true;
+      openLead(lead);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   // ── Optimistic mutations ────────────────────────────────────
   const patchLead = useCallback((id: string, patch: Partial<Lead>) => {
     setLeads((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));

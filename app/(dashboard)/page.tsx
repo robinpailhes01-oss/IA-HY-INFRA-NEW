@@ -179,7 +179,7 @@ export default async function OverviewPage() {
         "id, first_name, last_name, source_channel, interested_offer, occasion, party_size, desired_date, desired_time_slot, score, status",
       )
       .eq("archived", false)
-      .not("desired_date", "is", null)
+      .gte("desired_date", todayIso)
       .order("score", { ascending: false, nullsFirst: false })
       .order("desired_date", { ascending: true })
       .limit(30)
@@ -348,7 +348,7 @@ export default async function OverviewPage() {
               <Flame className="size-4 text-gold" />
               Leads les plus chauds
             </CardTitle>
-            <CardDescription>Prospects avec une date souhaitée — à convertir en priorité</CardDescription>
+            <CardDescription>Prospects dont la sortie souhaitée est à venir — à convertir en priorité</CardDescription>
           </div>
           <Link href="/leads" className="text-sm font-medium text-gold hover:underline">
             Tous les leads →
@@ -494,7 +494,7 @@ function HotLeads({ leads }: { leads: HotLeadRow[] }) {
   if (leads.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        Aucun lead avec date souhaitée pour l&apos;instant.
+        Aucun lead avec une date souhaitée à venir pour l&apos;instant.
       </p>
     );
   }
@@ -512,7 +512,7 @@ function HotLeads({ leads }: { leads: HotLeadRow[] }) {
         return (
           <li key={l.id}>
             <Link
-              href="/leads"
+              href={`/leads?lead=${l.id}`}
               className="group flex items-center gap-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
             >
               <span className="relative shrink-0">
