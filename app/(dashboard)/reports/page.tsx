@@ -108,10 +108,13 @@ export default async function ReportsPage() {
       months[mi].count += 1;
     }
 
-    // Canaux
-    bump(chanAll, ch, amt);
-    if (b.date >= yearFromYmd) bump(chanYear, ch, amt);
-    if (mk === thisMonthKey) bump(chanMonth, ch, amt);
+    // Canaux — on écarte « site internet » (tout le monde réserve via le site) ;
+    // son CA reste compté dans les séries temporelles et les KPIs ci-dessus.
+    if (b.source_channel !== "website") {
+      bump(chanAll, ch, amt);
+      if (b.date >= yearFromYmd) bump(chanYear, ch, amt);
+      if (mk === thisMonthKey) bump(chanMonth, ch, amt);
+    }
   }
   void yearFromKey;
 

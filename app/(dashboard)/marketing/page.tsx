@@ -35,9 +35,12 @@ const ORGANIC_CHANNELS = new Set([
   "instagram_organic",
   "tiktok_organic",
   "facebook_organic",
-  "website",
   "word_of_mouth",
 ]);
+
+// Le site internet n'est PAS une source d'acquisition : tout le monde réserve
+// via le site. On l'exclut donc de toutes les statistiques marketing.
+const EXCLUDED_CHANNELS = new Set(["website"]);
 
 type CanalCategory = "paid" | "organic" | "other";
 function canalCategory(channel: string | null): CanalCategory {
@@ -130,7 +133,10 @@ export default async function MarketingPage() {
   const bookings = bookingsRes.data ?? [];
 
   // ── Attribution : UNIQUEMENT bookings.source_channel (renseigné par toi) ──
-  const confirmedBookings = bookings.filter((b) => CONFIRMED.has(b.status ?? ""));
+  // On écarte le canal « site internet » (tout le monde réserve via le site).
+  const confirmedBookings = bookings.filter(
+    (b) => CONFIRMED.has(b.status ?? "") && !EXCLUDED_CHANNELS.has(b.source_channel ?? ""),
+  );
   const taggedBookings = confirmedBookings.filter((b) => b.source_channel);
   const untaggedCount = confirmedBookings.length - taggedBookings.length;
 

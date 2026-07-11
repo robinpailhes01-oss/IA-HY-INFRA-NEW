@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, Bot, MessageCircle, Ship, TrendingUp, Users } from "lucide-react";
+import { Banknote, Bot, CalendarDays, Flame, Ship, TrendingUp, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
@@ -26,10 +26,6 @@ import {
   type UpcomingBooking,
 } from "@/components/dashboard/upcoming-bookings";
 import {
-  RecentLeads,
-  type RecentLead,
-} from "@/components/dashboard/recent-leads";
-import {
   RecentTransactions,
   mergeTransactions,
 } from "@/components/dashboard/recent-transactions";
@@ -37,7 +33,10 @@ import {
   AlertsPanel,
   type AlertItem,
 } from "@/components/dashboard/alerts-panel";
+import { ChannelLogo } from "@/components/leads/channel-logo";
+import { channelMeta, initials, scoreClasses } from "@/lib/leads";
 import { formatDateLong, formatEur } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -70,20 +69,29 @@ type RevenueMetricRow = {
   date: string;
 };
 
-type LeadRow = {
+type HotLeadRow = {
   id: string;
   first_name: string | null;
   last_name: string | null;
   source_channel: string | null;
   interested_offer: string | null;
+  occasion: string | null;
+  party_size: number | null;
+  desired_date: string | null;
+  desired_time_slot: string | null;
   score: number | null;
   status: string | null;
-  created_at: string | null;
 };
 
 function fullName(first: string | null, last: string | null): string {
-  return [first, last].filter(Boolean).join(" ").trim() || "Client";
+  return [first, last].filter(Boolean).join(" ").trim() || "Lead";
 }
+
+function pct(part: number, whole: number): number {
+  return whole > 0 ? Math.round((part / whole) * 100) : 0;
+}
+
+const QUALIFIED_STATUSES = new Set(["qualified", "quote_sent", "booked"]);
 
 export default async function OverviewPage() {
   const supabase = await createClient();
@@ -93,33 +101,18 @@ export default async function OverviewPage() {
   const todayIso = now.toISOString().slice(0, 10);
   const ago30Iso = new Date(now.getTime() - 30 * DAY_MS).toISOString();
 
-  // ── Liste des leads créés par Léa = leads liés à une conversation WhatsApp ──
-  // On ne peut pas utiliser source_channel='whatsapp' : ce champ représente
-  // « comment le client nous a connu » (Insta, BAO…), pas le canal de contact.
-  // La vraie source de vérité est wa_conversations.lead_id.
-  const { data: leaLinks } = await supabase
-    .from("wa_conversations")
-    .select("lead_id")
-    .not("lead_id", "is", null);
-  const leaLeadIds = Array.from(
-    new Set((leaLinks ?? []).map((c) => c.lead_id as string)),
-  );
-  const hasLeaLeads = leaLeadIds.length > 0;
-
   const [
     goalRes,
     metricsRes,
     upcomingRes,
-    recentLeadsRes,
     newLeadsRes,
     attentionLeadsRes,
     weatherRes,
     revenuesRes,
     expensesRes,
-    leaTotalRes,
-    leaQualifiedRes,
-    leaFollowupsRes,
-    leaConvsRes,
+    conversationsRes,
+    leadsStatusRes,
+    hotLeadsRes,
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -129,9 +122,7 @@ export default async function OverviewPage() {
       .maybeSingle(),
     supabase
       .from("bookings")
-      .select(
-        "status, date, deposit_amount, deposit_paid, balance_due",
-      )
+      .select("status, date, deposit_amount, deposit_paid, balance_due")
       .returns<BookingMetricRow[]>(),
     supabase
       .from("bookings")
@@ -143,14 +134,6 @@ export default async function OverviewPage() {
       .order("date", { ascending: true })
       .limit(6)
       .returns<BookingJoinRow[]>(),
-    supabase
-      .from("leads")
-      .select(
-        "id, first_name, last_name, source_channel, interested_offer, score, status, created_at",
-      )
-      .order("created_at", { ascending: false })
-      .limit(6)
-      .returns<LeadRow[]>(),
     supabase
       .from("leads")
       .select("*", { count: "exact", head: true })
@@ -179,32 +162,28 @@ export default async function OverviewPage() {
       .select("id, amount, date, category, description")
       .order("date", { ascending: false })
       .returns<{ id: string; amount: number | null; date: string; category: string | null; description: string | null }[]>(),
-    // ── Stats Léa : compteurs sur les leads liés à une conversation WA ──
-    // Si pas de lead lié (DB neuve), on évite .in('id', []) qui peut faire
-    // matcher tout selon la version Supabase — on force un count à 0.
-    hasLeaLeads
-      ? supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .in("id", leaLeadIds)
-      : Promise.resolve({ count: 0 }),
-    hasLeaLeads
-      ? supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .in("id", leaLeadIds)
-          .in("status", ["qualified", "quote_sent", "booked"])
-      : Promise.resolve({ count: 0 }),
-    hasLeaLeads
-      ? supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .in("id", leaLeadIds)
-          .gte("followup_count", 1)
-      : Promise.resolve({ count: 0 }),
+    // ── Léa multicanal : chaque conversation porte son canal (whatsapp/email…) ──
     supabase
-      .from("wa_conversations")
-      .select("*", { count: "exact", head: true }),
+      .from("conversations")
+      .select("lead_id, channel")
+      .returns<{ lead_id: string | null; channel: string | null }[]>(),
+    // Statut de chaque lead → pour calculer le taux de qualification par canal.
+    supabase
+      .from("leads")
+      .select("id, status")
+      .returns<{ id: string; status: string | null }[]>(),
+    // ── Leads les plus chauds = ceux qui ont une date souhaitée ──
+    supabase
+      .from("leads")
+      .select(
+        "id, first_name, last_name, source_channel, interested_offer, occasion, party_size, desired_date, desired_time_slot, score, status",
+      )
+      .eq("archived", false)
+      .not("desired_date", "is", null)
+      .order("score", { ascending: false, nullsFirst: false })
+      .order("desired_date", { ascending: true })
+      .limit(30)
+      .returns<HotLeadRow[]>(),
   ]);
 
   const goal = goalRes.data;
@@ -219,9 +198,7 @@ export default async function OverviewPage() {
   const inCurrentMonth = (d: string) =>
     inYear(d) && Number(d.slice(5, 7)) - 1 === monthIdx;
 
-  // Le CA et la marge se calculent UNIQUEMENT depuis la table revenues
-  // (alimentée par le trigger bookings_to_revenues + entrées manuelles via
-  // AddRevenueDialog). Évite tout double-comptage avec bookings.total_amount.
+  // CA & marge : uniquement depuis la table revenues (évite le double-comptage).
   const revenuesData = revenuesRes.data ?? [];
   const caYtd = revenuesData
     .filter((r) => inYear(r.date))
@@ -234,18 +211,13 @@ export default async function OverviewPage() {
   const opexYtd = expensesData
     .filter((e) => inYear(e.date))
     .reduce((s, e) => s + (e.amount ?? 0), 0);
-
   const ytdMargin = caYtd - opexYtd;
 
   const outstandingOf = (b: BookingMetricRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
-  // « Reste à encaisser » : tout ce qui n'est pas annulé ET n'est pas soldé,
-  // quelle que soit la date. Inclut les sorties passées dont le solde n'a pas
-  // encore été encaissé (sinon on oublie de réclamer).
   const outstanding = metrics
     .filter((b) => b.status !== "cancelled")
     .reduce((s, b) => s + outstandingOf(b), 0);
-  // « Déjà encaissé » = ce qui est entré dans la caisse cette année.
   const collected = caYtd;
 
   const upcomingCount = metrics.filter(
@@ -254,9 +226,7 @@ export default async function OverviewPage() {
 
   const monthly = Array<number>(12).fill(0);
   for (const r of revenuesData) {
-    if (inYear(r.date)) {
-      monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
-    }
+    if (inYear(r.date)) monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
   }
 
   const upcoming: UpcomingBooking[] = (upcomingRes.data ?? []).map((b) => ({
@@ -271,25 +241,51 @@ export default async function OverviewPage() {
     status: b.status,
   }));
 
-  const recentLeads: RecentLead[] = (recentLeadsRes.data ?? []).map((l) => ({
-    id: l.id,
-    name: fullName(l.first_name, l.last_name),
-    sourceChannel: l.source_channel,
-    interestedOffer: l.interested_offer,
-    score: l.score,
-    status: l.status,
-    createdAt: l.created_at,
-  }));
-
   const recentTransactions = mergeTransactions(revenuesData, expensesData, 8);
-
   const weatherDays = weatherRes.data ?? [];
   const newLeadsCount = newLeadsRes.count ?? 0;
-  const alerts = buildAlerts(
-    upcomingRes.data ?? [],
-    attentionLeadsRes.data ?? [],
-    todayIso,
-  );
+  const alerts = buildAlerts(upcomingRes.data ?? [], attentionLeadsRes.data ?? [], todayIso);
+
+  // ── Stats agent Léa par canal (source de vérité : conversations.channel) ──
+  const statusById = new Map((leadsStatusRes.data ?? []).map((l) => [l.id, l.status]));
+  type Agg = { conversations: number; leads: Set<string>; qualified: Set<string> };
+  const perChannel = new Map<string, Agg>();
+  const allLeads = new Set<string>();
+  const allQualified = new Set<string>();
+  let totalConversations = 0;
+  for (const c of conversationsRes.data ?? []) {
+    const ch = c.channel || "autre";
+    const a = perChannel.get(ch) ?? { conversations: 0, leads: new Set(), qualified: new Set() };
+    a.conversations += 1;
+    totalConversations += 1;
+    if (c.lead_id) {
+      a.leads.add(c.lead_id);
+      allLeads.add(c.lead_id);
+      if (QUALIFIED_STATUSES.has(statusById.get(c.lead_id) ?? "")) {
+        a.qualified.add(c.lead_id);
+        allQualified.add(c.lead_id);
+      }
+    }
+    perChannel.set(ch, a);
+  }
+  const agentChannels = [...perChannel.entries()]
+    .map(([channel, a]) => ({
+      channel,
+      conversations: a.conversations,
+      leads: a.leads.size,
+      qualified: a.qualified.size,
+    }))
+    .sort((a, b) => b.conversations - a.conversations);
+  const agentTotals = {
+    conversations: totalConversations,
+    leads: allLeads.size,
+    qualified: allQualified.size,
+  };
+
+  // ── Leads les plus chauds (déjà triés score ↓ puis date ↑) ──
+  const hotLeads = (hotLeadsRes.data ?? [])
+    .filter((l) => l.status !== "booked" && l.status !== "lost")
+    .slice(0, 6);
 
   return (
     <div className="space-y-6">
@@ -328,16 +324,70 @@ export default async function OverviewPage() {
         </Link>
       )}
 
+      {/* ── 1. Chiffre d'affaires vs objectifs ─────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <RevenueHero
-            year={year}
-            caYtd={caYtd}
-            caMonth={caMonth}
-            outstanding={outstanding}
-          />
+          <RevenueHero year={year} caYtd={caYtd} caMonth={caMonth} outstanding={outstanding} />
         </div>
         <Card className="enter-up" style={{ animationDelay: "120ms" }}>
+          <CardHeader>
+            <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
+            <CardDescription>CA {year} vs objectifs de saison</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RevenueGauge current={caYtd} min={min} medium={medium} strong={strong} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── 2. Leads les plus chauds ───────────────────────────────── */}
+      <Card className="enter-up" style={{ animationDelay: "160ms" }}>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div className="space-y-1">
+            <CardTitle className="flex items-center gap-2">
+              <Flame className="size-4 text-gold" />
+              Leads les plus chauds
+            </CardTitle>
+            <CardDescription>Prospects avec une date souhaitée — à convertir en priorité</CardDescription>
+          </div>
+          <Link href="/leads" className="text-sm font-medium text-gold hover:underline">
+            Tous les leads →
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <HotLeads leads={hotLeads} />
+        </CardContent>
+      </Card>
+
+      {/* ── 3. Performance de Léa — tous canaux ────────────────────── */}
+      <Card className="enter-up" style={{ animationDelay: "200ms" }}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bot className="size-4 text-gold" />
+            Performance de Léa — tous canaux
+          </CardTitle>
+          <CardDescription>
+            {agentTotals.conversations} conversation{agentTotals.conversations !== 1 ? "s" : ""} ·{" "}
+            {agentTotals.leads} lead{agentTotals.leads !== 1 ? "s" : ""} ·{" "}
+            {pct(agentTotals.qualified, agentTotals.leads)}% qualifiés
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AgentChannelStats channels={agentChannels} totals={agentTotals} />
+        </CardContent>
+      </Card>
+
+      {/* ── KPIs ───────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="primary" hint="hors annulations" index={0} />
+        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
+        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="revenus − dépenses" index={2} />
+        <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="revenus + soldes perçus" index={3} />
+      </div>
+
+      {/* ── Secondaire ─────────────────────────────────────────────── */}
+      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Revenus par mois</CardTitle>
             <CardDescription>CA confirmé {year}</CardDescription>
@@ -346,62 +396,14 @@ export default async function OverviewPage() {
             <MonthlyBars values={monthly} currentMonth={monthIdx} />
           </CardContent>
         </Card>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="primary" hint="hors annulations" index={0} />
-        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
-        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="revenus − dépenses" index={2} />
-        <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="revenus + soldes perçus" index={3} />
-      </div>
-
-      <Card className="enter-up">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bot className="size-4 text-gold" />
-              Performance Léa
-            </CardTitle>
-            <CardDescription>Agent WhatsApp — depuis l&apos;activation</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <LeaStat label="Conversations" value={leaConvsRes.count ?? 0} icon={MessageCircle} />
-            <LeaStat label="Leads créés" value={leaTotalRes.count ?? 0} icon={Users} />
-            <LeaStat
-              label="Qualifiés / réservés"
-              value={leaQualifiedRes.count ?? 0}
-              subline={
-                (leaTotalRes.count ?? 0) > 0
-                  ? `${Math.round(((leaQualifiedRes.count ?? 0) / (leaTotalRes.count ?? 1)) * 100)}% de conversion`
-                  : "—"
-              }
-              icon={TrendingUp}
-            />
-            <LeaStat label="Relances envoyées" value={leaFollowupsRes.count ?? 0} icon={Bot} />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
         <Card>
           <CardHeader>
-            <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
-            <CardDescription>CA {year} · cumul depuis le 1ᵉʳ janvier</CardDescription>
+            <CardTitle>Alertes</CardTitle>
+            <CardDescription>Actions à traiter</CardDescription>
           </CardHeader>
           <CardContent>
-            <RevenueGauge current={caYtd} min={min} medium={medium} strong={strong} />
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Météo marine — Carnon</CardTitle>
-            <CardDescription>Prévisions des 5 prochains jours</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <WeatherWidget days={weatherDays} />
+            <AlertsPanel alerts={alerts} />
           </CardContent>
         </Card>
       </Reveal>
@@ -419,26 +421,16 @@ export default async function OverviewPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Alertes</CardTitle>
-            <CardDescription>Actions à traiter</CardDescription>
+            <CardTitle>Météo marine — Carnon</CardTitle>
+            <CardDescription>Prévisions des 5 prochains jours</CardDescription>
           </CardHeader>
           <CardContent>
-            <AlertsPanel alerts={alerts} />
+            <WeatherWidget days={weatherDays} />
           </CardContent>
         </Card>
       </Reveal>
 
-      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <Card>
-          <CardHeader>
-            <CardTitle>Leads récents</CardTitle>
-            <CardDescription>Derniers prospects entrés dans le pipeline</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentLeads leads={recentLeads} />
-          </CardContent>
-        </Card>
-
+      <Reveal className="grid grid-cols-1 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Transactions récentes</CardTitle>
@@ -471,10 +463,7 @@ function buildAlerts(
   }
 
   for (const b of bookings) {
-    const name = fullName(
-      b.customers?.first_name ?? null,
-      b.customers?.last_name ?? null,
-    );
+    const name = fullName(b.customers?.first_name ?? null, b.customers?.last_name ?? null);
     if (b.deposit_paid === false) {
       alerts.push({
         id: `deposit-${b.id}`,
@@ -500,28 +489,149 @@ function buildAlerts(
   return alerts.slice(0, 5);
 }
 
-
-// ── Petit bloc de stats Léa (utilisé dans le panneau Performance) ──
-function LeaStat({
-  label,
-  value,
-  subline,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  subline?: string;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
+// ── Leads les plus chauds (date souhaitée connue) ──────────────────
+function HotLeads({ leads }: { leads: HotLeadRow[] }) {
+  if (leads.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        Aucun lead avec date souhaitée pour l&apos;instant.
+      </p>
+    );
+  }
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/40 p-3">
-      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3.5" />
-        <span>{label}</span>
-      </div>
-      <span className="text-2xl font-semibold tabular-nums">{value}</span>
-      {subline && <span className="text-xs text-muted-foreground">{subline}</span>}
-    </div>
+    <ul className="divide-y divide-border/60">
+      {leads.map((l) => {
+        const label = l.source_channel === "website" ? null : l.source_channel;
+        const desired = l.desired_date
+          ? new Date(`${l.desired_date}T00:00:00`).toLocaleDateString("fr-FR", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            })
+          : null;
+        return (
+          <li key={l.id}>
+            <Link
+              href="/leads"
+              className="group flex items-center gap-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
+            >
+              <span className="relative shrink-0">
+                <span
+                  className={cn(
+                    "flex size-9 items-center justify-center rounded-full text-xs font-semibold",
+                    channelMeta(l.source_channel).className,
+                  )}
+                >
+                  {initials(l.first_name, l.last_name)}
+                </span>
+                <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
+                  <ChannelLogo channel={label} className="size-2.5" />
+                </span>
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-semibold text-foreground">
+                    {fullName(l.first_name, l.last_name)}
+                  </span>
+                  {l.occasion && (
+                    <span className="shrink-0 rounded-full bg-gold/10 px-1.5 py-0.5 text-[10px] font-medium text-gold">
+                      {l.occasion}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground">
+                  {desired && (
+                    <span className="inline-flex items-center gap-1 font-medium text-gold">
+                      <CalendarDays className="size-3" />
+                      {desired}
+                    </span>
+                  )}
+                  {l.interested_offer && <span className="truncate">· {l.interested_offer}</span>}
+                  {l.party_size != null && (
+                    <span className="inline-flex items-center gap-1">
+                      <Users className="size-3" />
+                      {l.party_size}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
+                  scoreClasses(l.score),
+                )}
+                title="Score de qualification"
+              >
+                {l.score ?? "—"}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
+// ── Performance de Léa par canal ───────────────────────────────────
+function AgentChannelStats({
+  channels,
+  totals,
+}: {
+  channels: { channel: string; conversations: number; leads: number; qualified: number }[];
+  totals: { conversations: number; leads: number; qualified: number };
+}) {
+  if (channels.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        Léa n&apos;a pas encore de conversation enregistrée.
+      </p>
+    );
+  }
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border text-xs text-muted-foreground">
+            <th className="pb-2 pr-4 text-left font-medium">Canal</th>
+            <th className="pb-2 pr-4 text-right font-medium">Conversations</th>
+            <th className="pb-2 pr-4 text-right font-medium">Leads</th>
+            <th className="pb-2 pr-4 text-right font-medium">Qualifiés</th>
+            <th className="pb-2 text-right font-medium">Taux</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {channels.map((c) => {
+            const chLabel = c.channel === "autre" ? "Autre" : channelMeta(c.channel).label;
+            return (
+              <tr key={c.channel}>
+                <td className="py-2.5 pr-4">
+                  <span className="flex items-center gap-2 font-medium text-foreground">
+                    <ChannelLogo channel={c.channel === "autre" ? null : c.channel} className="size-4" />
+                    {chLabel}
+                  </span>
+                </td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">{c.conversations}</td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">{c.leads}</td>
+                <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">{c.qualified}</td>
+                <td className="py-2.5 text-right tabular-nums font-medium text-success">
+                  {pct(c.qualified, c.leads)}%
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="border-t border-border font-semibold">
+            <td className="pt-2.5 pr-4 text-foreground">Total</td>
+            <td className="pt-2.5 pr-4 text-right tabular-nums text-foreground">{totals.conversations}</td>
+            <td className="pt-2.5 pr-4 text-right tabular-nums text-foreground">{totals.leads}</td>
+            <td className="pt-2.5 pr-4 text-right tabular-nums text-foreground">{totals.qualified}</td>
+            <td className="pt-2.5 text-right tabular-nums text-success">
+              {pct(totals.qualified, totals.leads)}%
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
