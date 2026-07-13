@@ -130,11 +130,41 @@ export async function markBooked(id: string) {
 }
 
 /**
- * Déclenche une relance manuelle pour ce lead : appelle la Edge Function
- * `lea-followups` avec un lead_id (bypass de l'intervalle). Léa génère un
- * message court dans le ton maison et l'envoie via Baileys.
+ * Relance manuelle SENSIBLE AU CANAL :
+ *   - lead email  → envoie un email de relance via Resend (threadé)
+ *   - lead WhatsApp/téléphone → Edge Function `lea-followups` (Léa via Baileys)
+ * Le canal réel est déterminé par la dernière conversation (channel), avec
+ * repli sur source_channel.
  */
 export async function triggerManualFollowup(leadId: string) {
+  const supabase = await createClient();
+
+  const [{ data: lead }, { data: conv }] = await Promise.all([
+    supabase
+      .from("leads")
+      .select("id, first_name, source_channel, email, phone, interested_offer, desired_date, followup_count")
+      .eq("id", leadId)
+      .maybeSingle(),
+    supabase
+      .from("conversations")
+      .select("id, channel, messages")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (!lead) return fail("Lead introuvable.");
+
+  const contactChannel = (conv?.channel as string | null) ?? lead.source_channel;
+  const isEmail = contactChannel === "email" && !!lead.email;
+
+  // ── Relance email (Resend) ────────────────────────────────────────
+  if (isEmail) {
+    return sendEmailFollowup(supabase, lead as EmailFollowupLead, conv);
+  }
+
+  // ── Relance WhatsApp (Edge Function lea-followups → Baileys) ───────
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/lea-followups`
     : null;
@@ -166,6 +196,118 @@ export async function triggerManualFollowup(leadId: string) {
     }
     const r = data.results?.[0];
     if (r && !r.sent) return fail(r.reason ?? "Envoi échoué (Baileys n'a pas accepté ce numéro)");
+
+    revalidatePath("/leads");
+    return ok(null);
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : String(e));
+  }
+}
+
+type EmailFollowupLead = {
+  id: string;
+  first_name: string | null;
+  email: string | null;
+  interested_offer: string | null;
+  desired_date: string | null;
+  followup_count: number | null;
+};
+
+/** Compose et envoie une relance email chaleureuse via Resend, puis persiste. */
+async function sendEmailFollowup(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lead: EmailFollowupLead,
+  conv: { id: string; channel: string | null; messages: unknown } | null,
+) {
+  const resendKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM ?? "Harmonie Yacht <reservations@harmonie-yacht.fr>";
+  if (!resendKey) return fail("Resend non configuré (RESEND_API_KEY absent).");
+  if (!lead.email) return fail("Ce lead n'a pas d'adresse email.");
+
+  const now = new Date().toISOString();
+  const prenom = lead.first_name ? ` ${lead.first_name}` : "";
+  const offre = lead.interested_offer ? ` concernant ${lead.interested_offer}` : " concernant votre sortie en mer";
+  const dateNote = lead.desired_date
+    ? ` Nous avons encore des disponibilités autour du ${new Date(`${lead.desired_date}T00:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}.`
+    : "";
+
+  const text =
+    `Bonjour${prenom},\n\n` +
+    `Je me permets de revenir vers vous${offre} avec Harmonie Yacht.${dateNote}\n\n` +
+    `Êtes-vous toujours intéressé·e ? Je reste à votre entière disposition pour organiser cela ou répondre à vos questions.\n\n` +
+    `Très belle journée,\n\n` +
+    `---\n` +
+    `Léa — Harmonie Yacht\n` +
+    `📞 07 53 48 12 63\n` +
+    `✉️ reservations@harmonie-yacht.fr\n` +
+    `harmonie-yacht.fr`;
+
+  // Threading : reprendre le dernier Message-ID sortant pour rester dans le fil.
+  let inReplyTo: string | null = null;
+  let subject = "Votre sortie avec Harmonie Yacht";
+  if (conv) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: thread } = await (supabase as any)
+      .from("email_threads")
+      .select("last_outbound_message_id, subject")
+      .eq("conversation_id", conv.id)
+      .maybeSingle();
+    inReplyTo = (thread as { last_outbound_message_id: string | null } | null)?.last_outbound_message_id ?? null;
+    const s = (thread as { subject: string | null } | null)?.subject;
+    if (s) subject = s.toLowerCase().startsWith("re:") ? s : `Re: ${s}`;
+  }
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [lead.email],
+        subject,
+        text,
+        headers: inReplyTo ? { "In-Reply-To": inReplyTo, References: inReplyTo } : undefined,
+      }),
+    });
+    if (!res.ok) return fail(`Resend ${res.status} — email non envoyé.`);
+    const data = (await res.json()) as { id?: string };
+
+    // Persiste le message dans la conversation + met à jour le fil email.
+    const aiMsg: ConversationMessage = { from: "ai", text, at: now };
+    if (conv) {
+      const prev = Array.isArray(conv.messages) ? (conv.messages as ConversationMessage[]) : [];
+      await supabase
+        .from("conversations")
+        .update({ messages: [...prev, aiMsg] as unknown as never, updated_at: now })
+        .eq("id", conv.id);
+      if (data.id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("email_threads")
+          .update({ last_outbound_message_id: `<${data.id}@resend.dev>`, updated_at: now })
+          .eq("conversation_id", conv.id);
+      }
+    } else {
+      await supabase.from("conversations").insert({
+        lead_id: lead.id,
+        channel: "email",
+        messages: [aiMsg] as unknown as never,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    await supabase
+      .from("leads")
+      .update(
+        touch({
+          status: "followed_up",
+          last_interaction_at: now,
+          last_followup_at: now,
+          followup_count: (lead.followup_count ?? 0) + 1,
+        }),
+      )
+      .eq("id", lead.id);
 
     revalidatePath("/leads");
     return ok(null);
