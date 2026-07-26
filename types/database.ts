@@ -1477,6 +1477,7 @@ export type Database = {
       revenues: {
         Row: {
           amount: number
+          booking_id: string | null
           created_at: string | null
           date: string
           id: string
@@ -1485,6 +1486,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          booking_id?: string | null
           created_at?: string | null
           date: string
           id?: string
@@ -1493,13 +1495,22 @@ export type Database = {
         }
         Update: {
           amount?: number
+          booking_id?: string | null
           created_at?: string | null
           date?: string
           id?: string
           note?: string | null
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "revenues_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wa_auth_state: {
         Row: {
@@ -1696,6 +1707,8 @@ export type Database = {
           day: string | null
           events: number | null
           tokens: number | null
+          tokens_input: number | null
+          tokens_output: number | null
           workspace_id: string | null
         }
         Relationships: [
