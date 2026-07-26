@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateLong, formatEur, formatTimeRange } from "@/lib/format";
 import { bookingStatusBadge } from "@/lib/status";
+import type { BalancePayment } from "@/lib/payments";
 import {
   BookingEditDialog,
   type EditableBooking,
@@ -22,15 +23,22 @@ import { cn } from "@/lib/utils";
 
 export type BookingTableItem = {
   id: string;
+  customerId: string | null;
   date: string | null;
   startTime: string | null;
   endTime: string | null;
   offerName: string | null;
   customerName: string;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
   partySize: number | null;
   amount: number | null;
+  depositAmount: number | null;
   depositPaid: boolean | null;
   balanceDue: number | null;
+  balancePayments: BalancePayment[];
   status: string | null;
   sourceChannel: string | null;
   discountAmount: number | null;
@@ -95,7 +103,12 @@ export function BookingsTable({
   function edit(b: BookingTableItem) {
     setSelected({
       id: b.id,
+      customerId: b.customerId,
       customerName: b.customerName,
+      customerFirstName: b.customerFirstName,
+      customerLastName: b.customerLastName,
+      customerEmail: b.customerEmail,
+      customerPhone: b.customerPhone,
       date: b.date,
       startTime: b.startTime,
       endTime: b.endTime,
@@ -103,6 +116,10 @@ export function BookingsTable({
       sourceChannel: b.sourceChannel,
       partySize: b.partySize,
       totalAmount: b.amount,
+      depositAmount: b.depositAmount,
+      depositPaid: b.depositPaid,
+      balancePayments: b.balancePayments,
+      balanceDue: b.balanceDue,
       status: b.status,
       discountAmount: b.discountAmount,
       discountReason: b.discountReason,

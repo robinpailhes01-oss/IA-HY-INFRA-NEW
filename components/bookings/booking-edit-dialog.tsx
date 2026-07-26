@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileText, Loader2, Trash2 } from "lucide-react";
+import { FileText, Loader2, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -27,14 +27,23 @@ import {
 } from "@/components/ui/select";
 import {
   cancelBooking,
+  removeBalancePayment,
+  reopenBooking,
   updateBooking,
   type BookingUpdate,
 } from "@/app/(dashboard)/bookings/actions";
 import { SOURCE_OPTIONS } from "@/lib/status";
+import { paymentLabel, type BalancePayment } from "@/lib/payments";
+import { formatEur } from "@/lib/format";
 
 export type EditableBooking = {
   id: string;
+  customerId: string | null;
   customerName: string;
+  customerFirstName: string | null;
+  customerLastName: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
   date: string | null;
   startTime: string | null;
   endTime: string | null;
@@ -42,6 +51,10 @@ export type EditableBooking = {
   sourceChannel: string | null;
   partySize: number | null;
   totalAmount: number | null;
+  depositAmount: number | null;
+  depositPaid: boolean | null;
+  balancePayments: BalancePayment[];
+  balanceDue: number | null;
   status: string | null;
   discountAmount: number | null;
   discountReason: string | null;
@@ -71,7 +84,12 @@ export function BookingEditDialog({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [removingIndex, setRemovingIndex] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Miroir local des paiements — mis à jour immédiatement après un retrait,
+  // sans attendre que le `booking` (état du parent) se resynchronise via
+  // router.refresh().
+  const [payments, setPayments] = useState<BalancePayment[]>([]);
   const [form, setForm] = useState<BookingUpdate>({
     source_channel: "",
     status: "",
@@ -83,11 +101,18 @@ export function BookingEditDialog({
     date: null,
     start_time: null,
     end_time: null,
+    deposit_amount: null,
+    deposit_paid: null,
+    customer_first_name: "",
+    customer_last_name: "",
+    customer_email: "",
+    customer_phone: "",
   });
 
   useEffect(() => {
     if (booking && open) {
       setConfirmDelete(false);
+      setPayments(booking.balancePayments ?? []);
       setForm({
         source_channel: booking.sourceChannel ?? "",
         status: booking.status ?? "",
@@ -99,6 +124,12 @@ export function BookingEditDialog({
         date: booking.date,
         start_time: booking.startTime,
         end_time: booking.endTime,
+        deposit_amount: booking.depositAmount,
+        deposit_paid: booking.depositPaid,
+        customer_first_name: booking.customerFirstName ?? "",
+        customer_last_name: booking.customerLastName ?? "",
+        customer_email: booking.customerEmail ?? "",
+        customer_phone: booking.customerPhone ?? "",
       });
     }
   }, [booking, open]);
@@ -126,6 +157,12 @@ export function BookingEditDialog({
         date: form.date || null,
         start_time: form.start_time || null,
         end_time: form.end_time || null,
+        deposit_amount: form.deposit_amount,
+        deposit_paid: form.deposit_paid,
+        customer_first_name: form.customer_first_name || null,
+        customer_last_name: form.customer_last_name ?? "",
+        customer_email: form.customer_email ?? "",
+        customer_phone: form.customer_phone ?? "",
       });
       if (!res.ok) {
         toast.error("Échec de l'enregistrement", { description: res.error ?? undefined });
@@ -142,17 +179,56 @@ export function BookingEditDialog({
     startTransition(async () => {
       const res = await cancelBooking(booking.id);
       if (!res.ok) {
-        toast.error("Échec de la suppression", { description: res.error ?? undefined });
+        toast.error("Échec de l'annulation", { description: res.error ?? undefined });
         return;
       }
-      toast.success("Réservation supprimée", {
-        description: "Retirée de Google Agenda.",
+      toast.success("Réservation annulée", {
+        description: "Retirée de Google Agenda. Toujours visible dans l'historique.",
       });
       setConfirmDelete(false);
       onOpenChange(false);
       router.refresh();
     });
   }
+
+  function handleReopen() {
+    if (!booking) return;
+    startTransition(async () => {
+      const res = await reopenBooking(booking.id);
+      if (!res.ok) {
+        toast.error("Échec de la réactivation", { description: res.error ?? undefined });
+        return;
+      }
+      toast.success("Réservation réactivée", { description: "Remise sur Google Agenda." });
+      onOpenChange(false);
+      router.refresh();
+    });
+  }
+
+  function handleRemovePayment(index: number) {
+    if (!booking) return;
+    setRemovingIndex(index);
+    startTransition(async () => {
+      const res = await removeBalancePayment(booking.id, index);
+      setRemovingIndex(null);
+      if (!res.ok) {
+        toast.error("Échec de l'annulation du paiement", { description: res.error ?? undefined });
+        return;
+      }
+      setPayments((p) => p.filter((_, i) => i !== index));
+      toast.success("Paiement annulé", { description: "Le solde dû a été recalculé." });
+      router.refresh();
+    });
+  }
+
+  // Solde restant recalculé en direct (montant total − acompte encaissé − paiements
+  // restants) pour refléter immédiatement un retrait de paiement à l'écran.
+  const depositCollected = form.deposit_paid ? (form.deposit_amount ?? 0) : 0;
+  const paymentsCollected = payments.reduce((s, p) => s + p.amount, 0);
+  const liveBalanceDue = Math.max(
+    0,
+    (form.total_amount ?? 0) - depositCollected - paymentsCollected,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -186,6 +262,39 @@ export function BookingEditDialog({
               </p>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label>Prénom</Label>
+              <Input
+                value={form.customer_first_name ?? ""}
+                onChange={(e) => set("customer_first_name", e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Nom</Label>
+              <Input
+                value={form.customer_last_name ?? ""}
+                onChange={(e) => set("customer_last_name", e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={form.customer_email ?? ""}
+                onChange={(e) => set("customer_email", e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Téléphone</Label>
+              <Input
+                type="tel"
+                value={form.customer_phone ?? ""}
+                onChange={(e) => set("customer_phone", e.target.value)}
+              />
+            </div>
+          </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="grid gap-1.5">
@@ -317,6 +426,66 @@ export function BookingEditDialog({
               </div>
             </div>
           </div>
+
+          <div className="rounded-lg border border-border bg-muted/20 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Paiements
+            </p>
+
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-border"
+                checked={form.deposit_paid ?? false}
+                onChange={(e) => set("deposit_paid", e.target.checked)}
+              />
+              Acompte encaissé
+              <Input
+                type="number"
+                min={0}
+                step="1"
+                className="ml-auto w-24"
+                value={form.deposit_amount ?? ""}
+                onChange={(e) =>
+                  set("deposit_amount", e.target.value === "" ? null : Number(e.target.value))
+                }
+              />
+              <span className="text-muted-foreground">€</span>
+            </label>
+
+            {payments.length > 0 && (
+              <ul className="mb-3 space-y-1.5">
+                {payments.map((p, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between rounded-md bg-background px-2.5 py-1.5 text-sm"
+                  >
+                    <span className="text-foreground">
+                      {paymentLabel(p.method)} · {formatEur(p.amount)}
+                    </span>
+                    <button
+                      type="button"
+                      title="Annuler ce paiement"
+                      onClick={() => handleRemovePayment(i)}
+                      disabled={pending}
+                      className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                    >
+                      {removingIndex === i ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <X className="size-3.5" />
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Solde restant dû</span>
+              <span className="font-semibold text-foreground">{formatEur(liveBalanceDue)}</span>
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -331,22 +500,33 @@ export function BookingEditDialog({
                 Contrat
               </Link>
             )}
-            {booking && !confirmDelete && (
+            {booking && booking.status === "cancelled" && (
+              <button
+                type="button"
+                onClick={handleReopen}
+                disabled={pending}
+                className="inline-flex items-center gap-1.5 text-sm text-success transition-colors hover:underline disabled:opacity-50"
+              >
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+                Réactiver la réservation
+              </button>
+            )}
+            {booking && booking.status !== "cancelled" && !confirmDelete && (
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
                 className="inline-flex items-center gap-1.5 text-sm text-destructive transition-colors hover:underline"
               >
                 <Trash2 className="size-4" />
-                Supprimer
+                Annuler la réservation
               </button>
             )}
             {booking && confirmDelete && (
               <span className="inline-flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Confirmer&nbsp;?</span>
+                <span className="text-muted-foreground">Confirmer l&apos;annulation&nbsp;?</span>
                 <Button size="sm" variant="destructive" onClick={handleDelete} disabled={pending}>
                   {pending && <Loader2 className="animate-spin" />}
-                  Oui, supprimer
+                  Oui, annuler
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={pending}>
                   Non

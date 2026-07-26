@@ -18,11 +18,13 @@ import {
 } from "@/components/bookings/bookings-table";
 import { AddBookingDialog } from "@/components/bookings/add-booking-dialog";
 import { AddGiftCardDialog } from "@/components/bookings/add-gift-card-dialog";
+import { parsePayments } from "@/lib/payments";
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
 
 type BookingRow = {
   id: string;
+  customer_id: string | null;
   date: string | null;
   start_time: string | null;
   end_time: string | null;
@@ -32,6 +34,7 @@ type BookingRow = {
   deposit_amount: number | null;
   deposit_paid: boolean | null;
   balance_due: number | null;
+  balance_payments: unknown;
   status: string | null;
   source_channel: string | null;
   discount_amount: number | null;
@@ -40,7 +43,12 @@ type BookingRow = {
   is_gift_card: boolean | null;
   gift_card_code: string | null;
   gift_card_recipient_name: string | null;
-  customers: { first_name: string | null; last_name: string | null } | null;
+  customers: {
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    phone: string | null;
+  } | null;
 };
 
 function fullName(first: string | null, last: string | null): string {
@@ -54,7 +62,7 @@ export default async function BookingsPage() {
   const { data } = await supabase
     .from("bookings")
     .select(
-      "id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, status, source_channel, discount_amount, discount_reason, contract_signed_at, is_gift_card, gift_card_code, gift_card_recipient_name, customers(first_name, last_name)",
+      "id, customer_id, date, start_time, end_time, offer_name, party_size, total_amount, deposit_amount, deposit_paid, balance_due, balance_payments, status, source_channel, discount_amount, discount_reason, contract_signed_at, is_gift_card, gift_card_code, gift_card_recipient_name, customers(first_name, last_name, email, phone)",
     )
     .order("date", { ascending: true })
     .returns<BookingRow[]>();
@@ -93,11 +101,11 @@ export default async function BookingsPage() {
       sourceChannel: b.source_channel,
     }));
 
-  // Les réservations annulées disparaissent de la liste (trace conservée en base).
-  const tableItems: BookingTableItem[] = bookings
-    .filter((b) => b.status !== "cancelled")
-    .map((b) => ({
+  // Les réservations annulées restent visibles (onglet Historique) — on doit
+  // toujours pouvoir les rouvrir ou vérifier ce qui s'est passé.
+  const tableItems: BookingTableItem[] = bookings.map((b) => ({
     id: b.id,
+    customerId: b.customer_id,
     date: b.date,
     startTime: b.start_time,
     endTime: b.end_time,
@@ -106,10 +114,16 @@ export default async function BookingsPage() {
       b.customers?.first_name ?? null,
       b.customers?.last_name ?? null,
     ),
+    customerFirstName: b.customers?.first_name ?? null,
+    customerLastName: b.customers?.last_name ?? null,
+    customerEmail: b.customers?.email ?? null,
+    customerPhone: b.customers?.phone ?? null,
     partySize: b.party_size,
     amount: b.total_amount,
+    depositAmount: b.deposit_amount,
     depositPaid: b.deposit_paid,
     balanceDue: b.balance_due,
+    balancePayments: parsePayments(b.balance_payments),
     status: b.status,
     sourceChannel: b.source_channel,
     discountAmount: b.discount_amount,
@@ -127,7 +141,12 @@ export default async function BookingsPage() {
       b.id,
       {
         id: b.id,
+        customerId: b.customerId,
         customerName: b.customerName,
+        customerFirstName: b.customerFirstName,
+        customerLastName: b.customerLastName,
+        customerEmail: b.customerEmail,
+        customerPhone: b.customerPhone,
         date: b.date,
         startTime: b.startTime,
         endTime: b.endTime,
@@ -135,6 +154,10 @@ export default async function BookingsPage() {
         sourceChannel: b.sourceChannel,
         partySize: b.partySize,
         totalAmount: b.amount,
+        depositAmount: b.depositAmount,
+        depositPaid: b.depositPaid,
+        balancePayments: b.balancePayments,
+        balanceDue: b.balanceDue,
         status: b.status,
         discountAmount: b.discountAmount,
         discountReason: b.discountReason,

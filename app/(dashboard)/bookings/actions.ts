@@ -134,30 +134,57 @@ export type BookingUpdate = {
   date?: string | null;
   start_time?: string | null;
   end_time?: string | null;
+  // Acompte : modifiable après coup (correction d'erreur, annulation d'un
+  // paiement mal saisi, remboursement partiel...).
+  deposit_amount?: number | null;
+  deposit_paid?: boolean | null;
+  // Coordonnées client — éditables directement depuis la réservation.
+  customer_first_name?: string | null;
+  customer_last_name?: string | null;
+  customer_email?: string | null;
+  customer_phone?: string | null;
 };
 
 export async function updateBooking(id: string, values: BookingUpdate) {
   const supabase = await createClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const patch: any = { ...values, updated_at: new Date().toISOString() };
-  if (values.date) patch.balance_due_date = values.date;
+  const { data: current } = await supabase
+    .from("bookings")
+    .select("customer_id, total_amount, deposit_amount, deposit_paid, balance_payments")
+    .eq("id", id)
+    .single();
 
-  // Si le montant total change, recalculer le solde restant dû.
-  if (values.total_amount != null) {
-    const { data: current } = await supabase
-      .from("bookings")
-      .select("deposit_amount, deposit_paid, balance_payments")
-      .eq("id", id)
-      .single();
-    if (current) {
-      const depositPaid = current.deposit_paid ? (current.deposit_amount ?? 0) : 0;
-      const balancePaid = parsePayments(current.balance_payments).reduce(
-        (s: number, p: { amount: number }) => s + p.amount,
-        0,
-      );
-      patch.balance_due = Math.max(0, values.total_amount - depositPaid - balancePaid);
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const patch: any = {
+    source_channel: values.source_channel,
+    status: values.status,
+    party_size: values.party_size,
+    offer_name: values.offer_name,
+    discount_amount: values.discount_amount,
+    discount_reason: values.discount_reason,
+    updated_at: new Date().toISOString(),
+  };
+  if (values.date !== undefined) {
+    patch.date = values.date;
+    if (values.date) patch.balance_due_date = values.date;
+  }
+  if (values.start_time !== undefined) patch.start_time = values.start_time;
+  if (values.end_time !== undefined) patch.end_time = values.end_time;
+  if (values.total_amount != null) patch.total_amount = values.total_amount;
+  if (values.deposit_amount != null) patch.deposit_amount = values.deposit_amount;
+  if (values.deposit_paid != null) patch.deposit_paid = values.deposit_paid;
+
+  // Recalcule le solde dû dès que le montant total, l'acompte ou son statut
+  // de paiement change — garantit que le solde reste toujours exact.
+  if (values.total_amount != null || values.deposit_amount != null || values.deposit_paid != null) {
+    const totalAmount = values.total_amount ?? current?.total_amount ?? 0;
+    const depositAmount = values.deposit_amount ?? current?.deposit_amount ?? 0;
+    const depositPaid = values.deposit_paid ?? current?.deposit_paid ?? false;
+    const balancePaid = parsePayments(current?.balance_payments).reduce(
+      (s: number, p: { amount: number }) => s + p.amount,
+      0,
+    );
+    patch.balance_due = Math.max(0, totalAmount - (depositPaid ? depositAmount : 0) - balancePaid);
   }
 
   const { error } = await supabase
@@ -169,8 +196,85 @@ export async function updateBooking(id: string, values: BookingUpdate) {
     return { ok: false as const, error: error.message };
   }
 
+  // Coordonnées client : mise à jour de la fiche `customers` liée.
+  if (
+    current?.customer_id &&
+    (values.customer_first_name != null ||
+      values.customer_last_name != null ||
+      values.customer_email !== undefined ||
+      values.customer_phone !== undefined)
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const custPatch: any = {};
+    if (values.customer_first_name) custPatch.first_name = values.customer_first_name;
+    if (values.customer_last_name !== undefined) custPatch.last_name = values.customer_last_name || null;
+    if (values.customer_email !== undefined) custPatch.email = values.customer_email || null;
+    if (values.customer_phone !== undefined) custPatch.phone = values.customer_phone || null;
+    if (Object.keys(custPatch).length) {
+      await supabase.from("customers").update(custPatch).eq("id", current.customer_id);
+    }
+  }
+
   // La synchronisation Google Calendar est gérée par le trigger Postgres
   // `trg_bookings_sync_gcal` — elle s'exécute automatiquement après l'UPDATE.
+
+  revalidatePath("/bookings");
+  revalidatePath("/marketing");
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null };
+}
+
+/**
+ * Retire une ligne de paiement (acompte du solde) précédemment encaissée par
+ * erreur, et recalcule le solde dû. Utile pour annuler un paiement mal saisi
+ * ou traiter un remboursement partiel.
+ */
+export async function removeBalancePayment(bookingId: string, index: number) {
+  const supabase = await createClient();
+
+  const { data, error: readErr } = await supabase
+    .from("bookings")
+    .select("total_amount, deposit_amount, deposit_paid, balance_payments")
+    .eq("id", bookingId)
+    .maybeSingle();
+
+  if (readErr || !data) {
+    return { ok: false as const, error: readErr?.message ?? "Réservation introuvable" };
+  }
+
+  const payments = parsePayments(data.balance_payments);
+  if (index < 0 || index >= payments.length) {
+    return { ok: false as const, error: "Paiement introuvable" };
+  }
+
+  const remaining = payments.filter((_, i) => i !== index);
+  const remainingSum = remaining.reduce((s, p) => s + p.amount, 0);
+  const depositPaidAmount = data.deposit_paid ? (data.deposit_amount ?? 0) : 0;
+  const balanceDue = Math.max(0, (data.total_amount ?? 0) - depositPaidAmount - remainingSum);
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ balance_payments: remaining, balance_due: balanceDue, updated_at: new Date().toISOString() })
+    .eq("id", bookingId);
+
+  if (error) return { ok: false as const, error: error.message };
+
+  revalidatePath("/bookings");
+  revalidatePath("/finances");
+  revalidatePath("/");
+  return { ok: true as const, error: null };
+}
+
+/** Réactive une réservation annulée par erreur : recrée l'event Google Agenda. */
+export async function reopenBooking(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update({ status: "confirmed", updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { ok: false as const, error: error.message };
 
   revalidatePath("/bookings");
   revalidatePath("/marketing");
