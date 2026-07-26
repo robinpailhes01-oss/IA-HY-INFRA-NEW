@@ -272,6 +272,13 @@ async function sendEmailFollowup(
     if (!res.ok) return fail(`Resend ${res.status} — email non envoyé.`);
     const data = (await res.json()) as { id?: string };
 
+    await supabase.from("email_log").insert({
+      lead_id: lead.id,
+      to_email: lead.email,
+      subject,
+      source: "followup",
+    });
+
     // Persiste le message dans la conversation + met à jour le fil email.
     const aiMsg: ConversationMessage = { from: "ai", text, at: now };
     if (conv) {
@@ -528,6 +535,12 @@ export async function sendMessage(
         if (res.ok) {
           delivered = true;
           const data = await res.json() as { id?: string };
+          await supabase.from("email_log").insert({
+            lead_id: leadId,
+            to_email: lead.email,
+            subject: inReplyTo ? "Re: Harmonie Yacht" : "Message de l'équipe Harmonie Yacht",
+            source: "manual_dashboard",
+          });
           if (data.id && existing) {
             const newMsgId = `<${data.id}@resend.dev>`;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

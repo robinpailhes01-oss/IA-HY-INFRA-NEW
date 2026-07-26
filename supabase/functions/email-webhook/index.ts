@@ -379,6 +379,12 @@ Deno.serve(async (req) => {
 
     if (outboundMessageId) {
       history.push({ from: "ai", text: aiReply, at: new Date().toISOString() });
+      await supabase.from("email_log").insert({
+        lead_id: leadId,
+        to_email: fromEmail,
+        subject: replySubject,
+        source: "inbound_reply",
+      });
     }
   }
 

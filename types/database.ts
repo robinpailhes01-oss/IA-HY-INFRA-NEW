@@ -140,16 +140,23 @@ export type Database = {
           balance_due_date: string | null
           balance_payments: Json
           booking_type: string | null
+          contract_signed_at: string | null
+          contract_signed_by_name: string | null
           costs: number | null
           created_at: string | null
           customer_id: string | null
-          date: string
+          date: string | null
           deposit_amount: number | null
           deposit_paid: boolean | null
+          discount_amount: number | null
+          discount_reason: string | null
           duration_hours: number | null
           end_time: string | null
+          gift_card_code: string | null
+          gift_card_recipient_name: string | null
           google_calendar_event_id: string | null
           id: string
+          is_gift_card: boolean
           lead_id: string | null
           net_margin: number | null
           notes: string | null
@@ -171,16 +178,23 @@ export type Database = {
           balance_due_date?: string | null
           balance_payments?: Json
           booking_type?: string | null
+          contract_signed_at?: string | null
+          contract_signed_by_name?: string | null
           costs?: number | null
           created_at?: string | null
           customer_id?: string | null
-          date: string
+          date?: string | null
           deposit_amount?: number | null
           deposit_paid?: boolean | null
+          discount_amount?: number | null
+          discount_reason?: string | null
           duration_hours?: number | null
           end_time?: string | null
+          gift_card_code?: string | null
+          gift_card_recipient_name?: string | null
           google_calendar_event_id?: string | null
           id?: string
+          is_gift_card?: boolean
           lead_id?: string | null
           net_margin?: number | null
           notes?: string | null
@@ -202,16 +216,23 @@ export type Database = {
           balance_due_date?: string | null
           balance_payments?: Json
           booking_type?: string | null
+          contract_signed_at?: string | null
+          contract_signed_by_name?: string | null
           costs?: number | null
           created_at?: string | null
           customer_id?: string | null
-          date?: string
+          date?: string | null
           deposit_amount?: number | null
           deposit_paid?: boolean | null
+          discount_amount?: number | null
+          discount_reason?: string | null
           duration_hours?: number | null
           end_time?: string | null
+          gift_card_code?: string | null
+          gift_card_recipient_name?: string | null
           google_calendar_event_id?: string | null
           id?: string
+          is_gift_card?: boolean
           lead_id?: string | null
           net_margin?: number | null
           notes?: string | null
@@ -452,6 +473,89 @@ export type Database = {
           },
         ]
       }
+      email_log: {
+        Row: {
+          id: string
+          lead_id: string | null
+          sent_at: string
+          source: string
+          subject: string | null
+          to_email: string
+        }
+        Insert: {
+          id?: string
+          lead_id?: string | null
+          sent_at?: string
+          source: string
+          subject?: string | null
+          to_email: string
+        }
+        Update: {
+          id?: string
+          lead_id?: string | null
+          sent_at?: string
+          source?: string
+          subject?: string | null
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_threads: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          from_email: string
+          id: string
+          last_outbound_message_id: string | null
+          lead_id: string | null
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          from_email: string
+          id?: string
+          last_outbound_message_id?: string | null
+          lead_id?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          from_email?: string
+          id?: string
+          last_outbound_message_id?: string | null
+          lead_id?: string | null
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_threads_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_threads_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_bookings: {
         Row: {
           created_at: string | null
@@ -523,6 +627,7 @@ export type Database = {
           date: string
           description: string | null
           end_time: string | null
+          google_calendar_event_id: string | null
           id: string
           max_participants: number | null
           net_margin: number | null
@@ -543,6 +648,7 @@ export type Database = {
           date: string
           description?: string | null
           end_time?: string | null
+          google_calendar_event_id?: string | null
           id?: string
           max_participants?: number | null
           net_margin?: number | null
@@ -563,6 +669,7 @@ export type Database = {
           date?: string
           description?: string | null
           end_time?: string | null
+          google_calendar_event_id?: string | null
           id?: string
           max_participants?: number | null
           net_margin?: number | null
@@ -638,33 +745,6 @@ export type Database = {
           },
         ]
       }
-      revenues: {
-        Row: {
-          amount: number
-          created_at: string | null
-          date: string
-          id: string
-          note: string | null
-          type: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          date: string
-          id?: string
-          note?: string | null
-          type: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          date?: string
-          id?: string
-          note?: string | null
-          type?: string
-        }
-        Relationships: []
-      }
       goals: {
         Row: {
           created_at: string | null
@@ -704,6 +784,488 @@ export type Database = {
         }
         Relationships: []
       }
+      hub_agent_activities: {
+        Row: {
+          agent_id: string
+          conversation_id: string | null
+          description: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          title: string
+          type: string
+          workspace_id: string
+        }
+        Insert: {
+          agent_id: string
+          conversation_id?: string | null
+          description?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          title: string
+          type: string
+          workspace_id: string
+        }
+        Update: {
+          agent_id?: string
+          conversation_id?: string | null
+          description?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          title?: string
+          type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_agent_activities_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "hub_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_agent_activities_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "hub_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_agent_activities_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_agent_channels: {
+        Row: {
+          agent_id: string
+          channel_connection_id: string
+          is_active: boolean
+        }
+        Insert: {
+          agent_id: string
+          channel_connection_id: string
+          is_active?: boolean
+        }
+        Update: {
+          agent_id?: string
+          channel_connection_id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_agent_channels_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "hub_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_agent_channels_channel_connection_id_fkey"
+            columns: ["channel_connection_id"]
+            isOneToOne: false
+            referencedRelation: "hub_channel_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_agents: {
+        Row: {
+          avatar_color: string
+          created_at: string
+          hermes_agent_id: string | null
+          id: string
+          model_config: Json
+          name: string
+          persona: string
+          role: string
+          slug: string
+          status: string
+          system_prompt: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          avatar_color?: string
+          created_at?: string
+          hermes_agent_id?: string | null
+          id?: string
+          model_config?: Json
+          name: string
+          persona?: string
+          role?: string
+          slug: string
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          avatar_color?: string
+          created_at?: string
+          hermes_agent_id?: string | null
+          id?: string
+          model_config?: Json
+          name?: string
+          persona?: string
+          role?: string
+          slug?: string
+          status?: string
+          system_prompt?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_agents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_channel_connections: {
+        Row: {
+          created_at: string
+          credentials: Json
+          display_name: string
+          id: string
+          last_connected_at: string | null
+          metadata: Json
+          status: string
+          type: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          credentials?: Json
+          display_name?: string
+          id?: string
+          last_connected_at?: string | null
+          metadata?: Json
+          status?: string
+          type: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          credentials?: Json
+          display_name?: string
+          id?: string
+          last_connected_at?: string | null
+          metadata?: Json
+          status?: string
+          type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_channel_connections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_contacts: {
+        Row: {
+          channel_type: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string
+          primary_handle: string
+          tags: string[]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          channel_type: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string
+          primary_handle: string
+          tags?: string[]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          channel_type?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string
+          primary_handle?: string
+          tags?: string[]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_contacts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_conversations: {
+        Row: {
+          agent_id: string | null
+          channel_connection_id: string | null
+          channel_type: string
+          contact_handle: string
+          contact_id: string | null
+          contact_name: string
+          created_at: string
+          crm_stage: string
+          crm_summary: string
+          id: string
+          last_message_at: string
+          message_count: number
+          outcome: string | null
+          status: string
+          subject: string
+          tags: string[]
+          workspace_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          channel_connection_id?: string | null
+          channel_type: string
+          contact_handle?: string
+          contact_id?: string | null
+          contact_name?: string
+          created_at?: string
+          crm_stage?: string
+          crm_summary?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          outcome?: string | null
+          status?: string
+          subject?: string
+          tags?: string[]
+          workspace_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          channel_connection_id?: string | null
+          channel_type?: string
+          contact_handle?: string
+          contact_id?: string | null
+          contact_name?: string
+          created_at?: string
+          crm_stage?: string
+          crm_summary?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          outcome?: string | null
+          status?: string
+          subject?: string
+          tags?: string[]
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_conversations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "hub_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_conversations_channel_connection_id_fkey"
+            columns: ["channel_connection_id"]
+            isOneToOne: false
+            referencedRelation: "hub_channel_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "hub_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_conversations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_credit_ledger: {
+        Row: {
+          agent_id: string
+          channel_type: string
+          conversation_id: string | null
+          credits: number
+          event_type: string
+          id: string
+          occurred_at: string
+          tokens_input: number
+          tokens_output: number
+          workspace_id: string
+        }
+        Insert: {
+          agent_id: string
+          channel_type: string
+          conversation_id?: string | null
+          credits: number
+          event_type: string
+          id?: string
+          occurred_at?: string
+          tokens_input?: number
+          tokens_output?: number
+          workspace_id: string
+        }
+        Update: {
+          agent_id?: string
+          channel_type?: string
+          conversation_id?: string | null
+          credits?: number
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          tokens_input?: number
+          tokens_output?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_credit_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "hub_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_credit_ledger_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "hub_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_credit_ledger_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_messages: {
+        Row: {
+          content: string
+          content_type: string
+          conversation_id: string
+          direction: string
+          id: string
+          metadata: Json
+          sender: string
+          sent_at: string
+        }
+        Insert: {
+          content: string
+          content_type?: string
+          conversation_id: string
+          direction: string
+          id?: string
+          metadata?: Json
+          sender: string
+          sent_at?: string
+        }
+        Update: {
+          content?: string
+          content_type?: string
+          conversation_id?: string
+          direction?: string
+          id?: string
+          metadata?: Json
+          sender?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "hub_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_settings: {
+        Row: {
+          id: string
+          key: string
+          value: Json
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          value?: Json
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          value?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_settings_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_workspaces: {
+        Row: {
+          created_at: string
+          credit_balance: number
+          id: string
+          name: string
+          plan: string
+        }
+        Insert: {
+          created_at?: string
+          credit_balance?: number
+          id?: string
+          name: string
+          plan?: string
+        }
+        Update: {
+          created_at?: string
+          credit_balance?: number
+          id?: string
+          name?: string
+          plan?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           ai_memo: string | null
@@ -719,6 +1281,7 @@ export type Database = {
           id: string
           instagram_handle: string | null
           interested_offer: string | null
+          last_followup_at: string | null
           last_interaction_at: string | null
           last_name: string | null
           needs_human_intervention: boolean | null
@@ -746,6 +1309,7 @@ export type Database = {
           id?: string
           instagram_handle?: string | null
           interested_offer?: string | null
+          last_followup_at?: string | null
           last_interaction_at?: string | null
           last_name?: string | null
           needs_human_intervention?: boolean | null
@@ -773,6 +1337,7 @@ export type Database = {
           id?: string
           instagram_handle?: string | null
           interested_offer?: string | null
+          last_followup_at?: string | null
           last_interaction_at?: string | null
           last_name?: string | null
           needs_human_intervention?: boolean | null
@@ -909,6 +1474,163 @@ export type Database = {
           },
         ]
       }
+      revenues: {
+        Row: {
+          amount: number
+          created_at: string | null
+          date: string
+          id: string
+          note: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          date: string
+          id?: string
+          note?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          note?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
+      wa_auth_state: {
+        Row: {
+          data: Json
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          data: Json
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          data?: Json
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      wa_conversations: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          customer_phone: string
+          id: string
+          is_paused: boolean
+          last_message_at: string | null
+          lead_id: string | null
+          paused_until: string | null
+          unread_count: number
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone: string
+          id?: string
+          is_paused?: boolean
+          last_message_at?: string | null
+          lead_id?: string | null
+          paused_until?: string | null
+          unread_count?: number
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: string | null
+          customer_phone?: string
+          id?: string
+          is_paused?: boolean
+          last_message_at?: string | null
+          lead_id?: string | null
+          paused_until?: string | null
+          unread_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wa_inbox: {
+        Row: {
+          created_at: string
+          id: number
+          phone: string
+          processed_at: string | null
+          received_at: string
+          text: string
+          wa_message_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          phone: string
+          processed_at?: string | null
+          received_at?: string
+          text: string
+          wa_message_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          phone?: string
+          processed_at?: string | null
+          received_at?: string
+          text?: string
+          wa_message_id?: string
+        }
+        Relationships: []
+      }
+      wa_messages: {
+        Row: {
+          body: string
+          conversation_id: string | null
+          created_at: string | null
+          from_me: boolean
+          id: string
+          is_from_human: boolean
+          wa_message_id: string | null
+        }
+        Insert: {
+          body: string
+          conversation_id?: string | null
+          created_at?: string | null
+          from_me?: boolean
+          id?: string
+          is_from_human?: boolean
+          wa_message_id?: string | null
+        }
+        Update: {
+          body?: string
+          conversation_id?: string | null
+          created_at?: string | null
+          from_me?: boolean
+          id?: string
+          is_from_human?: boolean
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "wa_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weather_cache: {
         Row: {
           date: string
@@ -945,109 +1667,57 @@ export type Database = {
         }
         Relationships: []
       }
-      wa_auth_state: {
-        Row: {
-          data: Json | null
-          id: string
-          updated_at: string | null
-        }
-        Insert: {
-          data?: Json | null
-          id: string
-          updated_at?: string | null
-        }
-        Update: {
-          data?: Json | null
-          id?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      wa_conversations: {
-        Row: {
-          customer_name: string | null
-          customer_phone: string
-          id: string
-          is_paused: boolean
-          last_message_at: string
-          lead_id: string | null
-          paused_until: string | null
-          unread_count: number
-        }
-        Insert: {
-          customer_name?: string | null
-          customer_phone: string
-          id?: string
-          is_paused?: boolean
-          last_message_at?: string
-          lead_id?: string | null
-          paused_until?: string | null
-          unread_count?: number
-        }
-        Update: {
-          customer_name?: string | null
-          customer_phone?: string
-          id?: string
-          is_paused?: boolean
-          last_message_at?: string
-          lead_id?: string | null
-          paused_until?: string | null
-          unread_count?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wa_conversations_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      wa_messages: {
-        Row: {
-          body: string
-          conversation_id: string
-          created_at: string
-          from_me: boolean
-          id: string
-          is_from_human: boolean
-          wa_message_id: string | null
-        }
-        Insert: {
-          body: string
-          conversation_id: string
-          created_at?: string
-          from_me: boolean
-          id?: string
-          is_from_human: boolean
-          wa_message_id?: string | null
-        }
-        Update: {
-          body?: string
-          conversation_id?: string
-          created_at?: string
-          from_me?: boolean
-          id?: string
-          is_from_human?: boolean
-          wa_message_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wa_messages_conversation_id_fkey"
-            columns: ["conversation_id"]
-            isOneToOne: false
-            referencedRelation: "wa_conversations"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
     }
     Views: {
-      [_ in never]: never
+      hub_agent_credit_summary: {
+        Row: {
+          agent_id: string | null
+          credits_30d: number | null
+          credits_7d: number | null
+          credits_total: number | null
+          events_total: number | null
+          tokens_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_credit_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "hub_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hub_credit_daily: {
+        Row: {
+          agent_id: string | null
+          channel_type: string | null
+          credits: number | null
+          day: string | null
+          events: number | null
+          tokens: number | null
+          workspace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hub_credit_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "hub_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hub_credit_ledger_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "hub_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      wa_inbox_cleanup: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

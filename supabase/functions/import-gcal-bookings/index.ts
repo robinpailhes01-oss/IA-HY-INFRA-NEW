@@ -311,8 +311,15 @@ Deno.serve(async (req) => {
           balanceDue,
           special: parsed.special,
         });
-        if (emailRes.sent) summary.emailed++;
-        else if (emailRes.reason !== "RESEND_API_KEY absent") {
+        if (emailRes.sent) {
+          summary.emailed++;
+          await supabase.from("email_log").insert({
+            lead_id: lead.id,
+            to_email: parsed.email,
+            subject: `Votre sortie en mer est confirmée — ${formatDateFr(startIso)}`,
+            source: "booking_confirmation",
+          });
+        } else if (emailRes.reason !== "RESEND_API_KEY absent") {
           summary.errors.push({ event: evSummary, reason: `mail: ${emailRes.reason}` });
         }
       }

@@ -12,6 +12,7 @@ import {
   PartyPopper,
   Bot,
   Settings,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Vue d'ensemble", icon: LayoutDashboard },
+  { href: "/resultats", label: "Résultats", icon: Sparkles },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/bookings", label: "Réservations", icon: Calendar },
   { href: "/finances", label: "Finances", icon: Wallet },
