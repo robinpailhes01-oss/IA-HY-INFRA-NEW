@@ -157,6 +157,7 @@ export function BookingEditDialog({
         date: form.date || null,
         start_time: form.start_time || null,
         end_time: form.end_time || null,
+        total_amount: form.total_amount,
         deposit_amount: form.deposit_amount,
         deposit_paid: form.deposit_paid,
         customer_first_name: form.customer_first_name || null,
