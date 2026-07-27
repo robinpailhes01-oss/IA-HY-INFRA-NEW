@@ -46,6 +46,16 @@ function normalizePhone(input: string | null | undefined): string | null {
   return null;
 }
 
+// WhatsApp privacy mode : un contact qui masque son numéro envoie son LID
+// (identifiant interne, ex. "1344375111872@lid") au lieu de son vrai numéro
+// E.164 — Léa le stocke tel quel faute de mieux. Un vrai numéro E.164 fait
+// au plus 13 chiffres ; au-delà, c'est un LID, pas un téléphone utilisable.
+// Même heuristique que lib/whatsapp.ts (isWhatsAppLid).
+function isWhatsAppLid(phone: string | null | undefined): boolean {
+  if (!phone) return false;
+  return phone.replace(/[^\d]/g, "").length > 13;
+}
+
 function dayBounds(from?: string, to?: string) {
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
@@ -148,7 +158,13 @@ async function runTool(
       .order("score", { ascending: false, nullsFirst: false })
       .limit(25);
     if (error) return JSON.stringify({ error: error.message });
-    return JSON.stringify(data ?? []);
+    // deno-lint-ignore no-explicit-any
+    const cleaned = (data ?? []).map((l: any) =>
+      isWhatsAppLid(l.phone)
+        ? { ...l, phone: null, phone_note: "Numéro masqué (confidentialité WhatsApp) — relance impossible par WhatsApp, propose l'email si disponible." }
+        : l,
+    );
+    return JSON.stringify(cleaned);
   }
 
   if (name === "list_upcoming_bookings") {
@@ -166,11 +182,25 @@ async function runTool(
       .order("date", { ascending: true })
       .limit(30);
     if (error) return JSON.stringify({ error: error.message });
-    return JSON.stringify(data ?? []);
+    // deno-lint-ignore no-explicit-any
+    const cleaned = (data ?? []).map((b: any) => {
+      if (b.customers && isWhatsAppLid(b.customers.phone)) {
+        return { ...b, customers: { ...b.customers, phone: null, phone_note: "Numéro masqué (confidentialité WhatsApp)" } };
+      }
+      return b;
+    });
+    return JSON.stringify(cleaned);
   }
 
   if (name === "send_whatsapp_followup") {
-    const phone = normalizePhone(input.phone as string);
+    const rawPhone = String(input.phone ?? "");
+    if (isWhatsAppLid(rawPhone)) {
+      return JSON.stringify({
+        ok: false,
+        error: "Ce contact a masqué son numéro (confidentialité WhatsApp) — impossible de lui envoyer un message directement, ce n'est pas un vrai numéro.",
+      });
+    }
+    const phone = normalizePhone(rawPhone);
     const message = String(input.message ?? "").trim();
     if (!phone) return JSON.stringify({ ok: false, error: "Numéro de téléphone invalide" });
     if (!message) return JSON.stringify({ ok: false, error: "Message vide" });
@@ -201,7 +231,7 @@ RÈGLES :
 - list_upcoming_bookings pour toute question sur les clients/réservations à venir.
 - send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
 - Si Robin dit "eux"/"les"/"ce lead" sans préciser, réutilise les prospects que TU as toi-même listés dans un message précédent de cette conversation.
-- Si un lead n'a pas de téléphone, dis-le simplement, ne peux pas le relancer par WhatsApp.
+- Si un lead n'a pas de téléphone (ou un numéro masqué par la confidentialité WhatsApp), dis-le simplement — ne peux pas le relancer par WhatsApp dans ce cas, propose l'email s'il est disponible.
 - Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.`;
 
 async function callAnthropic(messages: ApiMessage[]) {
