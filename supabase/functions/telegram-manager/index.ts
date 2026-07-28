@@ -107,12 +107,63 @@ const TOOLS = [
       required: ["phone", "message"],
     },
   },
+  {
+    name: "get_agent_config",
+    description:
+      "Lit la configuration actuelle de Léa : offres, tarifs, options, FAQ/règles de comportement, horaires. Utilise-le TOUJOURS avant de proposer un changement, pour voir la valeur exacte et la structure actuelles (ne devine jamais une clé ou un prix).",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "propose_config_change",
+    description:
+      "Prépare un changement dans la configuration de Léa (prix, offre, règle de comportement) — NE L'APPLIQUE PAS. Le changement reste en attente de confirmation explicite de Robin. Utilise cet outil dès que Robin demande de changer une offre, un prix, une règle. Après l'appel, décris précisément ce qui va changer (ancienne valeur → nouvelle valeur) et demande à Robin de confirmer avant que ça ne s'applique réellement.",
+    input_schema: {
+      type: "object",
+      properties: {
+        column: {
+          type: "string",
+          enum: ["offers", "options", "faq", "business_hours", "auto_followup_enabled", "max_followups", "morning_discount_percent", "weekend_nuit_prestige_contact"],
+          description: "Colonne de la configuration à modifier",
+        },
+        key: {
+          type: "string",
+          description: "Clé à l'intérieur de la colonne si elle contient plusieurs entrées (ex. le nom de l'offre dans 'offers', ou le nom de la règle dans 'faq'). Laisser vide si la colonne est une valeur simple (ex. morning_discount_percent).",
+        },
+        new_value: { description: "Nouvelle valeur : texte, nombre, ou objet JSON selon le champ concerné" },
+        description: { type: "string", description: "Résumé humain clair et complet du changement, à présenter à Robin pour confirmation" },
+      },
+      required: ["column", "new_value", "description"],
+    },
+  },
+  {
+    name: "confirm_pending_change",
+    description:
+      "Applique réellement le dernier changement de configuration proposé et en attente. N'appelle CET OUTIL QUE si Robin vient d'écrire un message confirmant explicitement (oui, confirme, vas-y, fais-le, c'est bon...). Ne l'appelle JAMAIS de ta propre initiative.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "cancel_pending_change",
+    description: "Annule le dernier changement de configuration proposé, sans l'appliquer. Utilise si Robin dit non/annule/laisse tomber/pas ça.",
+    input_schema: { type: "object", properties: {} },
+  },
+];
+
+const CONFIG_COLUMNS = [
+  "offers",
+  "options",
+  "faq",
+  "business_hours",
+  "auto_followup_enabled",
+  "max_followups",
+  "morning_discount_percent",
+  "weekend_nuit_prestige_contact",
 ];
 
 async function runTool(
   supabase: ReturnType<typeof createClient>,
   name: string,
   input: Record<string, unknown>,
+  chatId: string,
 ): Promise<string> {
   if (name === "get_business_stats") {
     const [leadsRes, waRes, emailRes, revenuesRes, bookingsRes] = await Promise.all([
@@ -217,6 +268,125 @@ async function runTool(
     }
   }
 
+  if (name === "get_agent_config") {
+    const { data, error } = await supabase
+      .from("agent_config")
+      .select("offers, options, faq, business_hours, auto_followup_enabled, max_followups, morning_discount_percent, weekend_nuit_prestige_contact")
+      .limit(1)
+      .single();
+    if (error) return JSON.stringify({ error: error.message });
+    return JSON.stringify(data);
+  }
+
+  if (name === "propose_config_change") {
+    const column = String(input.column ?? "");
+    const key = input.key ? String(input.key) : null;
+    const newValue = input.new_value;
+    const description = String(input.description ?? "");
+    if (!CONFIG_COLUMNS.includes(column)) {
+      return JSON.stringify({ ok: false, error: `Colonne non autorisée: ${column}` });
+    }
+    if (newValue === undefined || !description) {
+      return JSON.stringify({ ok: false, error: "new_value et description sont requis" });
+    }
+
+    const { data: cfg, error: cfgErr } = await supabase.from("agent_config").select(column).limit(1).single();
+    if (cfgErr) return JSON.stringify({ ok: false, error: cfgErr.message });
+    // deno-lint-ignore no-explicit-any
+    const columnValue = (cfg as any)[column];
+    const oldValue = key ? columnValue?.[key] ?? null : columnValue;
+
+    // Un seul changement en attente à la fois par conversation.
+    await supabase
+      .from("agent_config_pending_changes")
+      .update({ status: "cancelled" })
+      .eq("chat_id", chatId)
+      .eq("status", "pending");
+
+    const { data: pending, error } = await supabase
+      .from("agent_config_pending_changes")
+      .insert({
+        chat_id: chatId,
+        column_name: column,
+        key_name: key,
+        old_value: oldValue,
+        new_value: newValue,
+        description,
+      })
+      .select("id")
+      .single();
+    if (error) return JSON.stringify({ ok: false, error: error.message });
+
+    return JSON.stringify({
+      ok: true,
+      pending_id: pending.id,
+      old_value: oldValue,
+      new_value: newValue,
+      description,
+      note: "Changement PAS ENCORE appliqué — attends la confirmation explicite de Robin avant d'appeler confirm_pending_change.",
+    });
+  }
+
+  if (name === "confirm_pending_change") {
+    const { data: pending } = await supabase
+      .from("agent_config_pending_changes")
+      .select("*")
+      .eq("chat_id", chatId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!pending) return JSON.stringify({ ok: false, error: "Aucun changement en attente à confirmer." });
+
+    const { data: cfgRow, error: cfgErr } = await supabase
+      .from("agent_config")
+      .select(`id, ${pending.column_name}`)
+      .limit(1)
+      .single();
+    if (cfgErr || !cfgRow) return JSON.stringify({ ok: false, error: cfgErr?.message ?? "Config introuvable" });
+
+    let newColumnValue: unknown;
+    if (pending.key_name) {
+      // deno-lint-ignore no-explicit-any
+      const current = ((cfgRow as any)[pending.column_name] as Record<string, unknown>) ?? {};
+      newColumnValue = { ...current, [pending.key_name]: pending.new_value };
+    } else {
+      newColumnValue = pending.new_value;
+    }
+
+    const { error: updErr } = await supabase
+      .from("agent_config")
+      .update({ [pending.column_name]: newColumnValue, updated_at: new Date().toISOString() })
+      // deno-lint-ignore no-explicit-any
+      .eq("id", (cfgRow as any).id);
+    if (updErr) return JSON.stringify({ ok: false, error: updErr.message });
+
+    await supabase.from("agent_config_pending_changes").update({ status: "applied" }).eq("id", pending.id);
+    await supabase.from("agent_config_history").insert({
+      column_name: pending.column_name,
+      key_name: pending.key_name,
+      old_value: pending.old_value,
+      new_value: pending.new_value,
+      description: pending.description,
+    });
+
+    return JSON.stringify({ ok: true, applied: pending.description });
+  }
+
+  if (name === "cancel_pending_change") {
+    const { data: pending } = await supabase
+      .from("agent_config_pending_changes")
+      .select("id, description")
+      .eq("chat_id", chatId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!pending) return JSON.stringify({ ok: false, error: "Aucun changement en attente à annuler." });
+    await supabase.from("agent_config_pending_changes").update({ status: "cancelled" }).eq("id", pending.id);
+    return JSON.stringify({ ok: true, cancelled: pending.description });
+  }
+
   return JSON.stringify({ error: `Outil inconnu: ${name}` });
 }
 
@@ -232,7 +402,15 @@ RÈGLES :
 - send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
 - Si Robin dit "eux"/"les"/"ce lead" sans préciser, réutilise les prospects que TU as toi-même listés dans un message précédent de cette conversation.
 - Si un lead n'a pas de téléphone (ou un numéro masqué par la confidentialité WhatsApp), dis-le simplement — ne peux pas le relancer par WhatsApp dans ce cas, propose l'email s'il est disponible.
-- Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.`;
+- Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.
+
+MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
+- Dès que Robin demande de changer une offre, un prix, ou une règle de comportement de Léa : appelle D'ABORD get_agent_config pour voir la structure et la valeur actuelles exactes (ne devine jamais une clé ou un prix).
+- Appelle ensuite propose_config_change avec la colonne, la clé si besoin, et la nouvelle valeur. Cet outil NE MODIFIE RIEN — il prépare seulement le changement.
+- Décris ensuite à Robin, en clair, ce qui va changer (ancienne valeur → nouvelle valeur) et demande-lui de confirmer. N'applique JAMAIS un changement sans qu'il ait dit oui/confirme/vas-y explicitement dans un message séparé.
+- Uniquement quand Robin confirme dans son message suivant, appelle confirm_pending_change. Si Robin annule/dit non, appelle cancel_pending_change.
+- Tout changement appliqué prend effet IMMÉDIATEMENT pour Léa (elle relit sa config à chaque conversation, pas besoin de redéploiement) — dis-le à Robin après confirmation.
+- Ne modifie jamais plusieurs choses à la fois sans les décrire toutes clairement au préalable.`;
 
 async function callAnthropic(messages: ApiMessage[]) {
   const res = await fetch(ANTHROPIC_URL, {
@@ -313,7 +491,7 @@ Deno.serve(async (req) => {
       messages.push({ role: "assistant", content: blocks });
       const results = [];
       for (const tu of toolUses) {
-        const out = await runTool(supabase, tu.name as string, (tu.input ?? {}) as Record<string, unknown>);
+        const out = await runTool(supabase, tu.name as string, (tu.input ?? {}) as Record<string, unknown>, chatId);
         results.push({ type: "tool_result", tool_use_id: tu.id, content: out });
       }
       messages.push({ role: "user", content: results });
