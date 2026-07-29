@@ -165,7 +165,44 @@ const TOOLS = [
       required: ["amount", "category"],
     },
   },
+  {
+    name: "list_expenses",
+    description:
+      "Liste les dépenses enregistrées sur une période, avec le total et le détail par catégorie. Utilise pour toute question sur les dépenses, le budget dépensé (ex. 'combien de budget pub ce mois', 'nos dépenses de sous-traitance').",
+    input_schema: {
+      type: "object",
+      properties: {
+        from_date: { type: "string", description: "Date de début YYYY-MM-DD (défaut: il y a 7 jours)" },
+        to_date: { type: "string", description: "Date de fin YYYY-MM-DD (défaut: aujourd'hui)" },
+        category: {
+          type: "string",
+          enum: ["subscription", "marketing", "fuel", "maintenance", "tools", "subcontract", "fixed_monthly", "salary", "taxes", "savings", "other"],
+          description: "Filtre optionnel sur une seule catégorie (ex. 'marketing' pour le budget pub)",
+        },
+      },
+    },
+  },
+  {
+    name: "get_marketing_performance",
+    description:
+      "Donne le budget publicité dépensé et le nombre de réservations + CA venant des pubs (Instagram Ads, TikTok Ads, Meta Ads, Google Ads) sur une période. Utilise pour toute question sur le ROI des pubs, l'efficacité de la publicité, ou 'combien de réservations grâce aux pubs'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        from_date: { type: "string", description: "Date de début YYYY-MM-DD (défaut: le 1er du mois en cours)" },
+        to_date: { type: "string", description: "Date de fin YYYY-MM-DD (défaut: aujourd'hui)" },
+      },
+    },
+  },
 ];
+
+const AD_CHANNELS = ["instagram_ads", "tiktok_ads", "meta_ads", "google_ads"];
+const AD_CHANNEL_LABELS: Record<string, string> = {
+  instagram_ads: "Instagram Ads",
+  tiktok_ads: "TikTok Ads",
+  meta_ads: "Meta Ads",
+  google_ads: "Google Ads",
+};
 
 const CONFIG_COLUMNS = [
   "offers",
@@ -425,6 +462,66 @@ async function runTool(
     return JSON.stringify({ ok: true, date, category, amount: Math.round(amount), description });
   }
 
+  if (name === "list_expenses") {
+    const { from, to } = dayBounds(input.from_date as string | undefined, input.to_date as string | undefined);
+    let query = supabase
+      .from("expenses")
+      .select("date, category, amount, description")
+      .gte("date", from)
+      .lte("date", to.slice(0, 10))
+      .order("date", { ascending: false })
+      .limit(100);
+    if (input.category) query = query.eq("category", String(input.category));
+    const { data, error } = await query;
+    if (error) return JSON.stringify({ error: error.message });
+    const rows = data ?? [];
+    const total = rows.reduce((s: number, e: { amount: number | null }) => s + (e.amount ?? 0), 0);
+    const byCategory: Record<string, number> = {};
+    // deno-lint-ignore no-explicit-any
+    for (const e of rows as any[]) byCategory[e.category] = (byCategory[e.category] ?? 0) + (e.amount ?? 0);
+    return JSON.stringify({ total_eur: total, par_categorie: byCategory, depenses: rows });
+  }
+
+  if (name === "get_marketing_performance") {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = input.from_date ? String(input.from_date) : `${today.slice(0, 7)}-01`;
+    const to = input.to_date ? String(input.to_date) : today;
+
+    const [expRes, bookRes] = await Promise.all([
+      supabase.from("expenses").select("amount").eq("category", "marketing").gte("date", from).lte("date", to),
+      supabase
+        .from("bookings")
+        .select("source_channel, total_amount, status, created_at")
+        .in("source_channel", AD_CHANNELS)
+        .gte("created_at", from)
+        .lte("created_at", to + "T23:59:59"),
+    ]);
+    if (expRes.error) return JSON.stringify({ error: expRes.error.message });
+    if (bookRes.error) return JSON.stringify({ error: bookRes.error.message });
+
+    const budgetPub = (expRes.data ?? []).reduce((s: number, e: { amount: number | null }) => s + (e.amount ?? 0), 0);
+    const byChannel: Record<string, { label: string; reservations: number; ca_eur: number }> = {};
+    for (const ch of AD_CHANNELS) byChannel[ch] = { label: AD_CHANNEL_LABELS[ch], reservations: 0, ca_eur: 0 };
+    // deno-lint-ignore no-explicit-any
+    for (const b of (bookRes.data ?? []) as any[]) {
+      if (b.status === "cancelled") continue;
+      const entry = byChannel[b.source_channel];
+      if (!entry) continue;
+      entry.reservations += 1;
+      entry.ca_eur += b.total_amount ?? 0;
+    }
+    const totalReservations = Object.values(byChannel).reduce((s, c) => s + c.reservations, 0);
+    const totalCa = Object.values(byChannel).reduce((s, c) => s + c.ca_eur, 0);
+
+    return JSON.stringify({
+      periode: { from, to },
+      budget_pub_depense_eur: budgetPub,
+      reservations_venant_des_pubs: totalReservations,
+      ca_genere_par_les_pubs_eur: totalCa,
+      detail_par_canal: byChannel,
+    });
+  }
+
   return JSON.stringify({ error: `Outil inconnu: ${name}` });
 }
 
@@ -442,6 +539,8 @@ RÈGLES :
 - Si un lead n'a pas de téléphone (ou un numéro masqué par la confidentialité WhatsApp), dis-le simplement — ne peux pas le relancer par WhatsApp dans ce cas, propose l'email s'il est disponible.
 - Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.
 - add_expense dès que Robin demande d'ajouter/enregistrer une dépense (ex. "ajoute une dépense de 11€ en sous-traitance"). Choisis la catégorie la plus proche parmi celles disponibles. Confirme le montant et la catégorie après l'ajout.
+- list_expenses pour toute question sur les dépenses ou un budget (ex. "combien de budget pub", "nos dépenses ce mois"). Déduis les dates from_date/to_date à partir de la demande (ex. "ce mois" → du 1er du mois en cours à aujourd'hui) — n'utilise le défaut (7 derniers jours) que si Robin ne précise aucune période.
+- get_marketing_performance pour toute question sur l'efficacité des pubs ou le ROI (ex. "combien de réservations grâce aux pubs", "est-ce que la pub est rentable"). Il te donne à la fois le budget pub dépensé (catégorie 'marketing') et les réservations/CA venant des canaux Instagram Ads, TikTok Ads, Meta Ads, Google Ads sur la même période — compare les deux dans ta réponse.
 
 MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
 - Dès que Robin demande de changer une offre, un prix, ou une règle de comportement de Léa : appelle D'ABORD get_agent_config pour voir la structure et la valeur actuelles exactes (ne devine jamais une clé ou un prix).
