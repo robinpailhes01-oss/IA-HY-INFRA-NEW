@@ -29,12 +29,15 @@ import {
   cancelBooking,
   removeBalancePayment,
   reopenBooking,
+  settleBalance,
   updateBooking,
   type BookingUpdate,
 } from "@/app/(dashboard)/bookings/actions";
 import { SOURCE_OPTIONS } from "@/lib/status";
-import { paymentLabel, type BalancePayment } from "@/lib/payments";
+import { PAYMENT_METHODS, paymentLabel, type BalancePayment } from "@/lib/payments";
 import { formatEur } from "@/lib/format";
+
+type NewPaymentLine = { method: string; amount: string };
 
 export type EditableBooking = {
   id: string;
@@ -90,6 +93,8 @@ export function BookingEditDialog({
   // sans attendre que le `booking` (état du parent) se resynchronise via
   // router.refresh().
   const [payments, setPayments] = useState<BalancePayment[]>([]);
+  const [newLines, setNewLines] = useState<NewPaymentLine[]>([{ method: "cb", amount: "" }]);
+  const [addingPayment, setAddingPayment] = useState(false);
   const [form, setForm] = useState<BookingUpdate>({
     source_channel: "",
     status: "",
@@ -113,6 +118,7 @@ export function BookingEditDialog({
     if (booking && open) {
       setConfirmDelete(false);
       setPayments(booking.balancePayments ?? []);
+      setNewLines([{ method: "cb", amount: "" }]);
       setForm({
         source_channel: booking.sourceChannel ?? "",
         status: booking.status ?? "",
@@ -218,6 +224,40 @@ export function BookingEditDialog({
       }
       setPayments((p) => p.filter((_, i) => i !== index));
       toast.success("Paiement annulé", { description: "Le solde dû a été recalculé." });
+      router.refresh();
+    });
+  }
+
+  function updateNewLine(i: number, patch: Partial<NewPaymentLine>) {
+    setNewLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+  function addNewLine() {
+    setNewLines((ls) => (ls.length >= 4 ? ls : [...ls, { method: "especes", amount: "" }]));
+  }
+  function removeNewLine(i: number) {
+    setNewLines((ls) => (ls.length <= 1 ? ls : ls.filter((_, idx) => idx !== i)));
+  }
+
+  function handleAddPayments() {
+    if (!booking) return;
+    const clean = newLines
+      .map((l) => ({ method: l.method, amount: Number(l.amount) || 0 }))
+      .filter((p) => p.amount > 0 && p.method);
+    if (clean.length === 0) {
+      toast.error("Saisis au moins un montant.");
+      return;
+    }
+    setAddingPayment(true);
+    startTransition(async () => {
+      const res = await settleBalance(booking.id, clean);
+      setAddingPayment(false);
+      if (!res.ok) {
+        toast.error("Échec de l'encaissement", { description: res.error ?? undefined });
+        return;
+      }
+      setPayments((p) => [...p, ...clean]);
+      setNewLines([{ method: "cb", amount: "" }]);
+      toast.success("Paiement(s) encaissé(s)", { description: "Le solde dû a été recalculé." });
       router.refresh();
     });
   }
@@ -480,6 +520,68 @@ export function BookingEditDialog({
                   </li>
                 ))}
               </ul>
+            )}
+
+            {liveBalanceDue > 0 && (
+              <div className="mb-3 space-y-2 border-t border-border pt-3">
+                {newLines.map((line, i) => (
+                  <div key={i} className="flex items-end gap-2">
+                    <div className="grid flex-1 gap-1.5">
+                      {i === 0 && <Label className="text-xs">Moyen de paiement</Label>}
+                      <Select
+                        value={line.method}
+                        onValueChange={(v) => updateNewLine(i, { method: (v as string) ?? "" })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue>
+                            {(val) => (val ? paymentLabel(val as string) : "Choisir")}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_METHODS.map((m) => (
+                            <SelectItem key={m.value} value={m.value}>
+                              {m.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid w-24 gap-1.5">
+                      {i === 0 && <Label className="text-xs">Montant</Label>}
+                      <Input
+                        type="number"
+                        min={0}
+                        value={line.amount}
+                        onChange={(e) => updateNewLine(i, { amount: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      type="button"
+                      onClick={() => removeNewLine(i)}
+                      disabled={newLines.length <= 1}
+                      aria-label="Retirer ce moyen"
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between">
+                  {newLines.length < 4 ? (
+                    <Button variant="outline" size="sm" type="button" onClick={addNewLine}>
+                      + Ajouter un moyen
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                  <Button size="sm" type="button" onClick={handleAddPayments} disabled={pending}>
+                    {addingPayment && <Loader2 className="animate-spin" />}
+                    Encaisser
+                  </Button>
+                </div>
+              </div>
             )}
 
             <div className="flex items-center justify-between text-sm">
