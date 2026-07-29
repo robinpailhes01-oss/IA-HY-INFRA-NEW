@@ -152,6 +152,12 @@ export function BookingEditDialog({
       });
       return;
     }
+    // Montants saisis dans "Paiements" mais pas encore encaissés via le bouton
+    // dédié : on les inclut ici pour ne jamais les perdre silencieusement si
+    // l'utilisateur clique "Enregistrer" au lieu de "Encaisser".
+    const pendingPayments = newLines
+      .map((l) => ({ method: l.method, amount: Number(l.amount) || 0 }))
+      .filter((p) => p.amount > 0 && p.method);
     startTransition(async () => {
       const res = await updateBooking(booking.id, {
         source_channel: form.source_channel || null,
@@ -174,6 +180,16 @@ export function BookingEditDialog({
       if (!res.ok) {
         toast.error("Échec de l'enregistrement", { description: res.error ?? undefined });
         return;
+      }
+      if (pendingPayments.length > 0) {
+        const payRes = await settleBalance(booking.id, pendingPayments);
+        if (!payRes.ok) {
+          toast.error("Réservation enregistrée, mais l'encaissement a échoué", {
+            description: payRes.error ?? "Réessaie l'encaissement depuis la fiche.",
+          });
+          router.refresh();
+          return;
+        }
       }
       toast.success("Réservation mise à jour");
       onOpenChange(false);
