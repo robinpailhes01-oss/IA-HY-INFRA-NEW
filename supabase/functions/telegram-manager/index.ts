@@ -146,6 +146,25 @@ const TOOLS = [
     description: "Annule le dernier changement de configuration proposé, sans l'appliquer. Utilise si Robin dit non/annule/laisse tomber/pas ça.",
     input_schema: { type: "object", properties: {} },
   },
+  {
+    name: "add_expense",
+    description:
+      "Enregistre une dépense dans Finances. Utilise dès que Robin demande d'ajouter/enregistrer une dépense, un achat, une facture.",
+    input_schema: {
+      type: "object",
+      properties: {
+        amount: { type: "number", description: "Montant en euros" },
+        category: {
+          type: "string",
+          enum: ["subscription", "marketing", "fuel", "maintenance", "tools", "subcontract", "fixed_monthly", "salary", "taxes", "savings", "other"],
+          description: "subscription=Abonnement, marketing=Marketing, fuel=Gasoil, maintenance=Entretien, tools=Outils, subcontract=Sous-traitance, fixed_monthly=Mensualité fixe, salary=Salaire, taxes=Taxes, savings=Épargne, other=Autre",
+        },
+        description: { type: "string", description: "Détail optionnel de la dépense" },
+        date: { type: "string", description: "Date YYYY-MM-DD (défaut : aujourd'hui)" },
+      },
+      required: ["amount", "category"],
+    },
+  },
 ];
 
 const CONFIG_COLUMNS = [
@@ -387,6 +406,25 @@ async function runTool(
     return JSON.stringify({ ok: true, cancelled: pending.description });
   }
 
+  if (name === "add_expense") {
+    const amount = Number(input.amount);
+    const category = String(input.category ?? "");
+    const description = input.description ? String(input.description) : null;
+    const date = input.date ? String(input.date).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const validCategories = ["subscription", "marketing", "fuel", "maintenance", "tools", "subcontract", "fixed_monthly", "salary", "taxes", "savings", "other"];
+    if (!amount || amount <= 0) return JSON.stringify({ ok: false, error: "Montant invalide" });
+    if (!validCategories.includes(category)) return JSON.stringify({ ok: false, error: `Catégorie invalide: ${category}` });
+
+    const { error } = await supabase.from("expenses").insert({
+      date,
+      category,
+      amount: Math.round(amount),
+      description,
+    });
+    if (error) return JSON.stringify({ ok: false, error: error.message });
+    return JSON.stringify({ ok: true, date, category, amount: Math.round(amount), description });
+  }
+
   return JSON.stringify({ error: `Outil inconnu: ${name}` });
 }
 
@@ -403,6 +441,7 @@ RÈGLES :
 - Si Robin dit "eux"/"les"/"ce lead" sans préciser, réutilise les prospects que TU as toi-même listés dans un message précédent de cette conversation.
 - Si un lead n'a pas de téléphone (ou un numéro masqué par la confidentialité WhatsApp), dis-le simplement — ne peux pas le relancer par WhatsApp dans ce cas, propose l'email s'il est disponible.
 - Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.
+- add_expense dès que Robin demande d'ajouter/enregistrer une dépense (ex. "ajoute une dépense de 11€ en sous-traitance"). Choisis la catégorie la plus proche parmi celles disponibles. Confirme le montant et la catégorie après l'ajout.
 
 MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
 - Dès que Robin demande de changer une offre, un prix, ou une règle de comportement de Léa : appelle D'ABORD get_agent_config pour voir la structure et la valeur actuelles exactes (ne devine jamais une clé ou un prix).
