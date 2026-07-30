@@ -68,8 +68,14 @@ const TOOLS = [
   {
     name: "get_business_stats",
     description:
-      "Donne les chiffres globaux de l'entreprise : nombre de demandes traitées (leads), messages envoyés (WhatsApp + email), CA généré, réservations à venir, reste à encaisser. Utilise cet outil pour toute question sur 'nos chiffres', le CA, l'activité globale.",
-    input_schema: { type: "object", properties: {} },
+      "Donne les chiffres de l'entreprise : demandes traitées, messages envoyés, CA encaissé (revenus réellement collectés, datés par leur date d'encaissement — PAS la date de la sortie), réservations à venir, reste à encaisser. Sans from_date, le CA est le cumul DEPUIS LE DÉBUT (précise-le à Robin). Pour 'ce mois', 'cette semaine', etc., calcule et passe from_date/to_date.",
+    input_schema: {
+      type: "object",
+      properties: {
+        from_date: { type: "string", description: "Date de début YYYY-MM-DD pour restreindre le CA/demandes/messages à une période (omis = depuis le début)" },
+        to_date: { type: "string", description: "Date de fin YYYY-MM-DD (défaut: aujourd'hui, ignoré si from_date absent)" },
+      },
+    },
   },
   {
     name: "list_interested_leads",
@@ -222,11 +228,25 @@ async function runTool(
   chatId: string,
 ): Promise<string> {
   if (name === "get_business_stats") {
+    const from = input.from_date ? String(input.from_date) : null;
+    const to = input.to_date ? String(input.to_date) : new Date().toISOString().slice(0, 10);
+
+    let leadsQuery = supabase.from("leads").select("*", { count: "exact", head: true });
+    let waQuery = supabase.from("wa_messages").select("*", { count: "exact", head: true }).eq("from_me", true);
+    let emailQuery = supabase.from("email_log").select("*", { count: "exact", head: true });
+    let revenuesQuery = supabase.from("revenues").select("amount");
+    if (from) {
+      leadsQuery = leadsQuery.gte("created_at", from).lte("created_at", to + "T23:59:59");
+      waQuery = waQuery.gte("created_at", from).lte("created_at", to + "T23:59:59");
+      emailQuery = emailQuery.gte("sent_at", from).lte("sent_at", to + "T23:59:59");
+      revenuesQuery = revenuesQuery.gte("date", from).lte("date", to);
+    }
+
     const [leadsRes, waRes, emailRes, revenuesRes, bookingsRes] = await Promise.all([
-      supabase.from("leads").select("*", { count: "exact", head: true }),
-      supabase.from("wa_messages").select("*", { count: "exact", head: true }).eq("from_me", true),
-      supabase.from("email_log").select("*", { count: "exact", head: true }),
-      supabase.from("revenues").select("amount"),
+      leadsQuery,
+      waQuery,
+      emailQuery,
+      revenuesQuery,
       supabase
         .from("bookings")
         .select("date, status, balance_due, deposit_paid, deposit_amount")
@@ -243,10 +263,12 @@ async function runTool(
       0,
     );
     return JSON.stringify({
+      periode: from ? { from, to } : "depuis le début",
       demandes_traitees: leadsRes.count ?? 0,
       messages_whatsapp_envoyes: waRes.count ?? 0,
       messages_email_envoyes: emailRes.count ?? 0,
-      ca_genere_eur: ca,
+      ca_encaisse_eur: ca,
+      note_ca: "CA réellement encaissé sur la période, daté par la date d'encaissement (pas la date de la sortie). Une réservation dont l'acompte a été payé un autre mois n'apparaît pas ici pour ce mois-ci.",
       reservations_a_venir: upcoming,
       reste_a_encaisser_eur: resteAEncaisser,
     });
@@ -463,12 +485,18 @@ async function runTool(
   }
 
   if (name === "list_expenses") {
-    const { from, to } = dayBounds(input.from_date as string | undefined, input.to_date as string | undefined);
+    // Défaut = mois en cours (pas 7 jours) : les questions sur les dépenses
+    // sont quasi toujours mensuelles ("combien en gasoil ce mois-ci"), et un
+    // défaut trop court fait dire à tort "aucune dépense" sur des dépenses
+    // bien réelles mais hors de la fenêtre.
+    const today = new Date().toISOString().slice(0, 10);
+    const from = input.from_date ? String(input.from_date) : `${today.slice(0, 7)}-01`;
+    const to = input.to_date ? String(input.to_date) : today;
     let query = supabase
       .from("expenses")
       .select("date, category, amount, description")
       .gte("date", from)
-      .lte("date", to.slice(0, 10))
+      .lte("date", to)
       .order("date", { ascending: false })
       .limit(100);
     if (input.category) query = query.eq("category", String(input.category));
@@ -479,7 +507,7 @@ async function runTool(
     const byCategory: Record<string, number> = {};
     // deno-lint-ignore no-explicit-any
     for (const e of rows as any[]) byCategory[e.category] = (byCategory[e.category] ?? 0) + (e.amount ?? 0);
-    return JSON.stringify({ total_eur: total, par_categorie: byCategory, depenses: rows });
+    return JSON.stringify({ periode: { from, to }, total_eur: total, par_categorie: byCategory, depenses: rows });
   }
 
   if (name === "get_marketing_performance") {
@@ -531,7 +559,7 @@ const SYSTEM_PROMPT = `Tu es l'assistant Manager d'Harmonie Yacht sur Telegram, 
 
 RÈGLES :
 - Réponds en français, de façon concise et directe — c'est un chat Telegram, pas un rapport. Pas de tableaux markdown complexes, des lignes simples.
-- get_business_stats pour toute question sur les chiffres globaux (CA, demandes, messages, réservations à venir, reste à encaisser).
+- get_business_stats pour toute question sur les chiffres (CA, demandes, messages, réservations à venir, reste à encaisser). Le CA renvoyé est l'argent RÉELLEMENT ENCAISSÉ sur la période, daté par sa date d'encaissement (pas la date de la sortie réservée) — précise toujours à Robin la période couverte ("depuis le début" ou "du X au Y"), pour qu'il ne confonde jamais ce chiffre avec la valeur totale des réservations d'un mois (qui inclut des soldes pas encore payés).
 - list_interested_leads pour toute question sur les prospects/clients intéressés sur une période. Donne TOUJOURS le nom et le téléphone dans ta réponse — c'est ce qui permet à Robin de demander ensuite de les relancer.
 - list_upcoming_bookings pour toute question sur les clients/réservations à venir.
 - send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
@@ -539,7 +567,7 @@ RÈGLES :
 - Si un lead n'a pas de téléphone (ou un numéro masqué par la confidentialité WhatsApp), dis-le simplement — ne peux pas le relancer par WhatsApp dans ce cas, propose l'email s'il est disponible.
 - Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.
 - add_expense dès que Robin demande d'ajouter/enregistrer une dépense (ex. "ajoute une dépense de 11€ en sous-traitance"). Choisis la catégorie la plus proche parmi celles disponibles. Confirme le montant et la catégorie après l'ajout.
-- list_expenses pour toute question sur les dépenses ou un budget (ex. "combien de budget pub", "nos dépenses ce mois"). Déduis les dates from_date/to_date à partir de la demande (ex. "ce mois" → du 1er du mois en cours à aujourd'hui) — n'utilise le défaut (7 derniers jours) que si Robin ne précise aucune période.
+- list_expenses pour toute question sur les dépenses ou un budget (ex. "combien de budget pub", "nos dépenses ce mois", "combien en gasoil"). Par défaut il couvre le mois en cours — passe from_date/to_date seulement si Robin précise une autre période (ex. "le mois dernier", "cette semaine"). Indique TOUJOURS la période couverte dans ta réponse (le champ periode renvoyé par l'outil) pour que Robin puisse vérifier que ça correspond à sa question.
 - get_marketing_performance pour toute question sur l'efficacité des pubs ou le ROI (ex. "combien de réservations grâce aux pubs", "est-ce que la pub est rentable"). Il te donne à la fois le budget pub dépensé (catégorie 'marketing') et les réservations/CA venant des canaux Instagram Ads, TikTok Ads, Meta Ads, Google Ads sur la même période — compare les deux dans ta réponse.
 
 MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
