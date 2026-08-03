@@ -1,11 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Mic, MicOff, Volume2, VolumeX, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { JarvisStatus } from '@/components/jarvis/orb-3d';
 
-type Status = 'idle' | 'listening' | 'thinking' | 'speaking';
+// Le rendu WebGL (three.js) n'a rien à faire côté serveur — chargé
+// uniquement client-side, avec un fallback identique au look final pendant
+// le chargement du bundle 3D (évite un flash de contenu vide).
+const Orb3D = dynamic(() => import('@/components/jarvis/orb-3d'), {
+  ssr: false,
+  loading: () => <div className="orb-fallback" />,
+});
+
+type Status = JarvisStatus;
 
 // Reconnaissance vocale : API native du navigateur (Chrome/Edge/Safari),
 // gratuite et instantanée — pas d'upload audio, pas de coût par requête.
@@ -172,6 +182,17 @@ export default function JarvisPage() {
       setStatusBoth('idle');
       return;
     }
+    // iOS/Safari ne joue le TTS que si speak() a déjà été appelé une fois de
+    // façon SYNCHRONE dans un vrai geste utilisateur (ce clic). La réponse
+    // de Jarvis arrive plus tard, après un fetch réseau — à ce moment-là,
+    // Safari ne considère plus qu'on est "dans" le geste et coupe le son
+    // silencieusement (pas d'erreur, juste rien à l'oral). Un utterance
+    // vide ici "débloque" la synthèse vocale pour le reste de la session.
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const unlock = new SpeechSynthesisUtterance(' ');
+      unlock.volume = 0;
+      window.speechSynthesis.speak(unlock);
+    }
     sessionActiveRef.current = true;
     setSessionActive(true);
     startListening();
@@ -219,11 +240,11 @@ export default function JarvisPage() {
           onClick={toggleSession}
           disabled={!speechSupported && !showTextInput}
           aria-label={sessionActive ? 'Terminer la conversation' : 'Démarrer la conversation'}
-          className="orb-button relative flex size-56 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 disabled:opacity-40"
+          className="orb-glow relative flex size-72 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 disabled:opacity-40"
         >
-          <span className={`orb-ring ${status !== 'idle' ? 'orb-ring--active' : ''}`} />
-          <span className={`orb-core orb-core--${status}`}>
-            {sessionActive ? <MicOff className="size-9 text-black/70" /> : <Mic className="size-9 text-black/70" />}
+          <Orb3D status={status} />
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            {sessionActive ? <MicOff className="size-8 text-black/60 drop-shadow-sm" /> : <Mic className="size-8 text-black/60 drop-shadow-sm" />}
           </span>
         </button>
 
@@ -266,64 +287,23 @@ export default function JarvisPage() {
       )}
 
       <style jsx>{`
-        .orb-core {
-          position: relative;
-          display: flex;
-          height: 9rem;
-          width: 9rem;
-          align-items: center;
-          justify-content: center;
+        /* Halo ambiant derrière l'orbe 3D (le canvas WebGL est transparent) —
+           donne l'impression que l'orbe irradie sur son environnement,
+           façon hologramme. Pulse doucement au repos, plus vite en session. */
+        .orb-glow {
+          background: radial-gradient(circle, rgba(245, 185, 66, 0.35) 0%, rgba(245, 185, 66, 0.08) 45%, transparent 70%);
+          animation: orb-glow-pulse 4s ease-in-out infinite;
+        }
+        .orb-fallback {
+          height: 12rem;
+          width: 12rem;
           border-radius: 9999px;
           background: radial-gradient(circle at 35% 30%, #ffe8b8, #f5b942 45%, #b8791a 80%);
-          box-shadow: 0 0 40px 6px rgba(245, 185, 66, 0.45), 0 0 90px 20px rgba(245, 185, 66, 0.2);
-          transition: box-shadow 0.4s ease, transform 0.4s ease;
+          opacity: 0.7;
         }
-        .orb-core--idle {
-          animation: orb-breathe 4s ease-in-out infinite;
-        }
-        .orb-core--listening {
-          animation: orb-breathe 1.4s ease-in-out infinite;
-          box-shadow: 0 0 55px 10px rgba(245, 185, 66, 0.65), 0 0 120px 30px rgba(245, 185, 66, 0.3);
-        }
-        .orb-core--thinking {
-          animation: orb-spin-pulse 1.1s ease-in-out infinite;
-        }
-        .orb-core--speaking {
-          animation: orb-breathe 0.6s ease-in-out infinite;
-          box-shadow: 0 0 60px 14px rgba(245, 185, 66, 0.7), 0 0 130px 34px rgba(245, 185, 66, 0.35);
-        }
-        .orb-ring {
-          position: absolute;
-          inset: 0;
-          border-radius: 9999px;
-          border: 1px solid rgba(245, 185, 66, 0.25);
-        }
-        .orb-ring::before,
-        .orb-ring::after {
-          content: '';
-          position: absolute;
-          inset: -14px;
-          border-radius: 9999px;
-          border: 1px solid rgba(245, 185, 66, 0.12);
-        }
-        .orb-ring::after {
-          inset: -28px;
-          border-color: rgba(245, 185, 66, 0.07);
-        }
-        .orb-ring--active {
-          animation: orb-ring-spin 8s linear infinite;
-        }
-        @keyframes orb-breathe {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.06); }
-        }
-        @keyframes orb-spin-pulse {
-          0%, 100% { transform: scale(0.96) rotate(0deg); }
-          50% { transform: scale(1.02) rotate(180deg); }
-        }
-        @keyframes orb-ring-spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes orb-glow-pulse {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
         }
       `}</style>
     </div>
