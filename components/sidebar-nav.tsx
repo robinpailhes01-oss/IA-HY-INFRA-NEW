@@ -13,6 +13,7 @@ import {
   Bot,
   Settings,
   Sparkles,
+  Mic,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/marketing", label: "Marketing", icon: Megaphone },
   { href: "/events", label: "Événements", icon: PartyPopper },
   { href: "/agent", label: "Agent IA", icon: Bot },
+  { href: "/jarvis", label: "Jarvis", icon: Mic },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 
