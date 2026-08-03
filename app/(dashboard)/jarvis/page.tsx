@@ -26,10 +26,15 @@ type SpeechRecognitionLike = {
   stop: () => void;
 };
 
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: new () => SpeechRecognitionLike;
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+};
+
 function getSpeechRecognition(): SpeechRecognitionLike | null {
   if (typeof window === 'undefined') return null;
-  // deno-lint-ignore no-explicit-any
-  const Ctor = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+  const { SpeechRecognition, webkitSpeechRecognition } = window as SpeechRecognitionWindow;
+  const Ctor = SpeechRecognition ?? webkitSpeechRecognition;
   if (!Ctor) return null;
   return new Ctor();
 }
