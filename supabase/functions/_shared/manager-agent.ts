@@ -157,7 +157,7 @@ export const TOOLS = [
   {
     name: "list_expenses",
     description:
-      "Liste les dépenses enregistrées sur une période, avec le total et le détail par catégorie. Utilise pour toute question sur les dépenses, le budget dépensé (ex. 'combien de budget pub ce mois', 'nos dépenses de sous-traitance').",
+      "Liste les dépenses enregistrées sur une période, avec le total et le détail par catégorie. Utilise pour toute question sur les dépenses, le budget dépensé (ex. 'combien de budget pub ce mois', 'nos dépenses de sous-traitance'). Chaque dépense retournée inclut son id — nécessaire pour delete_expense.",
     input_schema: {
       type: "object",
       properties: {
@@ -169,6 +169,18 @@ export const TOOLS = [
           description: "Filtre optionnel sur une seule catégorie (ex. 'marketing' pour le budget pub)",
         },
       },
+    },
+  },
+  {
+    name: "delete_expense",
+    description:
+      "Supprime définitivement une dépense enregistrée par erreur ou en double. Appelle TOUJOURS list_expenses juste avant pour retrouver l'id exact de la dépense visée (ne devine jamais un id) — confirme le montant/catégorie/date à Robin avant de supprimer si plusieurs dépenses se ressemblent.",
+    input_schema: {
+      type: "object",
+      properties: {
+        expense_id: { type: "string", description: "id de la dépense à supprimer (obtenu via list_expenses)" },
+      },
+      required: ["expense_id"],
     },
   },
   {
@@ -478,7 +490,7 @@ export async function runTool(
     const to = input.to_date ? String(input.to_date) : today;
     let query = supabase
       .from("expenses")
-      .select("date, category, amount, description")
+      .select("id, date, category, amount, description")
       .gte("date", from)
       .lte("date", to)
       .order("date", { ascending: false })
@@ -492,6 +504,15 @@ export async function runTool(
     // deno-lint-ignore no-explicit-any
     for (const e of rows as any[]) byCategory[e.category] = (byCategory[e.category] ?? 0) + (e.amount ?? 0);
     return JSON.stringify({ periode: { from, to }, total_eur: total, par_categorie: byCategory, depenses: rows });
+  }
+
+  if (name === "delete_expense") {
+    const expenseId = String(input.expense_id ?? "");
+    if (!expenseId) return JSON.stringify({ ok: false, error: "expense_id requis" });
+    const { data, error } = await supabase.from("expenses").delete().eq("id", expenseId).select("date, category, amount, description").maybeSingle();
+    if (error) return JSON.stringify({ ok: false, error: error.message });
+    if (!data) return JSON.stringify({ ok: false, error: "Aucune dépense trouvée avec cet id — elle a peut-être déjà été supprimée." });
+    return JSON.stringify({ ok: true, deleted: data });
   }
 
   if (name === "get_marketing_performance") {
@@ -541,7 +562,7 @@ export async function runTool(
 //
 // Même agent, même connaissance de l'activité, sur deux canaux différents :
 // - "telegram" : chat texte, réservé au propriétaire.
-// - "dashboard" : vocal (push-to-talk) sur le tableau de bord — la réponse
+// - "dashboard" : vocal (conversation mains-libres) sur le tableau de bord — la réponse
 //   est aussi lue à voix haute, donc zéro markdown et des phrases courtes,
 //   naturelles à l'oral (pas de listes à puces, pas de nombres illisibles
 //   à l'oral comme "3-5").
@@ -549,7 +570,7 @@ export async function runTool(
 export function buildSystemPrompt(channel: "telegram" | "dashboard"): string {
   const channelLine = channel === "telegram"
     ? "Tu es l'assistant Manager d'Harmonie Yacht sur Telegram, réservé exclusivement au propriétaire (Robin)."
-    : "Tu es l'assistant Manager d'Harmonie Yacht, sur le tableau de bord (à l'oral, en push-to-talk), réservé exclusivement au propriétaire (Robin).";
+    : "Tu es l'assistant Manager d'Harmonie Yacht, sur le tableau de bord (à l'oral, en conversation mains-libres), réservé exclusivement au propriétaire (Robin).";
   const formatLine = channel === "telegram"
     ? "- Réponds en français, de façon concise et directe — c'est un chat Telegram, pas un rapport. Pas de tableaux markdown complexes, des lignes simples."
     : "- Réponds en français, à l'oral : ta réponse est lue à voix haute ET affichée en texte. ZÉRO markdown (pas de **gras**, pas de listes à puces, pas de #titres) — ça se lit littéralement à voix haute et c'est imbuvable. Phrases courtes, naturelles, comme si tu parlais vraiment à Robin. Donne un seul chiffre/idée clé à la fois plutôt qu'une liste longue à l'oral — s'il y a beaucoup de détails (ex. plusieurs prospects), résume l'essentiel à l'oral et propose de préciser si besoin.";
@@ -568,6 +589,8 @@ ${formatLine}
 - add_expense dès que Robin demande d'ajouter/enregistrer une dépense (ex. "ajoute une dépense de 11€ en sous-traitance"). Choisis la catégorie la plus proche parmi celles disponibles.
 - ⚠️ Ne confirme JAMAIS "c'est enregistré"/"j'ai bien ajouté" pour add_expense (ou tout autre outil d'écriture) sans avoir reçu le tool_result de CET appel précis DANS CE tour — jamais par mémoire d'un tour précédent, jamais par supposition. Si le tool_result renvoie ok:false ou une erreur, dis-le clairement à Robin, ne prétends pas que ça a marché. Si Robin liste plusieurs dépenses dans un même message, appelle add_expense une fois PAR dépense (jamais groupées en un seul appel) et confirme chacune individuellement avec le résultat réel reçu.
 - list_expenses pour toute question sur les dépenses ou un budget (ex. "combien de budget pub", "nos dépenses ce mois", "combien en gasoil"). Par défaut il couvre le mois en cours — passe from_date/to_date seulement si Robin précise une autre période (ex. "le mois dernier", "cette semaine"). Indique TOUJOURS la période couverte dans ta réponse (le champ periode renvoyé par l'outil) pour que Robin puisse vérifier que ça correspond à sa question.
+- delete_expense dès que Robin demande de supprimer/retirer/annuler une dépense (ex. "supprime la dépense gazoil", "c'était un doublon, enlève-le"). Appelle D'ABORD list_expenses sur la période concernée pour retrouver l'id exact — ne devine JAMAIS un id. S'il y a plusieurs dépenses qui correspondent (même catégorie/montant proches), décris-les à Robin et demande laquelle avant de supprimer. Même règle anti-hallucination que pour add_expense : ne confirme "supprimé" qu'après un tool_result ok:true réel.
+- ⚠️ Tu n'as PAS d'outil pour supprimer ou corriger un encaissement (revenues) lié à une réservation — uniquement les dépenses (expenses). Si Robin demande de supprimer/corriger un encaissement, dis-le clairement et propose de vérifier ça avec lui plutôt que d'inventer une action.
 - get_marketing_performance pour toute question sur l'efficacité des pubs ou le ROI (ex. "combien de réservations grâce aux pubs", "est-ce que la pub est rentable"). Il te donne à la fois le budget pub dépensé (catégorie 'marketing') et les réservations/CA venant des canaux Instagram Ads, TikTok Ads, Meta Ads, Google Ads sur la même période — compare les deux dans ta réponse.
 
 MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
