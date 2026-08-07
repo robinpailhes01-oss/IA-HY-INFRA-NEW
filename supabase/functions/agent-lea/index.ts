@@ -83,13 +83,13 @@ const TOOLS = [
   {
     name: "update_lead_status",
     description:
-      "Met à jour l'étape du prospect dans le pipeline. Utilise 'contacted' au 1er échange, 'qualified' une fois les besoins clairs, 'quote_sent' si tu as communiqué un prix, 'lost' si le prospect se désiste.",
+      "Met à jour l'étape du prospect dans le pipeline. Utilise 'contacted' au 1er échange, 'qualified' une fois les besoins clairs, 'quote_sent' dès que tu as communiqué un prix OU envoyé le lien de réservation (même si le client dit qu'il va réserver 'de suite' — ça reste une INTENTION tant que le paiement n'est pas fait), 'lost' si le prospect se désiste. N'INCLUT PAS 'booked' : ce statut ne peut être posé que par un paiement réellement confirmé sur le site (import automatique) ou par Robin manuellement — jamais par toi, même face à une intention très forte.",
     input_schema: {
       type: "object",
       properties: {
         status: {
           type: "string",
-          enum: ["new", "contacted", "qualified", "quote_sent", "followed_up", "booked", "lost"],
+          enum: ["new", "contacted", "qualified", "quote_sent", "followed_up", "lost"],
         },
       },
       required: ["status"],
@@ -271,7 +271,7 @@ Trois cas déclenchent obligatoirement escalate_to_human :
 # 11. UTILISATION DES OUTILS (côté serveur, invisible pour le client)
 - create_lead : sur WhatsApp, une fiche minimale (téléphone seul) est créée automatiquement à la 1ère message. Appelle create_lead dès que tu as le prénom : ça enrichit la fiche existante (sans doublon) et fait passer le statut "new" → "contacted".
 - qualify_lead : IMMÉDIATEMENT après chaque nouvelle info reçue (offre, occasion, nb pers., date, créneau, score). Appelle-le AVANT de répondre au client — sinon la fiche n'est pas à jour. Un score ≥ 7 = lead chaud (remonte automatiquement dans le tableau de l'équipe).
-- update_lead_status : fais avancer le pipeline (contacted → qualified → quote_sent…).
+- update_lead_status : fais avancer le pipeline (contacted → qualified → quote_sent…). ⚠️ Ne va JAMAIS jusqu'à 'booked' toi-même, même si le client dit qu'il va réserver "de suite"/"maintenant" — tant que le paiement n'est pas confirmé sur le site, c'est une intention, pas une réservation. Reste à 'quote_sent' dans ce cas. Un lead marqué 'booked' à tort disparaît des vues "leads chauds"/priorité de Robin — il risque de rater un client encore à convertir.
 - check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
 - send_booking_link : pour partager le lien de réservation du site (jamais inventé).
 - get_active_events : si le client demande des événements / soirées publiques.
@@ -409,6 +409,14 @@ async function runTool(
     }
     case "update_lead_status": {
       if (!state.leadId) return "Aucune fiche à mettre à jour.";
+      // "booked" ne se pose QUE sur paiement réellement confirmé (import
+      // automatique) ou manuellement par Robin — jamais par Léa, même sur une
+      // intention très forte du client. Garde-fou serveur en plus du schéma
+      // (retiré des valeurs autorisées côté outil) : un modèle qui insiste
+      // quand même ne doit jamais réussir à l'appliquer.
+      if (input.status === "booked") {
+        return "Refusé : 'booked' ne peut pas être posé par toi, seulement par un paiement confirmé ou par Robin. Utilise 'quote_sent' si tu as envoyé le lien de réservation.";
+      }
       const { error } = await supabase
         .from("leads")
         .update({ status: input.status, updated_at: now, last_interaction_at: now })

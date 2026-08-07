@@ -283,12 +283,32 @@ export default async function OverviewPage() {
   };
 
   // ── Leads les plus chauds (déjà triés score ↓ puis date ↑) ──
-  const hotLeads = (hotLeadsRes.data ?? [])
-    .filter((l) => l.status !== "booked" && l.status !== "lost")
-    .slice(0, 6);
+  const actionableHotLeads = (hotLeadsRes.data ?? []).filter(
+    (l) => l.status !== "booked" && l.status !== "lost",
+  );
+  const hotLeads = actionableHotLeads.slice(0, 6);
+  // Notification en haut de page : score ≥ 7 = lead chaud (même seuil que
+  // partout ailleurs — priorityBucket, agent-lea). Compté sur l'ensemble
+  // récupéré (30 max), pas seulement les 6 affichés dans la carte plus bas.
+  const veryHotLeadsCount = actionableHotLeads.filter((l) => (l.score ?? 0) >= 7).length;
 
   return (
     <div className="space-y-6">
+      {veryHotLeadsCount > 0 && (
+        <Link
+          href="/leads?view=priority"
+          className="enter-up flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/8 px-4 py-3 text-sm transition-colors hover:bg-gold/12"
+        >
+          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-gold" />
+          <p className="flex-1 text-foreground/90">
+            <strong className="text-gold">
+              {veryHotLeadsCount} lead{veryHotLeadsCount > 1 ? "s" : ""} chaud{veryHotLeadsCount > 1 ? "s" : ""}
+            </strong>
+            {" "}en attente — score élevé, à convertir en priorité.
+          </p>
+        </Link>
+      )}
+
       <header className="enter-up flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
