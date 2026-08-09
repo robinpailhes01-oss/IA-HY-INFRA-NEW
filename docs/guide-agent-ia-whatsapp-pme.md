@@ -1,165 +1,166 @@
-# Créer son agent IA WhatsApp + tableau de bord — guide pour une PME
+# Brief de démarrage — Agent IA WhatsApp + Tableau de bord
 
-> Basé sur l'infra réelle d'Harmonie Yacht (agent commercial WhatsApp, CRM,
-> réservations, finances, agent manager). Ce document généralise ce qui a
-> été construit et corrigé en conditions réelles — pas une théorie, un
-> retour d'expérience reproductible pour n'importe quelle PME qui veut son
-> propre "employé virtuel" 24/7.
+> **Ce fichier s'adresse à Claude Code.** Un chef d'entreprise vient de te
+> le donner en tout début de session, dans un repo vide ou presque, parce
+> qu'il veut son propre agent IA WhatsApp + tableau de bord, sur le modèle
+> de ce qui a été construit pour Harmonie Yacht (location de yacht). Ton
+> rôle : le faire parler de SON métier avant d'écrire une ligne de code,
+> puis construire une infra personnalisée à partir de l'architecture et
+> des garde-fous ci-dessous — qui viennent tous de bugs réels rencontrés en
+> production, pas de théorie.
 
-## 1. Le principe
+## Ta mission, dans l'ordre
 
-Un agent IA qui répond aux clients sur WhatsApp (ou Instagram/email) H24,
-qualifie les prospects, communique les disponibilités/tarifs, et alimente
-en temps réel un tableau de bord où le patron pilote son activité — sans
-jamais avoir à coder pour l'utiliser au quotidien.
+**Phase 0 — Découverte (obligatoire avant tout code).**
+Ne scaffold RIEN tant que tu n'as pas ces réponses. Pose les questions une
+à la fois ou en petits groupes, pas un questionnaire de 20 lignes d'un
+coup — c'est un entretien, pas un formulaire :
 
-Deux composants distincts, qui ne doivent JAMAIS être confondus :
-- **L'agent front-office** (ex. "Léa") : parle aux clients, qualifie, ne
-  décide rien de définitif seul.
-- **Le tableau de bord + l'agent manager** (ex. le Manager Telegram/Jarvis) :
-  réservé au patron, chiffres réels, pilotage, corrections.
+1. **Le métier** : quelles offres/prestations exactement, avec prix et ce
+   qui est inclus ? Y a-t-il des variantes selon jour/heure (ex. réduction
+   matinée) ?
+2. **Le ton réel de la maison** : demande 3-5 vraies conversations
+   WhatsApp/email déjà échangées avec des clients. N'invente JAMAIS un ton
+   "IA polie générique" — extrais des formulations réelles, mot pour mot,
+   et calque dessus.
+3. **Le process de qualification voulu, dans l'ordre exact** : quelle est
+   la toute première question posée à un client vague ("je veux des
+   infos") ? Puis la suivante ? Quand envoie-t-on un lien/devis ? Cet ordre
+   est un choix métier du client, pas un choix technique — ne le décide pas
+   à sa place, demande-le explicitement, et attends-toi à devoir l'ajuster
+   après les premiers vrais échanges.
+4. **Les cas à escalader vers un humain** : négociation de prix, réclamation,
+   situation ambiguë, demande hors périmètre — lister les cas concrets du
+   métier (ex. "demande PMR", "météo douteuse" pour du nautique).
+5. **Ce que l'agent NE DOIT JAMAIS faire lui-même** : prendre un paiement ?
+   Annuler une commande ? Promettre une remise ? Fixer cette liste
+   explicitement avec le client, elle deviendra des règles dures dans le
+   prompt et des restrictions dans le schéma des outils (pas juste des
+   phrases dans un prompt qu'un modèle peut ignorer).
+6. **Canal WhatsApp disponible** : API Business officielle (payante au-delà
+   d'un quota, fiable) ou solution non-officielle type Baileys (gratuite,
+   moins garantie) ? Ça dépend du budget et du volume attendu.
+7. **Qui doit piloter, et comment** : le patron veut-il un bot Telegram, une
+   page dans le dashboard, du vocal ? Qu'est-ce qu'il veut pouvoir demander
+   en langage naturel (chiffres, prospects, relances, dépenses) ?
 
-## 2. Prérequis techniques
+**Phase 1 — Scaffolder l'infra** à partir du blueprint ci-dessous, avec les
+réponses de la Phase 0 déjà intégrées dans le schéma et le prompt — ne
+génère pas une version générique "à adapter plus tard", personnalise
+directement.
 
-| Brique | Rôle | Exemple utilisé ici |
+**Phase 2 — Tester avec le client** avant de considérer que c'est fini :
+fais-lui écrire 5-10 vrais messages de clients types (vague, précis,
+négociation, cas limite) et vérifie que l'agent réagit comme il l'a décrit
+en Phase 0. Ajuste le prompt en conséquence, pas après coup.
+
+## Blueprint technique
+
+| Brique | Rôle | Choix par défaut si le client n'a pas de préférence |
 |---|---|---|
-| Un modèle de langage avec tool use | Le cerveau de l'agent | Claude (Anthropic) |
-| Une base de données + fonctions serverless | CRM, config, exécution des outils | Supabase (Postgres + Edge Functions) |
-| Un canal WhatsApp | Recevoir/envoyer des messages | API officielle WhatsApp Business, ou un pont non-officiel (Baileys) si le budget ne permet pas encore l'API officielle |
-| Un tableau de bord web | Piloter l'activité | Next.js (ou équivalent) + la même base Supabase |
-| Un canal "patron" | Poser des questions en langage naturel sur l'activité | Bot Telegram, ou une page vocale dans le dashboard |
+| Modèle de langage avec tool use | Le cerveau de l'agent | Claude (Anthropic), function calling |
+| Base de données + fonctions serverless | CRM, config, exécution des outils | Supabase (Postgres + Edge Functions) |
+| Canal WhatsApp | Recevoir/envoyer des messages | API officielle si le budget le permet, sinon un pont non-officiel |
+| Tableau de bord web | Piloter l'activité | Next.js + la même base Supabase |
+| Canal "patron" | Langage naturel sur l'activité | Bot Telegram (rapide à mettre en place, gratuit) |
 
-## 3. Étape par étape
-
-### Étape 1 — Cadrer le métier AVANT de coder
-Répondre par écrit, noir sur blanc, avant d'écrire une ligne de prompt :
-- Quelles sont les offres exactes (noms, prix, ce qui est inclus) ?
-- Quel est le VRAI ton de la maison (pas un ton "IA générique poli") ?
-  Le meilleur moyen : relire de vraies conversations WhatsApp de l'équipe et
-  en extraire des exemples réels, phrase pour phrase.
-- Quel est le process de qualification voulu, dans quel ORDRE exact ? (ex.
-  "type de prestation → date → envoi du lien" — l'ordre compte énormément
-  et change la conversion, testez-le avec de vrais clients avant de le figer)
-- Quels cas doivent être escaladés à un humain (négociation, réclamation,
-  cas hors périmètre) ?
-- Qu'est-ce que l'agent NE DOIT JAMAIS faire lui-même ? (typiquement :
-  prendre un paiement, annuler une commande, promettre un remboursement)
-
-### Étape 2 — La base de données (le CRM)
-Tables minimales :
-- `leads` (prospects) : contact, canal, offre visée, score d'intérêt,
-  statut de pipeline, date souhaitée.
+### Schéma de données minimal
+- `leads` : contact, canal, offre visée, score d'intérêt, statut de
+  pipeline, date souhaitée.
 - `conversations` : historique des échanges, par lead.
-- `bookings`/`orders` (réservations/commandes) : la source de vérité des
-  transactions réelles — jamais mélangée avec les intentions des leads.
-- `agent_config` : offres, tarifs, FAQ, règles — modifiable SANS
-  redéploiement (l'agent relit sa config à chaque conversation).
+- `bookings`/`orders` : LA source de vérité des transactions réelles —
+  jamais mélangée avec les intentions/déclarations des leads.
+- `agent_config` : offres, tarifs, FAQ, règles — modifiable sans
+  redéploiement (l'agent relit sa config à chaque conversation, pas de
+  valeurs codées en dur dans le prompt).
 
-### Étape 3 — Le prompt de l'agent, structuré comme une "skill"
-Ne PAS écrire un prompt monolithique. Le découper en sections numérotées à
-responsabilité unique (identité/ton, format des messages, exemples de ton
-réel, anti-répétition, mémoire, qualification, offres, disponibilité,
-escalade, outils). Avant d'ajouter une règle, vérifier qu'elle n'existe pas
-déjà ailleurs sous une autre forme — la même contrainte réécrite à 4
-endroits différents avec de petites divergences est la cause n°1 de bugs de
-comportement (deux règles qui se contredisent sans qu'on s'en rende compte).
+### Structure du prompt agent — en sections numérotées, façon "skill"
+Ne jamais écrire un prompt monolithique. Sections à responsabilité unique,
+dans cet esprit (adapter les noms au métier du client) :
+1. Identité & ton
+2. Format des messages (longueur, emojis, markdown ou non selon le canal)
+3. Exemples de ton réel — les vraies phrases collectées en Phase 0, avec des
+   contre-exemples explicites de ce qu'il ne faut PAS faire
+4. Anti-répétition (une info donnée une fois ne se redit jamais)
+5. Mémoire & fil de conversation
+6. Qualification du prospect — l'ordre exact décidé en Phase 0
+7. Offres, tarifs, ce qui est inclus
+8. Interprétation des données de disponibilité/stock
+9. Escalade vers un humain
+10. Ce que l'agent ne fait jamais lui-même
+11. Utilisation des outils (règles serveur, invisibles pour le client)
 
-### Étape 4 — Les outils (tool use), pas du texte libre
-L'agent ne doit JAMAIS écrire de logique métier en texte libre ("je crois
-que c'est disponible..."). Chaque action a un outil dédié, avec une
-description qui dit explicitement QUAND l'utiliser :
-- Vérifier une disponibilité → un outil qui interroge la vraie base, jamais
-  une supposition du modèle.
-- Qualifier/mettre à jour un prospect → un outil séparé, appelé à chaque
-  info nouvelle, AVANT de répondre au client.
-- Envoyer un lien de paiement/réservation → un outil qui renvoie le lien
-  réel, jamais un lien inventé par le modèle.
-- Escalader vers un humain → un outil dédié, avec une règle claire sur
-  quand rester silencieux vs. envoyer un message d'attente au client.
+Avant d'ajouter une nouvelle règle à un prompt existant, vérifie qu'elle
+n'existe pas déjà ailleurs sous une autre forme. La même contrainte
+réécrite à 4 endroits différents avec de petites divergences est la cause
+n°1 de comportements incohérents.
 
-### Étape 5 — Le tableau de bord
-Vues indispensables dès le premier jour :
-- **Pipeline de prospects** (kanban ou tableau), avec un score de chaleur
-  et un filtre "urgent" (à reprendre, relances dues, leads chauds).
-- **Réservations/commandes**, avec le suivi des paiements (acompte, solde).
-- **Finances**, alimentées automatiquement par les vraies transactions —
-  jamais par une déclaration de l'agent conversationnel.
-- Une **notification visible dès l'ouverture** sur ce qui demande une
-  action (pas besoin d'aller chercher l'info page par page).
+### Outils (tool use), jamais du texte libre pour la logique métier
+Chaque action métier a un outil dédié, avec une description qui dit
+explicitement QUAND l'utiliser — l'agent ne doit jamais "décider" en texte
+libre qu'une chose est disponible ou vraie.
 
-### Étape 6 — L'agent "manager" pour le patron
-Un deuxième agent, séparé, réservé au patron (Telegram, ou une page vocale
-du dashboard) pour poser des questions en langage naturel : "combien de CA
-ce mois-ci", "qui était intéressé cette semaine", "relance untel". Il doit
-avoir accès en LECTURE à toute la même base, et en écriture UNIQUEMENT à ce
-qui est explicitement voulu (ex. ajouter une dépense) — jamais un accès
-gratuit à tout modifier sans confirmation.
+### Tableau de bord — vues minimales dès le jour 1
+- Pipeline de prospects avec score de chaleur + filtre "urgent".
+- Réservations/commandes avec suivi des paiements.
+- Finances alimentées automatiquement par les vraies transactions.
+- Une notification visible dès l'ouverture sur ce qui demande une action.
 
-### Étape 7 — Les automatisations
-- Relances automatiques des prospects sans réponse.
-- Synchronisation avec l'agenda existant de l'équipe (import ET export).
-- Notification du patron en cas d'escalade ou de tentative de paiement
-  échouée (ne jamais perdre un prospect chaud faute de suivi).
+### Agent "manager" pour le patron
+Accès LECTURE à toute la base. Accès ÉCRITURE uniquement à ce qui a été
+explicitement listé en Phase 0 (ex. "ajouter une dépense"), jamais un accès
+libre à tout modifier sans confirmation explicite du patron dans son
+message suivant.
 
-## 4. Les pièges réels rencontrés (et comment les éviter dès le départ)
+## Garde-fous obligatoires (non négociables, implémente-les dès le départ)
 
-Ces bugs ne sont pas théoriques — ils sont tous survenus en usage réel sur
-ce projet, et ont un point commun : **on a fait confiance à l'agent pour
-déclarer un succès au lieu de vérifier la vraie donnée.**
+Chacun vient d'un bug réel corrigé en production sur ce type de projet.
 
-1. **L'agent affirme un succès sans preuve.** Un modèle peut dire "c'est
-   enregistré" sans que l'action ait réellement eu lieu (tour précédent mal
-   mémorisé, appel d'outil oublié). Règle : ne JAMAIS confirmer une action
-   d'écriture au client/patron sans avoir reçu, DANS CE tour précis, un
-   résultat d'outil qui le confirme.
-2. **Un statut business-critique ne doit jamais être positionnable par
-   l'IA sur une simple intention exprimée.** Un client qui dit "je réserve
-   de suite" n'a pas réservé. Si l'agent peut lui-même marquer "réservé"/
-   "payé", il finira par le faire trop tôt — et ce lead disparaîtra des
-   vues de suivi comme s'il était déjà converti. Ces statuts ne doivent être
-   posés QUE par un événement vérifiable (paiement confirmé) ou par un
-   humain.
-3. **Dater un encaissement par le bon événement, pas par la date de
-   traitement.** Un acompte compte pour le jour où il a été payé ; un solde
-   compte pour le jour de la prestation réelle — jamais pour le jour où
-   quelqu'un a coché une case dans l'outil. Sinon le chiffre d'affaires du
-   mois est faux sans que personne ne s'en aperçoive.
-4. **Cohérence entre les canaux.** Si le site web, l'agent WhatsApp et le
-   patron peuvent chacun changer un prix indépendamment, ils finissent par
-   se contredire. Un seul endroit fait autorité, les autres s'y réfèrent.
-5. **Ne jamais donner à un outil d'écriture plus de pouvoir que
-   nécessaire.** Ajouter une dépense oui, la supprimer doit être une action
-   séparée et explicite — sinon on découvre trop tard qu'il n'existe aucun
-   moyen de corriger une erreur.
-6. **Tester le flux réel avant de le figer.** L'ordre des questions de
-   qualification qui convertit le mieux se découvre en observant de vrais
-   échanges, pas en le devinant à l'avance — et il peut changer avec
-   l'expérience. Le prompt doit rester facile à ajuster sans tout casser.
+1. **Ne jamais confirmer une action d'écriture sans preuve dans le tour
+   courant.** Un modèle peut dire "c'est enregistré" sans que l'outil ait
+   réellement été appelé ou ait réellement réussi. Ajoute une règle
+   explicite dans le prompt ("ne confirme qu'après un tool_result réel de
+   CE tour") ET une validation côté serveur pour les cas les plus critiques.
+2. **Un statut business-critique (payé, réservé, confirmé) ne doit jamais
+   pouvoir être posé par l'agent conversationnel sur une simple intention
+   du client.** "Je réserve de suite" n'est pas une réservation. Si
+   possible, retire carrément cette valeur de l'enum accepté par l'outil de
+   mise à jour de statut côté agent — et ajoute un refus explicite côté
+   serveur en filet de sécurité. Ce statut ne doit être posable que par un
+   événement vérifiable (paiement confirmé) ou par un humain.
+3. **Dater un encaissement par l'événement réel, jamais par la date de
+   traitement dans l'outil.** Un acompte compte pour le jour où il a été
+   payé ; un solde compte pour le jour de la prestation réelle.
+4. **Un seul endroit fait autorité sur un prix/une donnée partagée entre
+   canaux** (site, agent, config) — les autres s'y réfèrent, jamais de
+   duplication modifiable indépendamment.
+5. **Un outil d'écriture n'a que le pouvoir nécessaire.** Ajouter oui,
+   supprimer/corriger est une action séparée et explicitement listée en
+   Phase 0 — sinon on découvre trop tard qu'il n'existe aucun moyen de
+   corriger une erreur.
+6. **L'ordre de qualification se valide avec de vrais échanges, pas en
+   théorie.** Garde le prompt facile à réordonner sans tout casser.
 
-## 5. Budget indicatif (ordre de grandeur, pas un devis)
+## Budget indicatif (ordre de grandeur)
 
 - Modèle IA : quelques centimes à quelques dizaines de centimes par
-  conversation selon le volume et la longueur.
+  conversation selon volume/longueur.
 - Base de données/fonctions serverless : gratuit à quelques dizaines
-  d'euros/mois pour une PME (paliers gratuits généreux au démarrage).
+  d'euros/mois pour une PME au démarrage.
 - WhatsApp Business API officielle : coût par conversation au-delà d'un
-  quota gratuit ; une solution non-officielle (QR code) est gratuite mais
-  moins stable et pas garantie par WhatsApp.
-- Hébergement du tableau de bord : gratuit à quelques euros/mois selon le
-  trafic.
+  quota gratuit ; solution non-officielle gratuite mais moins garantie.
+- Hébergement du dashboard : gratuit à quelques euros/mois selon trafic.
 
-## 6. Pour aller plus loin
+## Pour aller plus loin (une fois le socle stable)
 
-- Paiement en ligne intégré (Stripe/autre) avec synchronisation automatique
-  vers le CRM.
-- Un agent vocal pour le patron (poser des questions à l'oral, en
-  conversation continue).
-- Contrats/documents générés automatiquement à la confirmation.
-- Un système d'avis clients automatisé après chaque prestation.
+- Paiement en ligne intégré avec synchronisation automatique vers le CRM.
+- Agent vocal pour le patron (conversation continue, mains-libres).
+- Documents/contrats générés automatiquement à la confirmation.
+- Avis clients automatisés après chaque prestation.
 
 ---
 
-*Ce guide est né de la construction réelle d'Harmonie Yacht — il est
-volontairement générique pour s'appliquer à n'importe quelle PME avec un
-flux client + un catalogue de prestations (hôtellerie, artisanat, services
-à la personne, événementiel...).*
+*Basé sur l'infra réelle d'Harmonie Yacht (yacht privatif, Carnon) —
+généralisable à toute PME avec un flux client + un catalogue de
+prestations (hôtellerie, artisanat, services à la personne, événementiel,
+santé/bien-être...).*
