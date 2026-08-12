@@ -615,7 +615,7 @@ export async function callAnthropic(
     },
     body: JSON.stringify({
       model: opts.model,
-      max_tokens: 1536,
+      max_tokens: 4096,
       system: [{ type: "text", text: buildSystemPrompt(opts.channel), cache_control: { type: "ephemeral" } }],
       tools: TOOLS,
       messages,
@@ -637,8 +637,9 @@ export async function runAgentTurn(
   messages: ApiMessage[],
   opts: { apiKey: string; model: string; channel: "telegram" | "dashboard"; chatId: string; baileysServiceUrl: string; maxToolTurns?: number },
 ): Promise<string> {
-  const maxToolTurns = opts.maxToolTurns ?? 6;
+  const maxToolTurns = opts.maxToolTurns ?? 14;
   let finalText = "";
+  let ranOutOfTurns = false;
   for (let turn = 0; turn < maxToolTurns; turn++) {
     const data = await callAnthropic(messages, opts);
     const blocks = (data.content ?? []) as Array<Record<string, unknown>>;
@@ -657,6 +658,17 @@ export async function runAgentTurn(
       results.push({ type: "tool_result", tool_use_id: (tu as Record<string, unknown>).id, content: out });
     }
     messages.push({ role: "user", content: results });
+
+    // Dernier tour consommé et Claude voulait encore continuer (d'autres tool_use
+    // en attente) : les outils de CE tour se sont bien exécutés pour de vrai, mais
+    // on n'aura jamais la confirmation finale de Claude qui les résume. Ne JAMAIS
+    // réutiliser un `finalText` d'un tour précédent dans ce cas — il ne reflète pas
+    // ce qui vient réellement de se passer et donnerait une fausse impression de
+    // tout confirmer (le bug de confirmation hallucinée qu'on corrige ici).
+    if (turn === maxToolTurns - 1) ranOutOfTurns = true;
+  }
+  if (ranOutOfTurns) {
+    return "J'ai traité une partie de ta demande, mais elle était trop longue pour tout confirmer en un seul message. Vérifie ce qui a bien été pris en compte (ex. dans Finances) et redonne-moi le reste si besoin.";
   }
   return finalText || "Je n'ai pas pu générer de réponse, réessaie ta question autrement.";
 }
