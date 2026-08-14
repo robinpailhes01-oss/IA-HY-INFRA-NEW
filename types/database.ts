@@ -1512,6 +1512,54 @@ export type Database = {
           },
         ]
       }
+      seo_audits: {
+        Row: {
+          checks: Json
+          checks_passed: number
+          checks_total: number
+          created_at: string
+          critical_count: number
+          duration_ms: number | null
+          error: string | null
+          id: string
+          pages: Json
+          run_at: string
+          score: number
+          site_url: string
+          warning_count: number
+        }
+        Insert: {
+          checks?: Json
+          checks_passed?: number
+          checks_total?: number
+          created_at?: string
+          critical_count?: number
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          pages?: Json
+          run_at?: string
+          score: number
+          site_url: string
+          warning_count?: number
+        }
+        Update: {
+          checks?: Json
+          checks_passed?: number
+          checks_total?: number
+          created_at?: string
+          critical_count?: number
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          pages?: Json
+          run_at?: string
+          score?: number
+          site_url?: string
+          warning_count?: number
+        }
+        Relationships: []
+      }
       wa_auth_state: {
         Row: {
           data: Json
