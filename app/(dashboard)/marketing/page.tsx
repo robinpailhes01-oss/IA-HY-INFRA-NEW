@@ -36,6 +36,13 @@ const ORGANIC_CHANNELS = new Set([
   "tiktok_organic",
   "facebook_organic",
   "word_of_mouth",
+  "google_organic",
+  // Les IA génératives sont de l'acquisition organique : on ne paie pas pour y
+  // apparaître, on y apparaît parce qu'on est cité. Les compter ici permet de
+  // voir la contribution du travail GEO dans le total organique.
+  "chatgpt",
+  "perplexity",
+  "ai_other",
 ]);
 
 // Le site internet n'est PAS une source d'acquisition : tout le monde réserve

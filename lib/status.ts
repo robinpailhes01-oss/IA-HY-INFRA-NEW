@@ -27,6 +27,11 @@ export const SOURCE_OPTIONS: [string, string][] = [
   ["meta_ads", "Meta Ads"],
   ["google_ads", "Google Ads"],
   ["google_organic", "Google (recherche)"],
+  // Canaux IA : suivis séparément pour mesurer ce que rapporte le travail GEO
+  // (être cité dans les réponses de ChatGPT & co).
+  ["chatgpt", "ChatGPT"],
+  ["perplexity", "Perplexity"],
+  ["ai_other", "Autre IA"],
   ["whatsapp", "WhatsApp"],
   ["email", "Email"],
   ["website", "Site web"],
