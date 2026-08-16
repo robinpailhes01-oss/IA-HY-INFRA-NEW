@@ -113,6 +113,7 @@ export default async function OverviewPage() {
     conversationsRes,
     leadsStatusRes,
     hotLeadsRes,
+    awaitingReplyRes,
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -184,6 +185,13 @@ export default async function OverviewPage() {
       .order("desired_date", { ascending: true })
       .limit(30)
       .returns<HotLeadRow[]>(),
+    // ── Clients dont le dernier message attend encore une réponse ──
+    // Signal le plus fort de perte de prospect : ils ont écrit, personne n'a
+    // répondu. Rien à voir avec un score — c'est nous qui bloquons.
+    supabase
+      .from("lead_last_message")
+      .select("lead_id")
+      .eq("last_from_me", false),
   ]);
 
   const goal = goalRes.data;
@@ -287,14 +295,45 @@ export default async function OverviewPage() {
     (l) => l.status !== "booked" && l.status !== "lost",
   );
   const hotLeads = actionableHotLeads.slice(0, 6);
-  // Notification en haut de page : score ≥ 7 = lead chaud (même seuil que
-  // partout ailleurs — priorityBucket, agent-lea). Compté sur l'ensemble
-  // récupéré (30 max), pas seulement les 6 affichés dans la carte plus bas.
-  const veryHotLeadsCount = actionableHotLeads.filter((l) => (l.score ?? 0) >= 7).length;
+
+  // ── Deux alertes, par ordre d'urgence réelle ──────────────────────
+  // 1. Des clients attendent une réponse : c'est nous le point de blocage.
+  // 2. Une sortie approche : l'échéance rend le lead périssable.
+  // Le score seul ne dit rien de l'urgence — il est descendu en 3ᵉ rideau
+  // dans la vue Priorité, plus dans la bannière.
+  const activeLeadIds = new Set(
+    (leadsStatusRes.data ?? [])
+      .filter((l) => l.status !== "booked" && l.status !== "lost")
+      .map((l) => l.id),
+  );
+  const awaitingReplyCount = (awaitingReplyRes.data ?? []).filter(
+    (r) => r.lead_id && activeLeadIds.has(r.lead_id),
+  ).length;
+
+  const in7DaysIso = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  const imminentCount = actionableHotLeads.filter(
+    (l) => l.desired_date && l.desired_date <= in7DaysIso,
+  ).length;
 
   return (
     <div className="space-y-6">
-      {veryHotLeadsCount > 0 && (
+      {awaitingReplyCount > 0 && (
+        <Link
+          href="/leads?view=priority"
+          className="enter-up flex items-center gap-3 rounded-xl border border-danger/40 bg-danger/8 px-4 py-3 text-sm transition-colors hover:bg-danger/12"
+        >
+          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-danger" />
+          <p className="flex-1 text-foreground/90">
+            <strong className="text-danger">
+              {awaitingReplyCount} client{awaitingReplyCount > 1 ? "s" : ""}
+            </strong>
+            {awaitingReplyCount > 1 ? " attendent" : " attend"} votre réponse — ils ont écrit,
+            personne n&apos;a répondu.
+          </p>
+        </Link>
+      )}
+
+      {imminentCount > 0 && (
         <Link
           href="/leads?view=priority"
           className="enter-up flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/8 px-4 py-3 text-sm transition-colors hover:bg-gold/12"
@@ -302,9 +341,10 @@ export default async function OverviewPage() {
           <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-gold" />
           <p className="flex-1 text-foreground/90">
             <strong className="text-gold">
-              {veryHotLeadsCount} lead{veryHotLeadsCount > 1 ? "s" : ""} chaud{veryHotLeadsCount > 1 ? "s" : ""}
+              {imminentCount} sortie{imminentCount > 1 ? "s" : ""} souhaitée
+              {imminentCount > 1 ? "s" : ""} sous 7 jours
             </strong>
-            {" "}en attente — score élevé, à convertir en priorité.
+            {" "}— à confirmer avant que la date ne passe.
           </p>
         </Link>
       )}

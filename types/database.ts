@@ -1728,6 +1728,16 @@ export type Database = {
       }
     }
     Views: {
+      lead_last_message: {
+        Row: {
+          last_from_me: boolean | null
+          last_is_from_human: boolean | null
+          last_message_at: string | null
+          lead_id: string | null
+          site_link_sent: boolean | null
+        }
+        Relationships: []
+      }
       hub_agent_credit_summary: {
         Row: {
           agent_id: string | null

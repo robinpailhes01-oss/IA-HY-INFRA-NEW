@@ -36,6 +36,13 @@ export type Lead = {
   created_at: string | null;
   archived: boolean | null;
   whatsapp_name: string | null;
+  // ── Engagement (vue `lead_last_message`) ──────────────────────────
+  // Qui a parlé en dernier dans la conversation WhatsApp, et quand. C'est ce
+  // qui distingue « il attend notre réponse » de « il ne répond plus » — deux
+  // situations qui appellent des actions opposées.
+  last_from_me: boolean | null;
+  last_message_at: string | null;
+  site_link_sent: boolean | null;
 };
 
 /** Colonnes de référence (= contrainte CHECK leads.status), dans l'ordre du pipeline. */
@@ -97,15 +104,31 @@ export function needsFollowUp(lead: Lead, now: number): boolean {
 // Regroupe chaque lead actionnable dans un « seau » d'urgence, du plus
 // urgent au moins urgent. Les leads réservés/perdus ne sont pas actionnables
 // et sont exclus de la vue Priorité (visibles dans Kanban/Tableau).
-export type PriorityBucket = "takeover" | "overdue" | "hot" | "new" | "active";
+export type PriorityBucket =
+  | "takeover"
+  | "unanswered"
+  | "imminent"
+  | "site_sent"
+  | "hot"
+  | "new"
+  | "active"
+  | "curious";
 
 export const PRIORITY_BUCKETS: PriorityBucket[] = [
   "takeover",
-  "overdue",
+  "unanswered",
+  "imminent",
+  "site_sent",
   "hot",
   "new",
   "active",
+  "curious",
 ];
+
+/** Fenêtre « sortie imminente » : une date souhaitée dans les 7 jours. */
+const IMMINENT_DAYS = 7;
+/** Délai avant qu'un silence après notre message devienne une relance à faire. */
+const SILENCE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 
 type PriorityMeta = {
   label: string;
@@ -125,9 +148,23 @@ export const PRIORITY_META: Record<PriorityBucket, PriorityMeta> = {
     dot: "bg-destructive",
     ring: "border-destructive/30 bg-destructive/5",
   },
-  overdue: {
-    label: "Relances à faire",
-    hint: "Sans réponse depuis +48 h",
+  unanswered: {
+    label: "En attente de VOUS",
+    hint: "Le client a écrit, personne n'a répondu",
+    accent: "text-destructive",
+    dot: "bg-destructive",
+    ring: "border-destructive/30 bg-destructive/5",
+  },
+  imminent: {
+    label: "Sortie imminente",
+    hint: "Date souhaitée dans les 7 jours",
+    accent: "text-gold",
+    dot: "bg-gold",
+    ring: "border-gold/40 bg-gold/8",
+  },
+  site_sent: {
+    label: "Silence après le site",
+    hint: "Site envoyé, aucune nouvelle depuis",
     accent: "text-warning",
     dot: "bg-warning",
     ring: "border-warning/30 bg-warning/5",
@@ -138,6 +175,13 @@ export const PRIORITY_META: Record<PriorityBucket, PriorityMeta> = {
     accent: "text-gold",
     dot: "bg-gold",
     ring: "border-gold/30 bg-gold/5",
+  },
+  curious: {
+    label: "Curieux",
+    hint: "Ni date ni intention claire — pas prioritaire",
+    accent: "text-muted-foreground",
+    dot: "bg-muted-foreground/60",
+    ring: "border-border bg-muted/20",
   },
   new: {
     label: "Nouveaux",
@@ -155,13 +199,58 @@ export const PRIORITY_META: Record<PriorityBucket, PriorityMeta> = {
   },
 };
 
-/** Retourne le seau de priorité d'un lead, ou null s'il n'est pas actionnable. */
+/** Nombre de jours entre aujourd'hui et la date souhaitée (négatif si passée). */
+export function daysUntilDesired(lead: Lead, now: number): number | null {
+  if (!lead.desired_date) return null;
+  const target = new Date(lead.desired_date + "T00:00:00").getTime();
+  const today = new Date(new Date(now).toISOString().slice(0, 10) + "T00:00:00").getTime();
+  return Math.round((target - today) / (24 * 60 * 60 * 1000));
+}
+
+/** Vrai si le client a écrit le dernier message et attend donc une réponse. */
+export function awaitingOurReply(lead: Lead): boolean {
+  return lead.last_from_me === false;
+}
+
+/** Vrai si on a parlé en dernier et que le silence dure depuis le seuil. */
+function silentSince(lead: Lead, now: number, thresholdMs: number): boolean {
+  if (lead.last_from_me !== true || !lead.last_message_at) return false;
+  return now - new Date(lead.last_message_at).getTime() > thresholdMs;
+}
+
+/**
+ * Retourne le seau de priorité d'un lead, ou null s'il n'est pas actionnable.
+ *
+ * L'ordre des tests EST l'ordre de priorité. Il suit une règle simple : d'abord
+ * ce qui nous rend responsables du blocage (escalade, client sans réponse),
+ * puis ce qui a une échéance réelle (sortie imminente), puis ce qui demande une
+ * relance, et seulement ensuite ce qui relève du potentiel (score). Les curieux
+ * arrivent en dernier — ils ne doivent jamais masquer une vraie urgence.
+ */
 export function priorityBucket(lead: Lead, now: number): PriorityBucket | null {
   if (lead.status === "booked" || lead.status === "lost") return null;
+
+  // Léa a explicitement passé la main : rien ne passe avant.
   if (lead.needs_human_intervention) return "takeover";
-  if (needsFollowUp(lead, now)) return "overdue";
+
+  // Le client attend une réponse — c'est nous qui bloquons.
+  if (awaitingOurReply(lead)) return "unanswered";
+
+  // Une date proche prime sur tout le reste : passée l'échéance, le lead est mort.
+  const days = daysUntilDesired(lead, now);
+  if (days !== null && days >= 0 && days <= IMMINENT_DAYS) return "imminent";
+
+  // Site envoyé, plus de nouvelles : le moment exact où une relance convertit.
+  if (lead.site_link_sent && silentSince(lead, now, SILENCE_THRESHOLD_MS)) return "site_sent";
+
   if ((lead.score ?? 0) >= 7) return "hot";
   if (lead.status === "new") return "new";
+
+  // Ni date, ni offre visée, ni score : un curieux. On le garde visible, mais
+  // en bas de liste pour qu'il n'encombre pas les vraies priorités.
+  const noIntent = !lead.desired_date && !lead.interested_offer && (lead.score ?? 0) < 5;
+  if (noIntent) return "curious";
+
   return "active";
 }
 
@@ -207,12 +296,25 @@ export function comparePriority(a: Lead, b: Lead, now: number, sort: PrioritySor
 export function priorityReason(lead: Lead, now: number): string {
   const bucket = priorityBucket(lead, now);
   if (bucket === "takeover") return "Escaladé par Léa";
-  if (bucket === "overdue") {
-    const ref = lead.last_interaction_at ?? lead.created_at;
-    return ref ? `Silence ${relativeDays(ref, now)}` : "Relance due";
+  if (bucket === "unanswered") {
+    return lead.last_message_at
+      ? `A écrit ${relativeDays(lead.last_message_at, now)}`
+      : "Attend une réponse";
+  }
+  if (bucket === "imminent") {
+    const days = daysUntilDesired(lead, now);
+    if (days === 0) return "Sortie aujourd'hui";
+    if (days === 1) return "Sortie demain";
+    return `Sortie dans ${days} j`;
+  }
+  if (bucket === "site_sent") {
+    return lead.last_message_at
+      ? `Site envoyé ${relativeDays(lead.last_message_at, now)}`
+      : "Site envoyé, sans réponse";
   }
   if (bucket === "hot") return `Score ${lead.score}`;
   if (bucket === "new") return "À contacter";
+  if (bucket === "curious") return "Pas de projet précis";
   return STATUS_LABEL[lead.status ?? ""] ?? "Suivi";
 }
 

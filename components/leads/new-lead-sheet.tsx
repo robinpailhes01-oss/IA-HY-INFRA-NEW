@@ -99,6 +99,11 @@ export function NewLeadSheet({
         created_at: now,
         archived: false,
         whatsapp_name: null,
+        // Lead saisi à la main : aucune conversation WhatsApp, donc aucun
+        // historique d'engagement à afficher.
+        last_from_me: null,
+        last_message_at: null,
+        site_link_sent: null,
       });
       toast.success("Lead créé", { description: "Ajouté dans la colonne Qualifié." });
       setForm(EMPTY);

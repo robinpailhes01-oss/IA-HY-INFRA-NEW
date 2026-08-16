@@ -65,6 +65,12 @@ function rowToLead(row: Record<string, unknown>): Lead {
     created_at: (row.created_at as string) ?? null,
     archived: (row.archived as boolean) ?? false,
     whatsapp_name: (row.whatsapp_name as string) ?? null,
+    // Ces champs viennent de la vue `lead_last_message`, pas de la table
+    // `leads` : un événement temps réel sur `leads` ne les contient jamais.
+    // Ils sont donc repris depuis l'état précédent au moment de la fusion.
+    last_from_me: null,
+    last_message_at: null,
+    site_link_sent: null,
   };
 }
 
@@ -114,7 +120,16 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
             const idx = prev.findIndex((l) => l.id === lead.id);
             if (idx === -1) return [lead, ...prev];
             const next = [...prev];
-            next[idx] = lead;
+            // On conserve l'engagement déjà chargé : sans ça, une simple
+            // mise à jour de statut ferait sortir le lead de « En attente de
+            // vous » ou « Silence après le site » jusqu'au prochain refresh.
+            const prevLead = prev[idx];
+            next[idx] = {
+              ...lead,
+              last_from_me: prevLead.last_from_me,
+              last_message_at: prevLead.last_message_at,
+              site_link_sent: prevLead.site_link_sent,
+            };
             return next;
           });
         },
