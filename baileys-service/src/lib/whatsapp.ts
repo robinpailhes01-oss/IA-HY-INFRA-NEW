@@ -134,9 +134,17 @@ export async function connectToWhatsApp(): Promise<void> {
 
         // Simule la frappe humaine : indicateur "écrit…" + délai proportionnel
         // au message (lecture + rédaction). Évite l'effet robot d'une réponse instantanée.
-        const baseMs = parseInt(process.env.LEA_REPLY_DELAY_MS ?? '8000', 10);
-        const perCharMs = parseInt(process.env.LEA_REPLY_PER_CHAR_MS ?? '25', 10);
-        const maxMs = parseInt(process.env.LEA_REPLY_DELAY_MAX_MS ?? '15000', 10);
+        //
+        // Le plafond précédent (15 s) annulait l'effet sur les messages longs :
+        // au-delà de ~280 caractères, tout arrivait exactement au même rythme,
+        // et un paragraphe complet tombait aussi vite qu'un "oui". On table
+        // désormais sur ~55 ms par caractère (≈ la vitesse de frappe réelle sur
+        // téléphone) avec une base courte pour le temps de lecture, et un
+        // plafond assez haut pour que les longs messages prennent visiblement
+        // plus de temps que les courts.
+        const baseMs = parseInt(process.env.LEA_REPLY_DELAY_MS ?? '4000', 10);
+        const perCharMs = parseInt(process.env.LEA_REPLY_PER_CHAR_MS ?? '55', 10);
+        const maxMs = parseInt(process.env.LEA_REPLY_DELAY_MAX_MS ?? '45000', 10);
         const jitterMs = Math.floor(Math.random() * 2000);
         const delayMs = Math.min(maxMs, baseMs + reply.length * perCharMs + jitterMs);
 
