@@ -1512,6 +1512,104 @@ export type Database = {
           },
         ]
       }
+      legacy_clients: {
+        Row: {
+          created_at: string
+          email: string | null
+          event_date: string | null
+          event_year: number | null
+          first_name: string | null
+          ics_uid: string
+          id: string
+          last_name: string | null
+          offer_summary: string | null
+          phone: string | null
+          raw_description: string | null
+          source_file: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          event_date?: string | null
+          event_year?: number | null
+          first_name?: string | null
+          ics_uid: string
+          id?: string
+          last_name?: string | null
+          offer_summary?: string | null
+          phone?: string | null
+          raw_description?: string | null
+          source_file?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          event_date?: string | null
+          event_year?: number | null
+          first_name?: string | null
+          ics_uid?: string
+          id?: string
+          last_name?: string | null
+          offer_summary?: string | null
+          phone?: string | null
+          raw_description?: string | null
+          source_file?: string | null
+        }
+        Relationships: []
+      }
+      client_outreach: {
+        Row: {
+          campaign: string
+          created_at: string
+          email_body_html: string | null
+          email_subject: string | null
+          error: string | null
+          id: string
+          legacy_client_id: string
+          provider: string
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign: string
+          created_at?: string
+          email_body_html?: string | null
+          email_subject?: string | null
+          error?: string | null
+          id?: string
+          legacy_client_id: string
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign?: string
+          created_at?: string
+          email_body_html?: string | null
+          email_subject?: string | null
+          error?: string | null
+          id?: string
+          legacy_client_id?: string
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_outreach_legacy_client_id_fkey"
+            columns: ["legacy_client_id"]
+            isOneToOne: false
+            referencedRelation: "legacy_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seo_audits: {
         Row: {
           checks: Json

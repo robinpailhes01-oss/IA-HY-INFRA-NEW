@@ -15,6 +15,7 @@ import {
   Sparkles,
   Mic,
   Search,
+  Archive,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/marketing", label: "Marketing", icon: Megaphone },
   { href: "/seo", label: "Visibilité SEO", icon: Search },
   { href: "/events", label: "Événements", icon: PartyPopper },
+  { href: "/archives", label: "Archives clients", icon: Archive },
   { href: "/agent", label: "Agent IA", icon: Bot },
   { href: "/jarvis", label: "Jarvis", icon: Mic },
   { href: "/settings", label: "Paramètres", icon: Settings },
