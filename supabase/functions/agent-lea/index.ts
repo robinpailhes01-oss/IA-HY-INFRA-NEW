@@ -113,7 +113,7 @@ const TOOLS = [
   {
     name: "escalate_to_human",
     description:
-      "Passe la main à l'équipe humaine. À utiliser pour : (1) intérêt pour un ÉVÉNEMENT PUBLIC (soirée DJ, Feux d'Artifice…) — le client veut s'inscrire ou en savoir plus, (2) Nuit Prestige le week-end, (3) demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, situation ambiguë/sensible. La conversation WhatsApp est mise en pause automatiquement. Robin reçoit une notification WhatsApp. Si tu fournis un `final_message`, ce texte sera envoyé au client avant la mise en pause — sinon l'escalade est totalement silencieuse. APRÈS cet appel, n'écris RIEN d'autre : le `final_message` suffit.",
+      "Passe la main à l'équipe humaine. À utiliser pour : (1) intérêt pour un ÉVÉNEMENT PUBLIC (soirée DJ, Feux d'Artifice…) — le client veut s'inscrire ou en savoir plus, (2) demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, situation ambiguë/sensible. La conversation WhatsApp est mise en pause automatiquement. Robin reçoit une notification WhatsApp. Si tu fournis un `final_message`, ce texte sera envoyé au client avant la mise en pause — sinon l'escalade est totalement silencieuse. APRÈS cet appel, n'écris RIEN d'autre : le `final_message` suffit.",
     input_schema: {
       type: "object",
       properties: {
@@ -269,10 +269,10 @@ Règles :
 3. Tout vide (fully_free: true) → date libre. Dis-le clairement, sans hésitation : "Cette date est disponible !"
 
 # 9. ESCALADE VERS L'ÉQUIPE HUMAINE
-Trois cas déclenchent obligatoirement escalate_to_human :
+Deux cas déclenchent obligatoirement escalate_to_human :
 1. **Événement public** (soirée DJ, Feux d'Artifice, brunch en mer…) — dès que le client dit qu'il est intéressé ou veut s'inscrire. final_message = "Super ! Je transmets votre intérêt à l'équipe, on revient vers vous rapidement 😊". L'équipe gère les inscriptions aux événements, pas toi.
-2. **Nuit Prestige le week-end** (ven/sam/dim) — escalade obligatoire, silencieuse (pas de final_message).
-3. **Cas ambigu ou sensible** — PMR, négociation de prix, météo douteuse, demande spéciale, ou tout ce qui sort de ta base de connaissances — escalade silencieuse (pas de final_message).
+2. **Cas ambigu ou sensible** — PMR, négociation de prix, météo douteuse, demande spéciale, ou tout ce qui sort de ta base de connaissances — escalade silencieuse (pas de final_message).
+La Nuit Prestige se traite normalement N'IMPORTE QUEL JOUR, week-end compris — ce n'est plus un cas d'escalade. Vérifie la disponibilité via check_availability comme pour toute autre demande.
 ⚠️ APRÈS cet outil, n'écris RIEN d'autre au client : le final_message suffit s'il y en a un, sinon silence total.
 
 # 10. RÉSERVATIONS
@@ -288,7 +288,7 @@ Trois cas déclenchent obligatoirement escalate_to_human :
 - check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
 - send_booking_link : pour partager le lien de réservation du site (jamais inventé).
 - get_active_events : si le client demande des événements / soirées publiques.
-- escalate_to_human : selon les règles ci-dessus. Pour un intérêt événement, fournis toujours un final_message court et chaleureux. Pour les cas sensibles (PMR, négo, Nuit Prestige WE), pas de final_message = silence.
+- escalate_to_human : selon les règles ci-dessus. Pour un intérêt événement, fournis toujours un final_message court et chaleureux. Pour les cas sensibles (PMR, négo, situation ambiguë), pas de final_message = silence.
 
 ⚠️ **RÈGLE ABSOLUE** : Après CHAQUE appel d'outil (sauf escalate_to_human), tu DOIS écrire un message texte au client. JAMAIS tu ne te tais après un tool : qualify_lead/create_lead/check_availability/send_booking_link/get_active_events/update_lead_status sont des actions silencieuses côté serveur — le client ne voit RIEN d'elles. Il a besoin de ta réponse texte pour avancer. Si tu appelles un tool et que tu sors sans texte, le client reçoit le silence et la conversation meurt. Seule exception : escalate_to_human.
 
