@@ -54,9 +54,11 @@ function fullName(c: ArchiveClient): string {
 }
 
 function OutreachBadge({ status }: { status: string | null }) {
+  if (status === "unsubscribed") return <Badge variant="destructive">Désabonné</Badge>;
   if (status === "sent") return <Badge variant="secondary" className="bg-success/10 text-success">Envoyé</Badge>;
   if (status === "failed") return <Badge variant="destructive">Échec</Badge>;
   if (status === "sending") return <Badge variant="outline">Envoi…</Badge>;
+  if (status === "skipped") return <Badge variant="outline" className="text-muted-foreground">Ignoré</Badge>;
   return <Badge variant="outline" className="text-muted-foreground">Pas encore envoyé</Badge>;
 }
 
@@ -79,7 +81,9 @@ export function ArchivesTable({ clients }: { clients: ArchiveClient[] }) {
 
   // Seuls les clients avec email et pas déjà "sent" sont sélectionnables pour
   // l'envoi — pas la peine de proposer de cocher ce qui ne peut pas partir.
-  const sendable = filtered.filter((c) => c.email && c.outreachStatus !== "sent");
+  const sendable = filtered.filter(
+    (c) => c.email && c.outreachStatus !== "sent" && c.outreachStatus !== "unsubscribed",
+  );
   const allSendableSelected = sendable.length > 0 && sendable.every((c) => selected.has(c.id));
 
   const toggleAll = () => {
@@ -196,7 +200,7 @@ export function ArchivesTable({ clients }: { clients: ArchiveClient[] }) {
                       className="size-4 accent-primary"
                       checked={selected.has(c.id)}
                       onChange={() => toggleOne(c.id)}
-                      disabled={!c.email || c.outreachStatus === "sent"}
+                      disabled={!c.email || c.outreachStatus === "sent" || c.outreachStatus === "unsubscribed"}
                       aria-label={`Sélectionner ${fullName(c)}`}
                     />
                   </TableCell>

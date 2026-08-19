@@ -11,7 +11,7 @@ const CAMPAIGN = "changement_nom_2025";
 export default async function ArchivesPage() {
   const supabase = await createClient();
 
-  const [{ data: clients }, { data: outreach }] = await Promise.all([
+  const [{ data: clients }, { data: outreach }, { data: unsubscribed }] = await Promise.all([
     supabase
       .from("legacy_clients")
       .select("id, first_name, last_name, email, phone, offer_summary, event_date, event_year")
@@ -20,12 +20,15 @@ export default async function ArchivesPage() {
       .from("client_outreach")
       .select("legacy_client_id, status, sent_at, error")
       .eq("campaign", CAMPAIGN),
+    supabase.from("email_unsubscribes").select("email"),
   ]);
 
   const outreachByClient = new Map((outreach ?? []).map((o) => [o.legacy_client_id, o]));
+  const unsubscribedEmails = new Set((unsubscribed ?? []).map((u) => u.email.toLowerCase()));
 
   const rows: ArchiveClient[] = (clients ?? []).map((c) => {
     const o = outreachByClient.get(c.id);
+    const isUnsubscribed = c.email ? unsubscribedEmails.has(c.email.toLowerCase()) : false;
     return {
       id: c.id,
       firstName: c.first_name,
@@ -35,7 +38,7 @@ export default async function ArchivesPage() {
       offerSummary: c.offer_summary,
       eventDate: c.event_date,
       eventYear: c.event_year,
-      outreachStatus: o?.status ?? null,
+      outreachStatus: isUnsubscribed ? "unsubscribed" : (o?.status ?? null),
       outreachSentAt: o?.sent_at ?? null,
       outreachError: o?.error ?? null,
     };

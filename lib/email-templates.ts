@@ -12,7 +12,10 @@
  */
 const OUTREACH_OFFER_HTML: string = "";
 
-export function buildNameChangeEmail(firstName: string | null): {
+export function buildNameChangeEmail(
+  firstName: string | null,
+  unsubscribeUrl: string,
+): {
   subject: string;
   html: string;
   text: string;
@@ -34,6 +37,7 @@ export function buildNameChangeEmail(firstName: string | null): {
 ${offerHtml}
 <p style="margin-top: 32px;">Au plaisir de vous accueillir de nouveau à bord 🌅</p>
 <p style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; color: #666;"><strong>L'équipe Harmonie Yacht</strong><br>📞 07 53 48 12 63<br>✉️ reservations@harmonie-yacht.fr</p>
+<p style="margin-top: 20px; font-size: 12px; color: #999;"><a href="${unsubscribeUrl}" style="color:#999;">Se désabonner de nos emails</a></p>
 </div>`;
 
   const text =
@@ -43,7 +47,8 @@ ${offerHtml}
     offerText +
     `\nAu plaisir de vous accueillir de nouveau à bord,\n\n` +
     `L'équipe Harmonie Yacht\n` +
-    `07 53 48 12 63 — reservations@harmonie-yacht.fr`;
+    `07 53 48 12 63 — reservations@harmonie-yacht.fr\n\n` +
+    `Se désabonner : ${unsubscribeUrl}`;
 
   return { subject, html, text };
 }

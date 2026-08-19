@@ -1512,6 +1512,24 @@ export type Database = {
           },
         ]
       }
+      email_unsubscribes: {
+        Row: {
+          email: string
+          source_campaign: string | null
+          unsubscribed_at: string
+        }
+        Insert: {
+          email: string
+          source_campaign?: string | null
+          unsubscribed_at?: string
+        }
+        Update: {
+          email?: string
+          source_campaign?: string | null
+          unsubscribed_at?: string
+        }
+        Relationships: []
+      }
       legacy_clients: {
         Row: {
           created_at: string
