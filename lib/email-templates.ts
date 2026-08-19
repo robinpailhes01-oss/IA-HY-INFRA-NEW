@@ -29,7 +29,7 @@ export function buildNameChangeEmail(
   const offerText = OUTREACH_OFFER_HTML ? `\n${OUTREACH_OFFER_HTML.replace(/<[^>]+>/g, "")}\n` : "";
 
   const html = `<div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">
-<h2 style="color: #1a5490;">⚓ On a changé de nom</h2>
+<h2 style="margin:0 0 20px; font-family: Georgia, 'Times New Roman', serif; font-weight: 500; font-size: 22px; letter-spacing: 0.3px; color: #1a5490;">⚓&nbsp; On a changé de nom</h2>
 <p>Bonjour${prenom},</p>
 <p style="margin:0 0 16px;">Vous aviez réservé une expérience à bord avec nous, à l'époque sous le nom de <strong>Next Yacht</strong>. Depuis, nous nous appelons <strong>Harmonie Yacht</strong> — le bateau, le port de Carnon et l'équipe n'ont pas changé, seul le nom.</p>
 <p style="margin:0 0 16px;">On en profite pour vous partager notre nouveau site, avec toutes nos offres actuelles :</p>
