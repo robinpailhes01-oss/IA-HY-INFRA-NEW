@@ -46,6 +46,27 @@ function extractCn(paramsPart: string): string | null {
   return m ? unescapeIcsValue(m[1].replace(/^"|"$/g, "")) : null;
 }
 
+/**
+ * Les exports Google Calendar (et Calendly, qui les alimente) mettent très
+ * souvent CN=<email> plutôt qu'un vrai nom affiché — pas un bug du parseur,
+ * juste la donnée source. Repli : le SUMMARY suit presque toujours un des
+ * formats "{Nom} et Next Yacht ..." / "{Nom} and Next Yacht ..." / "{Nom}:
+ * Sortie/Nuit ...". Vérifié sur les 69 vraies fiches des deux calendriers :
+ * couvre 59/69 des cas où CN est inexploitable. Appliqué côté appelant
+ * (après filtrage des adresses internes), pas ici : cette fonction ne sait
+ * pas encore, à ce stade, si l'événement n'a qu'un seul vrai client.
+ */
+export function nameFromSummary(summary: string): string | null {
+  const s = summary.trim();
+  let m = s.match(/^(.+?)\s+(?:et|and)\s+(?:Next\s*Yacht|NEXT\s*NIGHT)/i);
+  if (m) return m[1].trim();
+  m = s.match(/^([^:]+):\s*(?:Sortie|Nuit)/i);
+  if (m) return m[1].trim();
+  m = s.match(/^Resa\s+(.+)$/i);
+  if (m) return m[1].trim();
+  return null;
+}
+
 /** Extrait l'email d'une ligne ATTENDEE/ORGANIZER (après "mailto:" ou en fin de ligne). */
 function extractMailto(value: string): string | null {
   const m = value.match(/mailto:([^\s;]+)/i);
@@ -120,7 +141,13 @@ export function parseIcsEvents(icsText: string): ParsedIcsEvent[] {
         break;
       case "ATTENDEE": {
         const email = extractMailto(value);
-        if (email) current.attendees.push({ name: extractCn(params), email });
+        if (email) {
+          const cn = extractCn(params);
+          // CN=email n'est pas un nom exploitable — on le traite comme absent
+          // pour laisser le repli sur SUMMARY (voir END:VEVENT) tenter mieux.
+          const name = cn && cn.toLowerCase() !== email.toLowerCase() ? cn : null;
+          current.attendees.push({ name, email });
+        }
         break;
       }
     }

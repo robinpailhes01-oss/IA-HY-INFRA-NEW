@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
-import { parseIcsEvents, splitName, extractPhone } from "@/lib/ics";
+import { parseIcsEvents, splitName, extractPhone, nameFromSummary } from "@/lib/ics";
 import { buildNameChangeEmail } from "@/lib/email-templates";
 
 // Adresses de l'entreprise elle-même — jamais des clients, même quand elles
@@ -75,6 +75,14 @@ export async function importIcsFile(fileContent: string, fileName: string) {
 
     const phone = extractPhone(ev.description ?? "");
     const year = ev.date ? Number(ev.date.slice(0, 4)) : null;
+
+    // Google Calendar/Calendly mettent presque toujours CN=<email> plutôt
+    // qu'un vrai nom (voir lib/ics.ts) — repli sur le SUMMARY, mais
+    // seulement quand un seul vrai client reste sur l'événement : sinon
+    // impossible de savoir auquel des invités le nom du résumé correspond.
+    if (clients.length === 1 && !clients[0].name && ev.summary) {
+      clients[0].name = nameFromSummary(ev.summary);
+    }
 
     for (const attendee of clients) {
       const { firstName, lastName } = splitName(attendee.name);
