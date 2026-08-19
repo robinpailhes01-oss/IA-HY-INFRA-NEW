@@ -4,13 +4,9 @@
 /**
  * Campagne "changement de nom" — pour les clients qui ont réservé du temps de
  * Next Yacht et ne savent pas que la marque s'appelle désormais Harmonie Yacht.
- *
- * ⚠️ OUTREACH_OFFER_HTML est un espace réservé : le cadeau/l'offre de cette
- * campagne n'est pas encore tranché avec Robin. Tant que cette constante est
- * vide, l'email part sans paragraphe d'offre plutôt que d'inventer un geste
- * commercial non validé. À remplir avant le véritable envoi.
  */
-const OUTREACH_OFFER_HTML: string = "";
+const OUTREACH_OFFER_HTML: string =
+  "Et si vous décidez de remonter à bord avec nous cette année, on vous réserve une petite surprise 🎁";
 
 export function buildNameChangeEmail(
   firstName: string | null,
@@ -36,7 +32,7 @@ export function buildNameChangeEmail(
 <p style="margin:0 0 16px;"><a href="https://harmonie-yacht.fr" style="color:#1a5490; font-weight:bold;">harmonie-yacht.fr</a></p>
 ${offerHtml}
 <p style="margin-top: 32px;">Au plaisir de vous accueillir de nouveau à bord 🌅</p>
-<p style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; color: #666;"><strong>L'équipe Harmonie Yacht</strong><br>📞 07 53 48 12 63<br>✉️ reservations@harmonie-yacht.fr</p>
+<p style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #eee; color: #666;"><strong>L'équipe Harmonie Yacht</strong><br>📞 07 53 48 12 63</p>
 <p style="margin-top: 20px; font-size: 12px; color: #999;"><a href="${unsubscribeUrl}" style="color:#999;">Se désabonner de nos emails</a></p>
 </div>`;
 
@@ -47,7 +43,7 @@ ${offerHtml}
     offerText +
     `\nAu plaisir de vous accueillir de nouveau à bord,\n\n` +
     `L'équipe Harmonie Yacht\n` +
-    `07 53 48 12 63 — reservations@harmonie-yacht.fr\n\n` +
+    `07 53 48 12 63\n\n` +
     `Se désabonner : ${unsubscribeUrl}`;
 
   return { subject, html, text };
