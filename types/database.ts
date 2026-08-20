@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_daily_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          pageviews: number
+          snapshot_date: string
+          top_pages: Json
+          top_referrers: Json
+          updated_at: string
+          vercel_project_id: string
+          visitors: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pageviews?: number
+          snapshot_date: string
+          top_pages?: Json
+          top_referrers?: Json
+          updated_at?: string
+          vercel_project_id: string
+          visitors?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pageviews?: number
+          snapshot_date?: string
+          top_pages?: Json
+          top_referrers?: Json
+          updated_at?: string
+          vercel_project_id?: string
+          visitors?: number
+        }
+        Relationships: []
+      }
       ad_stats: {
         Row: {
           bookings_attributed: number | null
