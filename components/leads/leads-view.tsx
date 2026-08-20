@@ -12,10 +12,12 @@ import {
   EMPTY_FILTERS,
   filterLeads,
   filtersActive,
+  PRIORITY_BUCKETS,
   PRIORITY_SORTS,
   type Lead,
   type LeadFilters,
   type LeadStatus,
+  type PriorityBucket,
   type PrioritySort,
 } from "@/lib/leads";
 import {
@@ -95,6 +97,10 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
     const t = search.get("tri");
     return t === "contact_new" || t === "score" || t === "desired_date" ? t : "contact_old";
   });
+  const [bucket, setBucket] = useState<PriorityBucket | null>(() => {
+    const b = search.get("bucket");
+    return (PRIORITY_BUCKETS as string[]).includes(b ?? "") ? (b as PriorityBucket) : null;
+  });
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<string>("infos");
@@ -143,23 +149,27 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
 
   // ── URL sync (shareable) ────────────────────────────────────
   const mounted = useRef(false);
-  const syncUrl = useDebouncedCallback((f: LeadFilters, v: ViewMode, sort: PrioritySort) => {
-    const params = new URLSearchParams();
-    if (f.q.trim()) params.set("q", f.q.trim());
-    if (f.channels.length) params.set("canal", f.channels.join(","));
-    if (f.offer) params.set("offre", f.offer);
-    if (f.minScore > 0) params.set("score", String(f.minScore));
-    if (f.followUpOnly) params.set("relance", "1");
-    if (v !== "priority") params.set("view", v);
-    if (v === "priority" && sort !== "contact_old") params.set("tri", sort);
-    const qs = params.toString();
-    router.replace(qs ? `/leads?${qs}` : "/leads", { scroll: false });
-  }, 400);
+  const syncUrl = useDebouncedCallback(
+    (f: LeadFilters, v: ViewMode, sort: PrioritySort, b: PriorityBucket | null) => {
+      const params = new URLSearchParams();
+      if (f.q.trim()) params.set("q", f.q.trim());
+      if (f.channels.length) params.set("canal", f.channels.join(","));
+      if (f.offer) params.set("offre", f.offer);
+      if (f.minScore > 0) params.set("score", String(f.minScore));
+      if (f.followUpOnly) params.set("relance", "1");
+      if (v !== "priority") params.set("view", v);
+      if (v === "priority" && sort !== "contact_old") params.set("tri", sort);
+      if (v === "priority" && b) params.set("bucket", b);
+      const qs = params.toString();
+      router.replace(qs ? `/leads?${qs}` : "/leads", { scroll: false });
+    },
+    400,
+  );
 
   useEffect(() => {
-    if (mounted.current) syncUrl(filters, view, prioritySort);
+    if (mounted.current) syncUrl(filters, view, prioritySort, bucket);
     else mounted.current = true;
-  }, [filters, view, prioritySort, syncUrl]);
+  }, [filters, view, prioritySort, bucket, syncUrl]);
 
   // ── Ouverture directe d'une fiche via ?lead=<id> (depuis le dashboard) ──
   const openedFromUrl = useRef(false);
@@ -323,7 +333,14 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
           }
         />
       ) : view === "priority" ? (
-        <LeadsPriority leads={filtered} now={now} onOpen={openLead} sort={prioritySort} />
+        <LeadsPriority
+          leads={filtered}
+          now={now}
+          onOpen={openLead}
+          sort={prioritySort}
+          bucket={bucket}
+          onBucketChange={setBucket}
+        />
       ) : view === "kanban" ? (
         <LeadsKanban leads={filtered} now={now} onOpen={openLead} onMove={moveLead} />
       ) : (

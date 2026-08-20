@@ -319,7 +319,7 @@ export default async function OverviewPage() {
     <div className="space-y-6">
       {awaitingReplyCount > 0 && (
         <Link
-          href="/leads?view=priority"
+          href="/leads?view=priority&bucket=unanswered"
           className="enter-up flex items-center gap-3 rounded-xl border border-danger/40 bg-danger/8 px-4 py-3 text-sm transition-colors hover:bg-danger/12"
         >
           <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-danger" />
@@ -335,7 +335,7 @@ export default async function OverviewPage() {
 
       {imminentCount > 0 && (
         <Link
-          href="/leads?view=priority"
+          href="/leads?view=priority&bucket=imminent"
           className="enter-up flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/8 px-4 py-3 text-sm transition-colors hover:bg-gold/12"
         >
           <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-gold" />
@@ -369,7 +369,7 @@ export default async function OverviewPage() {
 
       {(attentionLeadsRes.data?.length ?? 0) > 0 && (
         <Link
-          href="/leads"
+          href="/leads?view=priority&bucket=takeover"
           className="enter-up flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/8 px-4 py-3 text-sm transition-colors hover:bg-warning/12"
         >
           <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-warning" />

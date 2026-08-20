@@ -15,6 +15,7 @@ import {
   relativeDays,
   scoreClasses,
   type Lead,
+  type PriorityBucket,
   type PrioritySort,
 } from "@/lib/leads";
 
@@ -22,22 +23,32 @@ import {
  * Vue « Priorité » — regroupe les leads actionnables par urgence (à reprendre,
  * relances dues, leads chauds, nouveaux, en cours). Chaque ligne permet
  * d'ouvrir la fiche ou de sauter directement sur la conversation pour répondre.
+ *
+ * Les puces en haut permettent d'isoler une seule catégorie (ex : venant d'un
+ * lien du dashboard) — sans ça, il faut défiler parmi jusqu'à 8 sections pour
+ * retrouver celle qu'on cherchait.
  */
 export function LeadsPriority({
   leads,
   now,
   onOpen,
   sort = "contact_old",
+  bucket = null,
+  onBucketChange,
 }: {
   leads: Lead[];
   now: number;
   /** tab optionnel : "conversations" pour répondre directement. */
   onOpen: (lead: Lead, tab?: string) => void;
   sort?: PrioritySort;
+  /** Catégorie isolée, ou null pour tout afficher. */
+  bucket?: PriorityBucket | null;
+  onBucketChange?: (bucket: PriorityBucket | null) => void;
 }) {
-  const groups = groupByPriority(leads, now, sort);
+  const allGroups = groupByPriority(leads, now, sort);
+  const groups = bucket ? allGroups.filter((g) => g.bucket === bucket) : allGroups;
 
-  if (groups.length === 0) {
+  if (allGroups.length === 0) {
     return (
       <div className="enter-up flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/40 py-16 text-center">
         <p className="font-medium text-foreground">Rien d&apos;urgent 🎉</p>
@@ -49,7 +60,59 @@ export function LeadsPriority({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
+      {onBucketChange && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onBucketChange(null)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+              bucket === null
+                ? "border-transparent bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Tout
+            <span className="rounded-full bg-black/10 px-1.5 py-0 tabular-nums dark:bg-white/10">
+              {leads.length}
+            </span>
+          </button>
+          {allGroups.map(({ bucket: b, leads: bucketLeads }) => {
+            const meta = PRIORITY_META[b];
+            const active = bucket === b;
+            return (
+              <button
+                key={b}
+                type="button"
+                onClick={() => onBucketChange(active ? null : b)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  active ? "border-transparent " + meta.ring + " " + meta.accent : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className={cn("size-1.5 rounded-full", meta.dot)} />
+                {meta.label}
+                <span className="rounded-full bg-black/10 px-1.5 py-0 tabular-nums dark:bg-white/10">
+                  {bucketLeads.length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {groups.length === 0 ? (
+        <div className="enter-up flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card/40 py-16 text-center">
+          <p className="font-medium text-foreground">Rien dans cette catégorie 🎉</p>
+          {onBucketChange && (
+            <Button variant="outline" size="sm" onClick={() => onBucketChange(null)}>
+              Voir tout
+            </Button>
+          )}
+        </div>
+      ) : null}
+
       {groups.map(({ bucket, leads: bucketLeads }, gi) => {
         const meta = PRIORITY_META[bucket];
         return (
