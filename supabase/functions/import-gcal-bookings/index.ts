@@ -2,7 +2,8 @@
 //
 // Scan Google Calendar sur 90 jours et importe en DB les events réservation
 // absents. Dédup par google_calendar_event_id. Envoie un mail de confirmation
-// via Resend si la clé RESEND_API_KEY est présente.
+// via Resend si la clé RESEND_API_KEY est présente, et un message WhatsApp
+// via Baileys si un téléphone est disponible.
 //
 // Remplace le workflow n8n "🛥️ Sync Réservations Site Web" (cassé : Gmail
 // Trigger défaillant). Lovable écrit déjà chaque réservation dans le Google
@@ -14,6 +15,13 @@
 //
 // Cron : déclenché toutes les 10 min via pg_cron + pg_net (cf. migration
 // cron_import_gcal_bookings).
+//
+// Rattachement lead/client existant : un prospect peut déjà avoir discuté
+// avec Léa sur WhatsApp (fiche `leads` créée à son 1er message) avant de
+// payer sur le site. On cherche donc un lead/client existant par téléphone
+// puis par email avant d'en créer un nouveau — sinon la réservation atterrit
+// sur une fiche différente de celle que Léa consulte, et elle ne voit jamais
+// que ce prospect a payé.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -140,6 +148,36 @@ async function sendConfirmation(to: string, data: {
   return { sent: true };
 }
 
+// Même logique que sendConfirmation (email), version WhatsApp via Baileys —
+// même endpoint /send que lea-followups. Le message est un texte fixe, pas
+// généré par le LLM : une confirmation de paiement doit être prévisible.
+async function sendWhatsappConfirmation(phone: string, data: {
+  firstName: string | null; dateFr: string; startTime: string | null;
+  offerName: string; deposit: number | null; balanceDue: number | null;
+}): Promise<{ sent: boolean; reason?: string; text?: string }> {
+  const baileysUrl = Deno.env.get("BAILEYS_SERVICE_URL");
+  if (!baileysUrl) return { sent: false, reason: "BAILEYS_SERVICE_URL absent" };
+
+  const text = `Bonjour ${data.firstName ?? ""} ! ⚓ Léa de Harmonie Yacht — je vous confirme que votre réservation a bien été reçue et enregistrée ✅
+
+📅 ${data.dateFr}${data.startTime ? ` à ${data.startTime}` : ""}
+🛥️ ${data.offerName}
+💶 Acompte réglé : ${data.deposit ?? "—"}€${data.balanceDue && data.balanceDue > 0 ? `\n💰 Solde à régler le jour J : ${data.balanceDue}€` : ""}
+
+On a hâte de vous accueillir à bord ! N'hésitez pas si vous avez la moindre question 🌊`;
+
+  const res = await fetch(`${baileysUrl}/send`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ phone, message: text }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    return { sent: false, reason: `Baileys ${res.status}: ${detail.slice(0, 200)}` };
+  }
+  return { sent: true, text };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response(JSON.stringify({ error: "POST only" }), { status: 405 });
 
@@ -194,6 +232,7 @@ Deno.serve(async (req) => {
     skipped_self_synced: 0,
     imported: 0,
     emailed: 0,
+    whatsapp_sent: 0,
     errors: [] as Array<{ event: string; reason: string }>,
   };
 
@@ -239,44 +278,89 @@ Deno.serve(async (req) => {
       : null;
 
     try {
-      const { data: cust, error: cErr } = await supabase
-        .from("customers")
-        .insert({
-          first_name: parsed.firstName,
-          last_name: parsed.lastName,
-          email: parsed.email,
-          phone: normalizedPhone,
-          acquisition_channel: "website",
-        })
-        .select("id")
-        .single();
-      if (cErr) throw new Error(`customer: ${cErr.message}`);
+      // Rattachement à une fiche existante (par téléphone, puis par email) —
+      // un prospect qui discute déjà avec Léa sur WhatsApp a déjà une fiche
+      // `leads`/`customers` ; sans ce matching, la réservation créerait une
+      // fiche séparée que Léa ne consulte jamais.
+      let customerId: string;
+      let leadId: string;
 
-      const { data: lead, error: lErr } = await supabase
-        .from("leads")
-        .insert({
-          first_name: parsed.firstName,
-          last_name: parsed.lastName,
-          email: parsed.email,
-          phone: normalizedPhone,
-          source_channel: "website",
-          source_status: "confirmed",
-          status: "booked",
-          interested_offer: offerName,
-          desired_date: dateStr,
-          party_size: parsed.partySize,
-          occasion: parsed.special,
-          notes: "Réservation auto-importée depuis Google Calendar.",
-        })
-        .select("id")
-        .single();
-      if (lErr) throw new Error(`lead: ${lErr.message}`);
+      const { data: custByPhone } = normalizedPhone
+        ? await supabase.from("customers").select("id").eq("phone", normalizedPhone).maybeSingle()
+        : { data: null };
+      const { data: custByEmail } = !custByPhone && parsed.email
+        ? await supabase.from("customers").select("id").eq("email", parsed.email).maybeSingle()
+        : { data: null };
+      const existingCustomer = custByPhone ?? custByEmail;
+
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+      } else {
+        const { data: cust, error: cErr } = await supabase
+          .from("customers")
+          .insert({
+            first_name: parsed.firstName,
+            last_name: parsed.lastName,
+            email: parsed.email,
+            phone: normalizedPhone,
+            acquisition_channel: "website",
+          })
+          .select("id")
+          .single();
+        if (cErr) throw new Error(`customer: ${cErr.message}`);
+        customerId = cust.id;
+      }
+
+      const { data: leadByPhone } = normalizedPhone
+        ? await supabase.from("leads").select("id").eq("phone", normalizedPhone).maybeSingle()
+        : { data: null };
+      const { data: leadByEmail } = !leadByPhone && parsed.email
+        ? await supabase.from("leads").select("id").eq("email", parsed.email).maybeSingle()
+        : { data: null };
+      const existingLead = leadByPhone ?? leadByEmail;
+
+      if (existingLead) {
+        leadId = existingLead.id;
+        const { error: uErr } = await supabase
+          .from("leads")
+          .update({
+            status: "booked",
+            interested_offer: offerName,
+            desired_date: dateStr,
+            party_size: parsed.partySize,
+            occasion: parsed.special,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", leadId);
+        if (uErr) throw new Error(`lead update: ${uErr.message}`);
+      } else {
+        const { data: lead, error: lErr } = await supabase
+          .from("leads")
+          .insert({
+            first_name: parsed.firstName,
+            last_name: parsed.lastName,
+            email: parsed.email,
+            phone: normalizedPhone,
+            source_channel: "website",
+            source_status: "confirmed",
+            status: "booked",
+            interested_offer: offerName,
+            desired_date: dateStr,
+            party_size: parsed.partySize,
+            occasion: parsed.special,
+            notes: "Réservation auto-importée depuis Google Calendar.",
+          })
+          .select("id")
+          .single();
+        if (lErr) throw new Error(`lead: ${lErr.message}`);
+        leadId = lead.id;
+      }
 
       const { error: bErr } = await supabase
         .from("bookings")
         .insert({
-          customer_id: cust.id,
-          lead_id: lead.id,
+          customer_id: customerId,
+          lead_id: leadId,
           booking_type: bookingType,
           date: dateStr,
           start_time: startTime,
@@ -314,13 +398,54 @@ Deno.serve(async (req) => {
         if (emailRes.sent) {
           summary.emailed++;
           await supabase.from("email_log").insert({
-            lead_id: lead.id,
+            lead_id: leadId,
             to_email: parsed.email,
             subject: `Votre sortie en mer est confirmée — ${formatDateFr(startIso)}`,
             source: "booking_confirmation",
           });
         } else if (emailRes.reason !== "RESEND_API_KEY absent") {
           summary.errors.push({ event: evSummary, reason: `mail: ${emailRes.reason}` });
+        }
+      }
+
+      if (normalizedPhone) {
+        const waRes = await sendWhatsappConfirmation(normalizedPhone, {
+          firstName: parsed.firstName,
+          dateFr: formatDateFr(startIso),
+          startTime,
+          offerName,
+          deposit: parsed.deposit,
+          balanceDue,
+        });
+        if (waRes.sent && waRes.text) {
+          summary.whatsapp_sent++;
+          const nowIso = new Date().toISOString();
+          const { data: conv } = await supabase
+            .from("conversations")
+            .select("id, messages")
+            .eq("lead_id", leadId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const newMsg = { from: "ai", text: waRes.text, at: nowIso };
+          if (conv) {
+            const prev = Array.isArray(conv.messages) ? conv.messages : [];
+            await supabase
+              .from("conversations")
+              .update({ messages: [...prev, newMsg], updated_at: nowIso })
+              .eq("id", conv.id);
+          } else {
+            await supabase.from("conversations").insert({
+              lead_id: leadId,
+              channel: "whatsapp",
+              messages: [newMsg],
+              created_at: nowIso,
+              updated_at: nowIso,
+            });
+          }
+          await supabase.from("leads").update({ last_interaction_at: nowIso }).eq("id", leadId);
+        } else if (waRes.reason !== "BAILEYS_SERVICE_URL absent") {
+          summary.errors.push({ event: evSummary, reason: `whatsapp: ${waRes.reason}` });
         }
       }
     } catch (e) {
