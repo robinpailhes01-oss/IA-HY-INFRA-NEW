@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { BalanceAgenda } from "@/components/bookings/balance-agenda";
+import { UpcomingBookingsList, type UpcomingItem } from "@/components/bookings/upcoming-bookings-list";
 import type { SettleTarget } from "@/components/bookings/settle-balance-dialog";
 import type { EditableBooking } from "@/components/bookings/booking-edit-dialog";
 import {
@@ -100,6 +101,26 @@ export default async function BookingsPage() {
       balanceDue: b.balance_due ?? 0,
       sourceChannel: b.source_channel,
     }));
+
+  // Toutes les sorties à venir, payées ou non — contrairement à toCollect
+  // (ci-dessus) qui ne garde que celles avec un solde à percevoir.
+  const upcomingAll: UpcomingItem[] = bookings
+    .filter((b) => b.status !== "cancelled" && b.date !== null && b.date >= todayIso)
+    .map((b) => ({
+      id: b.id,
+      date: b.date!,
+      offerName: b.offer_name,
+      customerName: fullName(
+        b.customers?.first_name ?? null,
+        b.customers?.last_name ?? null,
+      ),
+      partySize: b.party_size,
+      amount: b.total_amount,
+      balanceDue: b.balance_due,
+      depositPaid: b.deposit_paid,
+      sourceChannel: b.source_channel,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   // Les réservations annulées restent visibles (onglet Historique) — on doit
   // toujours pouvoir les rouvrir ou vérifier ce qui s'est passé.
@@ -208,6 +229,18 @@ export default async function BookingsPage() {
         </CardHeader>
         <CardContent>
           <BalanceAgenda items={toCollect} editableById={editableById} />
+        </CardContent>
+      </Card>
+
+      <Card className="enter-up" style={{ animationDelay: "300ms" }}>
+        <CardHeader>
+          <CardTitle>Réservations à venir</CardTitle>
+          <CardDescription>
+            Toutes les sorties confirmées à venir, payées ou non
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UpcomingBookingsList items={upcomingAll} editableById={editableById} />
         </CardContent>
       </Card>
 
