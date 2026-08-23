@@ -21,6 +21,10 @@ const MAX_TOOL_TURNS = 6;
 const OWNER_PHONE = Deno.env.get("OWNER_PHONE") ?? "";
 const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
+// Même bot que le Manager Telegram (secret déjà défini au niveau du projet
+// Supabase pour telegram-manager, pas besoin de le redéfinir ici).
+const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TELEGRAM_OWNER_CHAT_ID = Deno.env.get("TELEGRAM_OWNER_CHAT_ID") ?? "";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -336,16 +340,35 @@ ${missing.length ? missing.map((m) => "  - " + m).join("\n") : "  (tout est coll
 
 // ── Exécution des outils côté Supabase ──────────────────────────────
 async function notifyOwner(reason: string, customerPhone: string | null): Promise<void> {
-  if (!OWNER_PHONE || !WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) return;
   const body = `🚨 Escalade Léa\n${reason}${customerPhone ? `\nClient : ${customerPhone}` : ""}`;
-  try {
-    await fetch(`https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "content-type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to: OWNER_PHONE, type: "text", text: { body } }),
-    });
-  } catch (e) {
-    console.warn("[agent-lea] notifyOwner failed:", e);
+
+  // WhatsApp Business Cloud API — numéro séparé du Baileys que Léa utilise
+  // pour parler aux clients.
+  if (OWNER_PHONE && WHATSAPP_TOKEN && WHATSAPP_PHONE_NUMBER_ID) {
+    try {
+      await fetch(`https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", to: OWNER_PHONE, type: "text", text: { body } }),
+      });
+    } catch (e) {
+      console.warn("[agent-lea] notifyOwner (WhatsApp) failed:", e);
+    }
+  }
+
+  // Telegram — même bot que le Manager, pour que toute escalade arrive là
+  // où Robin regarde vraiment (le numéro WhatsApp Business ci-dessus est
+  // séparé de son usage quotidien et peut passer inaperçu).
+  if (TELEGRAM_BOT_TOKEN && TELEGRAM_OWNER_CHAT_ID) {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: TELEGRAM_OWNER_CHAT_ID, text: body }),
+      });
+    } catch (e) {
+      console.warn("[agent-lea] notifyOwner (Telegram) failed:", e);
+    }
   }
 }
 
