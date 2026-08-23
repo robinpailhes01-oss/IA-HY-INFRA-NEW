@@ -602,6 +602,21 @@ MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
 - Ne modifie jamais plusieurs choses à la fois sans les décrire toutes clairement au préalable.`;
 }
 
+function buildDynamicDateBlock(): string {
+  const now = new Date();
+  const isoDate = now.toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).slice(0, 10);
+  const fullLabel = now.toLocaleString("fr-FR", {
+    timeZone: "Europe/Paris",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `Date et heure actuelles : ${fullLabel} (Europe/Paris). "Aujourd'hui" = ${isoDate}. Utilise TOUJOURS cette date pour résoudre "aujourd'hui"/"cette semaine"/"ce mois"/"hier" et pour calculer from_date/to_date — ne la déduis jamais autrement, et ne l'annonce jamais différemment à Robin.`;
+}
+
 export async function callAnthropic(
   messages: ApiMessage[],
   opts: { apiKey: string; model: string; channel: "telegram" | "dashboard" },
@@ -616,7 +631,14 @@ export async function callAnthropic(
     body: JSON.stringify({
       model: opts.model,
       max_tokens: 4096,
-      system: [{ type: "text", text: buildSystemPrompt(opts.channel), cache_control: { type: "ephemeral" } }],
+      // Bloc stable (mis en cache) + bloc dynamique non caché : sans la date
+      // réelle ici, le modèle doit deviner "aujourd'hui" — il peut se tromper
+      // de jour ET calculer un mauvais from_date/to_date pour get_business_stats
+      // et consorts, pas seulement mal l'annoncer à Robin.
+      system: [
+        { type: "text", text: buildSystemPrompt(opts.channel), cache_control: { type: "ephemeral" } },
+        { type: "text", text: buildDynamicDateBlock() },
+      ],
       tools: TOOLS,
       messages,
     }),
