@@ -26,6 +26,69 @@ let qrCode: string | null = null;
 let connected = false;
 let sock: ReturnType<typeof makeWASocket> | null = null;
 
+// Un client envoie souvent sa réponse en plusieurs bulles WhatsApp rapprochées
+// ("Vers le 15" / "aemp" / "Septembre"). Sans tampon, chaque bulle déclenche son
+// propre appel à Léa en parallèle : le premier appel répond à une phrase encore
+// incomplète (ex. "quel mois ?") pendant que la bulle suivante ("Septembre") est
+// déjà arrivée — la réponse part quand même, car l'appel était déjà en cours.
+// On regroupe donc les messages consécutifs d'un même client sur une courte
+// fenêtre de silence avant d'appeler Léa une seule fois avec le texte combiné.
+const DEBOUNCE_MS = parseInt(process.env.LEA_DEBOUNCE_MS ?? '6000', 10);
+
+type PendingBatch = {
+  texts: string[];
+  jid: string;
+  convId: string;
+  timer: ReturnType<typeof setTimeout>;
+};
+const pendingBatches = new Map<string, PendingBatch>();
+
+async function flushBatch(customerPhone: string): Promise<void> {
+  const batch = pendingBatches.get(customerPhone);
+  if (!batch) return;
+  pendingBatches.delete(customerPhone);
+
+  const paused = await isConversationPaused(customerPhone);
+  if (paused) {
+    console.log(`⏸️  ${customerPhone} en pause (au moment du batch)`);
+    return;
+  }
+
+  const combined = batch.texts.join('\n');
+
+  try {
+    const reply = await askLea(combined, customerPhone);
+    if (!reply.trim()) return;
+
+    // Simule la frappe humaine : indicateur "écrit…" + délai proportionnel
+    // au message (lecture + rédaction). Évite l'effet robot d'une réponse instantanée.
+    //
+    // Le plafond précédent (15 s) annulait l'effet sur les messages longs :
+    // au-delà de ~280 caractères, tout arrivait exactement au même rythme,
+    // et un paragraphe complet tombait aussi vite qu'un "oui". On table
+    // désormais sur ~55 ms par caractère (≈ la vitesse de frappe réelle sur
+    // téléphone) avec une base courte pour le temps de lecture, et un
+    // plafond assez haut pour que les longs messages prennent visiblement
+    // plus de temps que les courts.
+    const baseMs = parseInt(process.env.LEA_REPLY_DELAY_MS ?? '4000', 10);
+    const perCharMs = parseInt(process.env.LEA_REPLY_PER_CHAR_MS ?? '55', 10);
+    const maxMs = parseInt(process.env.LEA_REPLY_DELAY_MAX_MS ?? '45000', 10);
+    const jitterMs = Math.floor(Math.random() * 2000);
+    const delayMs = Math.min(maxMs, baseMs + reply.length * perCharMs + jitterMs);
+
+    try { await sock!.sendPresenceUpdate('composing', batch.jid); } catch {}
+    await new Promise((r) => setTimeout(r, delayMs));
+    try { await sock!.sendPresenceUpdate('paused', batch.jid); } catch {}
+
+    const sent = await sock!.sendMessage(batch.jid, { text: reply });
+    if (sent?.key?.id) leaSentIds.add(sent.key.id);
+    await saveMessage(batch.convId, true, reply, false, sent?.key?.id ?? undefined);
+    console.log(`🤖 Léa → ${customerPhone} (après ${delayMs}ms): ${reply.slice(0, 80)}…`);
+  } catch (err) {
+    console.error('[whatsapp] erreur Léa:', err);
+  }
+}
+
 export const getQR = () => qrCode;
 export const isConnected = () => connected;
 export const getSock = () => sock;
@@ -127,37 +190,23 @@ export async function connectToWhatsApp(): Promise<void> {
         continue;
       }
 
-      // Call Léa
-      try {
-        const reply = await askLea(body, customerPhone);
-        if (!reply.trim()) continue;
-
-        // Simule la frappe humaine : indicateur "écrit…" + délai proportionnel
-        // au message (lecture + rédaction). Évite l'effet robot d'une réponse instantanée.
-        //
-        // Le plafond précédent (15 s) annulait l'effet sur les messages longs :
-        // au-delà de ~280 caractères, tout arrivait exactement au même rythme,
-        // et un paragraphe complet tombait aussi vite qu'un "oui". On table
-        // désormais sur ~55 ms par caractère (≈ la vitesse de frappe réelle sur
-        // téléphone) avec une base courte pour le temps de lecture, et un
-        // plafond assez haut pour que les longs messages prennent visiblement
-        // plus de temps que les courts.
-        const baseMs = parseInt(process.env.LEA_REPLY_DELAY_MS ?? '4000', 10);
-        const perCharMs = parseInt(process.env.LEA_REPLY_PER_CHAR_MS ?? '55', 10);
-        const maxMs = parseInt(process.env.LEA_REPLY_DELAY_MAX_MS ?? '45000', 10);
-        const jitterMs = Math.floor(Math.random() * 2000);
-        const delayMs = Math.min(maxMs, baseMs + reply.length * perCharMs + jitterMs);
-
-        try { await sock!.sendPresenceUpdate('composing', jid); } catch {}
-        await new Promise((r) => setTimeout(r, delayMs));
-        try { await sock!.sendPresenceUpdate('paused', jid); } catch {}
-
-        const sent = await sock!.sendMessage(jid, { text: reply });
-        if (sent?.key?.id) leaSentIds.add(sent.key.id);
-        await saveMessage(conv.id, true, reply, false, sent?.key?.id ?? undefined);
-        console.log(`🤖 Léa → ${customerPhone} (après ${delayMs}ms): ${reply.slice(0, 80)}…`);
-      } catch (err) {
-        console.error('[whatsapp] erreur Léa:', err);
+      // Bufferise ce message avec ceux déjà en attente du même client, et repousse
+      // le déclenchement — s'il envoie une nouvelle bulle avant la fin de la fenêtre,
+      // on attend encore. Léa n'est appelée qu'une fois le silence obtenu.
+      const existing = pendingBatches.get(customerPhone);
+      if (existing) {
+        clearTimeout(existing.timer);
+        existing.texts.push(body);
+        existing.jid = jid;
+        existing.convId = conv.id;
+        existing.timer = setTimeout(() => {
+          flushBatch(customerPhone).catch((err) => console.error('[whatsapp] erreur flushBatch:', err));
+        }, DEBOUNCE_MS);
+      } else {
+        const timer = setTimeout(() => {
+          flushBatch(customerPhone).catch((err) => console.error('[whatsapp] erreur flushBatch:', err));
+        }, DEBOUNCE_MS);
+        pendingBatches.set(customerPhone, { texts: [body], jid, convId: conv.id, timer });
       }
     }
   });
