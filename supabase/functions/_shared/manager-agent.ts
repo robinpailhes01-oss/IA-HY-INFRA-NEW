@@ -654,6 +654,20 @@ export async function callAnthropic(
  * vouloir un stockage ou un post-traitement différent (ex. Telegram envoie
  * le texte final vers l'API Telegram, le dashboard le renvoie en JSON).
  */
+// Garde-fou anti-hallucination pour les actions d'écriture : le prompt
+// interdit déjà textuellement de confirmer sans tool_result réel, mais
+// vérifié sur de vraies conversations Telegram, ça ne suffit pas — sur 12
+// "✅ Dépense enregistrée" reçues par Robin, seules 3 correspondaient à une
+// ligne réellement en base (add_expense jamais appelé pour les 9 autres,
+// ou appelé mais ignoré). On ne peut pas compter sur le seul texte du
+// prompt : on vérifie ici, côté serveur, qu'un outil d'écriture a RÉELLEMENT
+// renvoyé ok:true avant de laisser partir une confirmation qui en dépend.
+const WRITE_CONFIRMATION_GUARDS: Array<{ tool: string; pattern: RegExp }> = [
+  { tool: "add_expense", pattern: /d[ée]pense.{0,15}(?:enregistr[ée]e|ajout[ée]e)|(?:enregistr[ée]e|ajout[ée]e).{0,15}d[ée]pense/i },
+  { tool: "delete_expense", pattern: /d[ée]pense.{0,15}supprim[ée]e|supprim[ée]e.{0,15}d[ée]pense/i },
+  { tool: "confirm_pending_change", pattern: /(?:changement|configuration).{0,25}appliqu[ée]/i },
+];
+
 export async function runAgentTurn(
   supabase: SupabaseClient,
   messages: ApiMessage[],
@@ -662,6 +676,7 @@ export async function runAgentTurn(
   const maxToolTurns = opts.maxToolTurns ?? 14;
   let finalText = "";
   let ranOutOfTurns = false;
+  const succeededTools = new Set<string>();
   for (let turn = 0; turn < maxToolTurns; turn++) {
     const data = await callAnthropic(messages, opts);
     const blocks = (data.content ?? []) as Array<Record<string, unknown>>;
@@ -675,9 +690,15 @@ export async function runAgentTurn(
     messages.push({ role: "assistant", content: blocks });
     const results = [];
     for (const tu of toolUses) {
+      const toolName = tu.name as string;
       // deno-lint-ignore no-explicit-any
-      const out = await runTool(supabase, tu.name as string, ((tu as any).input ?? {}) as Record<string, unknown>, opts.chatId, opts.baileysServiceUrl);
+      const out = await runTool(supabase, toolName, ((tu as any).input ?? {}) as Record<string, unknown>, opts.chatId, opts.baileysServiceUrl);
       results.push({ type: "tool_result", tool_use_id: (tu as Record<string, unknown>).id, content: out });
+      try {
+        if ((JSON.parse(out) as { ok?: boolean }).ok === true) succeededTools.add(toolName);
+      } catch {
+        // Résultat non-JSON (ex. get_business_stats) — pas un outil d'écriture, rien à tracker.
+      }
     }
     messages.push({ role: "user", content: results });
 
@@ -692,5 +713,13 @@ export async function runAgentTurn(
   if (ranOutOfTurns) {
     return "J'ai traité une partie de ta demande, mais elle était trop longue pour tout confirmer en un seul message. Vérifie ce qui a bien été pris en compte (ex. dans Finances) et redonne-moi le reste si besoin.";
   }
+
+  for (const guard of WRITE_CONFIRMATION_GUARDS) {
+    if (guard.pattern.test(finalText) && !succeededTools.has(guard.tool)) {
+      console.warn(`[manager-agent] confirmation hallucinée bloquée (${guard.tool}):`, finalText.slice(0, 200));
+      return "Je n'ai pas pu confirmer que cette action a réellement été enregistrée (aucune écriture réussie de mon côté sur ce message) — peux-tu réessayer en une seule phrase simple (ex. \"30€ restaurant\") ?";
+    }
+  }
+
   return finalText || "Je n'ai pas pu générer de réponse, réessaie ta question autrement.";
 }
