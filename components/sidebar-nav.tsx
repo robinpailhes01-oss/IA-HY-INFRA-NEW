@@ -16,6 +16,7 @@ import {
   Mic,
   Search,
   Archive,
+  LineChart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/finances", label: "Finances", icon: Wallet },
   { href: "/reports", label: "Rapports", icon: ChartColumn },
   { href: "/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/analytics", label: "Analytics", icon: LineChart },
   { href: "/seo", label: "Visibilité SEO", icon: Search },
   { href: "/events", label: "Événements", icon: PartyPopper },
   { href: "/archives", label: "Archives clients", icon: Archive },

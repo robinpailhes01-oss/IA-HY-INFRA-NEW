@@ -21,6 +21,10 @@ const MAX_TOOL_TURNS = 6;
 const OWNER_PHONE = Deno.env.get("OWNER_PHONE") ?? "";
 const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
 const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID") ?? "";
+// Même bot que le Manager Telegram (secret déjà défini au niveau du projet
+// Supabase pour telegram-manager, pas besoin de le redéfinir ici).
+const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
+const TELEGRAM_OWNER_CHAT_ID = Deno.env.get("TELEGRAM_OWNER_CHAT_ID") ?? "";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -222,8 +226,8 @@ function buildStableSystem(config: Record<string, unknown>): string {
 Une information donnée une fois est acquise pour tout le reste de la conversation — même reformulée différemment, tu ne la redis JAMAIS une deuxième fois. Ça s'applique à absolument tout :
   - la disponibilité d'une date ("Le X est libre") — annoncée une seule fois, jamais reformulée ensuite ("le X au soir est libre" après avoir déjà dit "le X est libre en soirée" = la même erreur avec d'autres mots)
   - un prix précis déjà communiqué
-  - le lien du site + Instagram (une fois par conversation, jamais à chaque message)
-  - la phrase météo/meilleur jour (une fois, uniquement à la première évocation d'une date)
+  - le lien du site + Instagram (une fois par conversation, jamais à chaque message — même sous une forme courte : "photos et avis ici : harmonie-yacht.fr" PUIS "réservez ici : harmonie-yacht.fr" dans le même échange = la même erreur deux fois)
+  - la question météo/meilleur jour (une fois, uniquement à la première évocation d'une date)
   - une question de qualification (date, nb personnes, occasion, créneau) — jamais posée deux fois, même si le client ne répond pas directement ou change de sujet
 Après avoir donné une information, TOUTES les phrases suivantes vont directement à l'essentiel — sans aucun rappel/préambule de ce qui a déjà été dit. Exemple concret à ne jamais reproduire :
   1) "Le 14 août est libre en soirée 🌆 C'est pour combien de personnes ?"
@@ -246,10 +250,10 @@ Corollaire : après avoir répondu à une question factuelle du client (capacit�
 - Si le client donne plusieurs infos d'un coup dans son premier message (ex. il précise déjà nuit/sortie ET une date), considère-les acquises et saute directement à l'étape suivante — ne les fais jamais répéter.
 - Une fois le site envoyé, n'enchaîne PAS automatiquement sur une autre question de qualification tant que le client n'a pas relancé de lui-même — laisse-le regarder le site. Réagis à ce qu'il dit ensuite (une date précise, une question de prix…), ne mène pas un interrogatoire.
 - Rythme : UNE question à la fois, jamais deux en même temps. Voir § 4 pour la règle anti-répétition des questions.
-- Météo et choix du meilleur jour : quand un client donne une date (ou une période flexible), intègre dans le MÊME message que ta réponse de disponibilité une phrase chaleureuse proposant de l'accompagner pour viser le plus beau jour possible selon la météo — ex. "on vous accompagne pour viser la plus belle météo possible, une sortie réussie se fait sans vagues !". Si sa date est flexible, rappelle que vous ajusterez ensemble le jour exact selon les prévisions à l'approche de la sortie. (Une fois seulement — § 4.)
+- Météo et choix du meilleur jour : quand un client donne une date (ou une période flexible), intègre dans le MÊME message que ta réponse de disponibilité une VRAIE QUESTION proposant de regarder la météo marine ensemble — ex. "Vous voulez qu'on regarde ensemble la météo marine, pour viser le meilleur jour sans vague ?". Si sa date est flexible, précise que vous ajusterez ensemble le jour exact selon les prévisions à l'approche de la sortie. (Une fois seulement — § 4.)
 
 # 7. OFFRES, TARIFS & CE QUI EST INCLUS
-- ⚠️ ANNONCER UN PRIX = TOUJOURS TROIS ÉLÉMENTS DANS LE MÊME MESSAGE : (1) le prix, (2) TOUT ce qui est compris (skipper, carburant, eau à bord, paddle, plateforme de bain, enceinte Bluetooth, BBQ avec matériel fourni à partir de 3h) — jamais un élément isolé comme "BBQ inclus" tout seul, (3) le lien du site pour les photos et les avis. Un prix annoncé nu paraît cher : ce sont les inclusions et les photos qui le justifient. Cette règle vaut pour CHAQUE annonce de prix, même si le site a déjà été envoyé plus tôt — dans ce cas une formule courte suffit ("les photos et les avis sont sur harmonie-yacht.fr").
+- ⚠️ ANNONCER UN PRIX = TOUJOURS TROIS ÉLÉMENTS DANS LE MÊME MESSAGE : (1) le prix, (2) TOUT ce qui est compris (skipper, carburant, eau à bord, paddle, plateforme de bain, enceinte Bluetooth, BBQ avec matériel fourni à partir de 3h) — jamais un élément isolé comme "BBQ inclus" tout seul, (3) le lien du site pour les photos et les avis, UNIQUEMENT si tu ne l'as pas encore envoyé dans cette conversation (§ 4 — jamais deux fois, même sous une forme courte). Un prix annoncé nu paraît cher : ce sont les inclusions et les photos qui le justifient. Si le site a déjà été envoyé plus tôt, ne le remets pas — le prix et les inclusions suffisent, le client a déjà le lien.
 - ⚠️ N'INVENTE JAMAIS UN PRIX. Reprends EXCLUSIVEMENT les montants exacts de la grille ci-dessous, sans jamais arrondir, ajuster ou "adapter au groupe". La SEULE variation autorisée est la réduction matinée de 10% lorsque le départ est avant 11h — au-delà de 11h, le prix plein s'applique sans exception. Si la demande ne correspond à aucune ligne de la grille (durée inhabituelle, formule sur mesure), n'improvise pas de montant : escalade vers l'équipe.
 - Instagram : partage-le en complément du site pour voir les vidéos, une seule fois par conversation. Si instagram_url vaut "TO_BE_PROVIDED" ou est absent, n'envoie AUCUN lien Instagram.
 - Petit-déjeuner Nuit Prestige/Insolite : ne dis JAMAIS qu'il est "livré" — le client va le chercher lui-même, sur place, à l'Hôtel Neptune juste à côté (récupéré sur un plateau). Présentation initiale : dis simplement "petit-déjeuner inclus", sans préciser comment il est récupéré. Le détail "à aller chercher à l'hôtel, sur plateau" ne se donne que PLUS TARD (confirmation, ou question explicite du client) — et dans ce cas confirme-le sans détour, c'est une info factuelle, pas un secret.
@@ -336,16 +340,35 @@ ${missing.length ? missing.map((m) => "  - " + m).join("\n") : "  (tout est coll
 
 // ── Exécution des outils côté Supabase ──────────────────────────────
 async function notifyOwner(reason: string, customerPhone: string | null): Promise<void> {
-  if (!OWNER_PHONE || !WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) return;
   const body = `🚨 Escalade Léa\n${reason}${customerPhone ? `\nClient : ${customerPhone}` : ""}`;
-  try {
-    await fetch(`https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "content-type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to: OWNER_PHONE, type: "text", text: { body } }),
-    });
-  } catch (e) {
-    console.warn("[agent-lea] notifyOwner failed:", e);
+
+  // WhatsApp Business Cloud API — numéro séparé du Baileys que Léa utilise
+  // pour parler aux clients.
+  if (OWNER_PHONE && WHATSAPP_TOKEN && WHATSAPP_PHONE_NUMBER_ID) {
+    try {
+      await fetch(`https://graph.facebook.com/v19.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${WHATSAPP_TOKEN}`, "content-type": "application/json" },
+        body: JSON.stringify({ messaging_product: "whatsapp", to: OWNER_PHONE, type: "text", text: { body } }),
+      });
+    } catch (e) {
+      console.warn("[agent-lea] notifyOwner (WhatsApp) failed:", e);
+    }
+  }
+
+  // Telegram — même bot que le Manager, pour que toute escalade arrive là
+  // où Robin regarde vraiment (le numéro WhatsApp Business ci-dessus est
+  // séparé de son usage quotidien et peut passer inaperçu).
+  if (TELEGRAM_BOT_TOKEN && TELEGRAM_OWNER_CHAT_ID) {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: TELEGRAM_OWNER_CHAT_ID, text: body }),
+      });
+    } catch (e) {
+      console.warn("[agent-lea] notifyOwner (Telegram) failed:", e);
+    }
   }
 }
 
