@@ -63,12 +63,14 @@ export const TOOLS = [
   {
     name: "list_interested_leads",
     description:
-      "Liste les prospects/clients qui se sont montrés intéressés sur une période (par défaut les 7 derniers jours). Retourne nom, téléphone, offre souhaitée, date souhaitée, occasion, score. Utilise cet outil pour 'qui était intéressé cette semaine/ce mois', 'quels prospects récents'.",
+      "Liste les prospects/clients intéressés. Deux modes, à ne pas confondre : (1) from_date/to_date filtre sur QUAND ils ont contacté (défaut : les 7 derniers jours) — pour 'qui était intéressé cette semaine', 'quels prospects récents'. (2) desired_from_date/desired_to_date filtre sur LA DATE SOUHAITÉE de la sortie/nuit, quelle que soit la date du contact — pour 'qui est intéressé pour septembre', 'qui veut venir ce week-end'. Si Robin nomme un mois, calcule desired_from_date=1er du mois et desired_to_date=dernier jour du mois. Retourne nom, téléphone, offre souhaitée, date souhaitée, occasion, score.",
     input_schema: {
       type: "object",
       properties: {
-        from_date: { type: "string", description: "Date de début YYYY-MM-DD (défaut: il y a 7 jours)" },
-        to_date: { type: "string", description: "Date de fin YYYY-MM-DD (défaut: aujourd'hui)" },
+        from_date: { type: "string", description: "Date de début YYYY-MM-DD, filtre sur la date de contact (défaut: il y a 7 jours) — ignoré si desired_from_date/desired_to_date est fourni" },
+        to_date: { type: "string", description: "Date de fin YYYY-MM-DD, filtre sur la date de contact (défaut: aujourd'hui) — ignoré si desired_from_date/desired_to_date est fourni" },
+        desired_from_date: { type: "string", description: "Filtre sur la date SOUHAITÉE de la prestation (desired_date), début de période YYYY-MM-DD — ex. '2026-09-01' pour 'qui veut venir en septembre'" },
+        desired_to_date: { type: "string", description: "Filtre sur la date SOUHAITÉE de la prestation (desired_date), fin de période YYYY-MM-DD — ex. '2026-09-30' pour 'qui veut venir en septembre'" },
       },
     },
   },
@@ -271,17 +273,29 @@ export async function runTool(
   }
 
   if (name === "list_interested_leads") {
-    const { from, to } = dayBounds(input.from_date as string | undefined, input.to_date as string | undefined);
-    const { data, error } = await supabase
+    const desiredFrom = input.desired_from_date as string | undefined;
+    const desiredTo = input.desired_to_date as string | undefined;
+    let query = supabase
       .from("leads")
       .select(
         "id, first_name, last_name, phone, email, interested_offer, occasion, party_size, desired_date, score, status, created_at",
       )
-      .eq("archived", false)
-      .gte("created_at", from)
-      .lte("created_at", to)
-      .order("score", { ascending: false, nullsFirst: false })
-      .limit(25);
+      .eq("archived", false);
+
+    // Deux modes mutuellement exclusifs : date souhaitée de la prestation
+    // (ce que veut Robin pour "qui est intéressé pour septembre") vs date de
+    // contact (comportement par défaut, pour "qui était intéressé cette semaine").
+    if (desiredFrom || desiredTo) {
+      query = query.not("desired_date", "is", null);
+      if (desiredFrom) query = query.gte("desired_date", desiredFrom);
+      if (desiredTo) query = query.lte("desired_date", desiredTo);
+      query = query.order("desired_date", { ascending: true });
+    } else {
+      const { from, to } = dayBounds(input.from_date as string | undefined, input.to_date as string | undefined);
+      query = query.gte("created_at", from).lte("created_at", to).order("score", { ascending: false, nullsFirst: false });
+    }
+
+    const { data, error } = await query.limit(25);
     if (error) return JSON.stringify({ error: error.message });
     // deno-lint-ignore no-explicit-any
     const cleaned = (data ?? []).map((l: any) =>
@@ -580,7 +594,7 @@ export function buildSystemPrompt(channel: "telegram" | "dashboard"): string {
 RÈGLES :
 ${formatLine}
 - get_business_stats pour toute question sur les chiffres (CA, demandes, messages, réservations à venir, reste à encaisser). Le CA renvoyé est l'argent RÉELLEMENT ENCAISSÉ sur la période, daté par sa date d'encaissement (pas la date de la sortie réservée) — précise toujours à Robin la période couverte ("depuis le début" ou "du X au Y"), pour qu'il ne confonde jamais ce chiffre avec la valeur totale des réservations d'un mois (qui inclut des soldes pas encore payés).
-- list_interested_leads pour toute question sur les prospects/clients intéressés sur une période. Donne TOUJOURS le nom et le téléphone dans ta réponse — c'est ce qui permet à Robin de demander ensuite de les relancer.
+- list_interested_leads pour toute question sur les prospects/clients intéressés. Utilise desired_from_date/desired_to_date pour "qui est intéressé pour [mois/période]" (filtre sur la date souhaitée de la prestation), from_date/to_date pour "qui était intéressé cette semaine" (filtre sur la date de contact) — ne mélange pas les deux. Donne TOUJOURS le nom et le téléphone dans ta réponse — c'est ce qui permet à Robin de demander ensuite de les relancer.
 - list_upcoming_bookings pour toute question sur les clients/réservations à venir.
 - send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
 - Si Robin dit "eux"/"les"/"ce lead" sans préciser, réutilise les prospects que TU as toi-même listés dans un message précédent de cette conversation.
