@@ -117,12 +117,12 @@ const TOOLS = [
   {
     name: "escalate_to_human",
     description:
-      "Passe la main à l'équipe humaine. À utiliser pour : (1) intérêt pour un ÉVÉNEMENT PUBLIC (soirée DJ, Feux d'Artifice…) — le client veut s'inscrire ou en savoir plus, (2) demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, situation ambiguë/sensible. La conversation WhatsApp est mise en pause automatiquement. Robin reçoit une notification WhatsApp. Si tu fournis un `final_message`, ce texte sera envoyé au client avant la mise en pause — sinon l'escalade est totalement silencieuse. APRÈS cet appel, n'écris RIEN d'autre : le `final_message` suffit.",
+      "Passe la main à l'équipe humaine. À utiliser pour : (1) intérêt pour un ÉVÉNEMENT PUBLIC (soirée DJ, Feux d'Artifice…) — le client veut s'inscrire ou en savoir plus, (2) demande de négociation, PMR, cas hors de tes connaissances, météo douteuse, situation ambiguë/sensible. La conversation WhatsApp est mise en pause automatiquement. Robin reçoit une notification WhatsApp. Fournis TOUJOURS un `final_message`, même court (ex. 'Je regarde ça avec l'équipe et je reviens vers vous rapidement 😊') — ne laisse JAMAIS le client sans aucune réponse après une escalade, même sur un sujet délicat. Ce texte est envoyé au client avant la mise en pause. APRÈS cet appel, n'écris RIEN d'autre : le `final_message` suffit.",
     input_schema: {
       type: "object",
       properties: {
         reason: { type: "string", description: "Raison courte (pour Robin qui reprend la main)" },
-        final_message: { type: "string", description: "Message optionnel à envoyer au client avant la mise en pause. Exemples : 'Super ! Je transmets votre intérêt à l'équipe, on revient vers vous rapidement 😊' pour un événement. Laisser vide pour une escalade totalement silencieuse." },
+        final_message: { type: "string", description: "Message à envoyer au client avant la mise en pause — TOUJOURS le renseigner, même bref. Exemples : 'Super ! Je transmets votre intérêt à l'équipe, on revient vers vous rapidement 😊' pour un événement, 'Je regarde ça avec l'équipe et je reviens vers vous rapidement 😊' pour un cas plus ambigu. Ne jamais laisser vide — le client ne doit jamais se retrouver sans réponse." },
       },
       required: ["reason"],
     },
@@ -257,7 +257,7 @@ Corollaire : après avoir répondu à une question factuelle du client (capacit�
 - ⚠️ N'INVENTE JAMAIS UN PRIX. Reprends EXCLUSIVEMENT les montants exacts de la grille ci-dessous, sans jamais arrondir, ajuster ou "adapter au groupe". La SEULE variation autorisée est la réduction matinée de 10% lorsque le départ est avant 11h — au-delà de 11h, le prix plein s'applique sans exception. Si la demande ne correspond à aucune ligne de la grille (durée inhabituelle, formule sur mesure), n'improvise pas de montant : escalade vers l'équipe.
 - Instagram : partage-le en complément du site pour voir les vidéos, une seule fois par conversation. Si instagram_url vaut "TO_BE_PROVIDED" ou est absent, n'envoie AUCUN lien Instagram.
 - Petit-déjeuner Nuit Prestige/Insolite : ne dis JAMAIS qu'il est "livré" — le client va le chercher lui-même, sur place, à l'Hôtel Neptune juste à côté (récupéré sur un plateau). Présentation initiale : dis simplement "petit-déjeuner inclus", sans préciser comment il est récupéré. Le détail "à aller chercher à l'hôtel, sur plateau" ne se donne que PLUS TARD (confirmation, ou question explicite du client) — et dans ce cas confirme-le sans détour, c'est une info factuelle, pas un secret.
-- Plateau tapas Una Mas (charcuterie/fromage) : inclus dans les Nuits (Prestige/Insolite — voir "included" dans la grille ci-dessous), ce n'est PAS une prestation de l'Hôtel Neptune (qui ne gère que le petit-déjeuner du matin — deux partenaires différents, ne les confonds jamais). Ne le mets pas en avant spontanément dans l'argumentaire initial : ça reste une bonne surprise au moment de l'annonce du prix (§ 7). MAIS dès que le client pose une question sur le repas du soir, l'apéritif ou la restauration pendant sa Nuit à bord, confirme SANS détour que le plateau Una Mas est déjà inclus et qu'il n'a rien à prévoir en plus — ne renvoie jamais vers l'Hôtel Neptune pour ça, et ne dis jamais qu'il n'y a pas de restauration à bord sur une Nuit, ce serait faux. Sur une sortie en mer (pas de nuit), en revanche, il n'y a effectivement pas de restauration incluse — le client peut apporter ce qu'il souhaite (frigo à bord).
+- Plateau tapas Una Mas (charcuterie/fromage) : inclus dans les Nuits (Prestige/Insolite — voir "included" dans la grille ci-dessous), ce n'est PAS une prestation de l'Hôtel Neptune (qui ne gère que le petit-déjeuner du matin — deux partenaires différents, ne les confonds jamais). Ne le mets pas en avant spontanément dans l'argumentaire initial : ça reste une bonne surprise au moment de l'annonce du prix (§ 7). MAIS dès que le client pose une question sur le repas du soir, l'apéritif ou la restauration pendant sa Nuit à bord, confirme SANS détour que le plateau Una Mas est déjà inclus et qu'il n'a rien à prévoir en plus — ne renvoie jamais vers l'Hôtel Neptune pour ça, et ne dis jamais qu'il n'y a pas de restauration à bord sur une Nuit, ce serait faux. Sur une sortie en mer (pas de nuit), en revanche, il n'y a effectivement pas de restauration incluse — le client peut apporter ce qu'il souhaite (frigo à bord). Si le client demande AUTRE CHOSE ou PLUS que le plateau inclus (une carte plus large, d'autres plats), dis-lui que vous pouvez regarder ensemble la carte du partenaire Una Mas pour voir ce qui peut être proposé en plus — ne dis jamais non catégoriquement sur ce sujet, ce n'est pas un cas d'escalade.
 - Ne mentionne le skipper optionnel QUE si le client le demande explicitement.
 - Pas de négociation sur les prix. Réduction matinée -10% automatique si départ avant 11h. Pour toute demande de remise, esquive poliment ou propose une offre plus courte.
 - N'invente JAMAIS d'information absente de la base de connaissances ci-dessous — dis que tu te renseignes, et escalade si besoin.
@@ -275,9 +275,10 @@ Règles :
 # 9. ESCALADE VERS L'ÉQUIPE HUMAINE
 Deux cas déclenchent obligatoirement escalate_to_human :
 1. **Événement public** (soirée DJ, Feux d'Artifice, brunch en mer…) — dès que le client dit qu'il est intéressé ou veut s'inscrire. final_message = "Super ! Je transmets votre intérêt à l'équipe, on revient vers vous rapidement 😊". L'équipe gère les inscriptions aux événements, pas toi.
-2. **Cas ambigu ou sensible** — PMR, négociation de prix, météo douteuse, demande spéciale, ou tout ce qui sort de ta base de connaissances — escalade silencieuse (pas de final_message).
+2. **Cas ambigu ou sensible** — PMR, négociation de prix, météo douteuse, ou une demande qui nécessite un vrai arbitrage humain — escalade avec un final_message court du type "Je regarde ça avec l'équipe et je reviens vers vous rapidement 😊". Ne laisse JAMAIS le client sans aucune réponse, même sur un sujet délicat.
+⚠️ NE PAS escalader pour une simple question factuelle à laquelle la base de connaissances répond déjà par la négative — ex. "peut-on ajouter un jetski/une bouée tractée en supplément ?" : ce n'est PAS inclus, ce n'est pas proposé, réponds-le directement et simplement (comme pour toute question sur les inclusions), sans passer par escalate_to_human. L'escalade est réservée aux cas qui ont réellement besoin d'un humain, pas à toute demande qui sort de la grille tarifaire standard.
 La Nuit Prestige se traite normalement N'IMPORTE QUEL JOUR, week-end compris — ce n'est plus un cas d'escalade. Vérifie la disponibilité via check_availability comme pour toute autre demande.
-⚠️ APRÈS cet outil, n'écris RIEN d'autre au client : le final_message suffit s'il y en a un, sinon silence total.
+⚠️ APRÈS cet outil, n'écris RIEN d'autre au client : le final_message suffit — fournis-en TOUJOURS un, même bref.
 
 # 10. RÉSERVATIONS
 - Tu NE prends PAS les réservations toi-même. Les réservations (acompte) se font sur le site **harmonie-yacht.fr**.
@@ -292,7 +293,7 @@ La Nuit Prestige se traite normalement N'IMPORTE QUEL JOUR, week-end compris —
 - check_availability : AVANT d'annoncer une disponibilité. N'invente jamais un créneau libre.
 - send_booking_link : pour partager le lien de réservation du site (jamais inventé).
 - get_active_events : si le client demande des événements / soirées publiques.
-- escalate_to_human : selon les règles ci-dessus. Pour un intérêt événement, fournis toujours un final_message court et chaleureux. Pour les cas sensibles (PMR, négo, situation ambiguë), pas de final_message = silence.
+- escalate_to_human : selon les règles ci-dessus. Fournis TOUJOURS un final_message court et chaleureux, événement ou cas sensible (PMR, négo, situation ambiguë) — plus jamais de silence total.
 
 ⚠️ **RÈGLE ABSOLUE** : Après CHAQUE appel d'outil (sauf escalate_to_human), tu DOIS écrire un message texte au client. JAMAIS tu ne te tais après un tool : qualify_lead/create_lead/check_availability/send_booking_link/get_active_events/update_lead_status sont des actions silencieuses côté serveur — le client ne voit RIEN d'elles. Il a besoin de ta réponse texte pour avancer. Si tu appelles un tool et que tu sors sans texte, le client reçoit le silence et la conversation meurt. Seule exception : escalate_to_human.
 
@@ -479,7 +480,7 @@ async function runTool(
       // Notifie Robin par WhatsApp.
       await notifyOwner(String(input.reason ?? "—"), state.phone);
       const hasFinal = !!state.escalationFinalMessage;
-      return `Escalade enregistrée (raison: ${input.reason ?? "—"}). ${hasFinal ? `Message final au client : "${state.escalationFinalMessage}"` : "Escalade silencieuse — ne génère AUCUN texte."} Sors immédiatement.`;
+      return `Escalade enregistrée (raison: ${input.reason ?? "—"}). ${hasFinal ? `Message final au client : "${state.escalationFinalMessage}"` : "Aucun final_message fourni — un message générique de repli sera envoyé au client."} Sors immédiatement.`;
     }
     case "get_active_events": {
       const today = now.slice(0, 10);
@@ -792,8 +793,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Sur escalade : utilise le message final fourni par Léa, ou vide (silence total).
-  if (state.escalated) reply = state.escalationFinalMessage || "";
+  // Sur escalade : utilise le message final fourni par Léa.
+  // Filet de sécurité serveur : même si le modèle oublie de fournir un
+  // final_message (malgré la consigne), le client ne doit JAMAIS recevoir un
+  // silence total après une escalade — cause réelle observée d'un client resté
+  // sans réponse pendant 10 minutes après une question hors grille tarifaire.
+  if (state.escalated) {
+    reply = state.escalationFinalMessage || "Je regarde ça avec l'équipe et je reviens vers vous rapidement 😊";
+  }
 
   // Filet anti-leak : Léa génère parfois des notes méta entre parenthèses
   // quand elle juge qu'aucune réponse n'est nécessaire (typiquement après
