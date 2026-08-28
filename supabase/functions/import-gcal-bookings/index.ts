@@ -101,7 +101,7 @@ async function sendConfirmation(to: string, data: {
 }): Promise<{ sent: boolean; reason?: string }> {
   const key = Deno.env.get("RESEND_API_KEY");
   if (!key) return { sent: false, reason: "RESEND_API_KEY absent" };
-  const from = Deno.env.get("RESEND_FROM") || "Harmonie Yacht <onboarding@resend.dev>";
+  const from = Deno.env.get("RESEND_FROM") || "Harmonie Yacht <reservations@harmonie-yacht.fr>";
   const html = `<div style="font-family: Arial, sans-serif; max-width: 600px; color: #333;">
 <h2 style="color: #1a5490;">⚓ Votre réservation est confirmée</h2>
 <p>Bonjour ${data.firstName ?? ""},</p>
