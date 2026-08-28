@@ -99,6 +99,21 @@ export const TOOLS = [
     },
   },
   {
+    name: "send_email_reply",
+    description:
+      "Envoie un email réel à un client/prospect. À utiliser UNIQUEMENT quand Robin demande explicitement de répondre/écrire par email à quelqu'un. Rédige un vrai message complet et naturel à partir de son instruction — jamais juste ses mots bruts. Texte brut uniquement (pas de HTML).",
+    input_schema: {
+      type: "object",
+      properties: {
+        to_email: { type: "string", description: "Adresse email du destinataire" },
+        subject: { type: "string", description: "Objet de l'email. Optionnel — si absent, un objet par défaut est utilisé." },
+        message: { type: "string", description: "Texte complet de l'email à envoyer" },
+        lead_id: { type: "string", description: "id du lead concerné si connu (pour rattacher l'envoi à son historique de conversation) — optionnel" },
+      },
+      required: ["to_email", "message"],
+    },
+  },
+  {
     name: "get_agent_config",
     description:
       "Lit la configuration actuelle de Léa : offres, tarifs, options, FAQ/règles de comportement, horaires. Utilise-le TOUJOURS avant de proposer un changement, pour voir la valeur exacte et la structure actuelles (ne devine jamais une clé ou un prix).",
@@ -356,6 +371,57 @@ export async function runTool(
     }
   }
 
+  if (name === "send_email_reply") {
+    const toEmail = String(input.to_email ?? "").trim().toLowerCase();
+    const message = String(input.message ?? "").trim();
+    const leadId = input.lead_id ? String(input.lead_id) : null;
+    if (!toEmail || !toEmail.includes("@")) return JSON.stringify({ ok: false, error: "Adresse email invalide" });
+    if (!message) return JSON.stringify({ ok: false, error: "Message vide" });
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendKey) return JSON.stringify({ ok: false, error: "RESEND_API_KEY non configuré" });
+    const fromEmail = Deno.env.get("RESEND_FROM") || "Harmonie Yacht <reservations@harmonie-yacht.fr>";
+    const subject = String(input.subject ?? "").trim() || "Message de l'équipe Harmonie Yacht";
+
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "content-type": "application/json" },
+        body: JSON.stringify({ from: fromEmail, to: [toEmail], subject, text: message }),
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        return JSON.stringify({ ok: false, error: `Resend ${res.status}: ${txt.slice(0, 200)}` });
+      }
+
+      const now = new Date().toISOString();
+      await supabase.from("email_log").insert({ lead_id: leadId, to_email: toEmail, subject, source: "manager_telegram" });
+
+      // Rattache l'envoi à l'historique du lead (comme pour les réponses WhatsApp
+      // manuelles) — sans ça, le fil visible sur sa fiche dans le dashboard ne
+      // montrerait jamais cet échange par email.
+      if (leadId) {
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select("id, messages")
+          .eq("lead_id", leadId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const newMsg = { from: "human", text: message, at: now };
+        if (conv) {
+          const prev = Array.isArray(conv.messages) ? conv.messages : [];
+          await supabase.from("conversations").update({ messages: [...prev, newMsg], updated_at: now }).eq("id", conv.id);
+        } else {
+          await supabase.from("conversations").insert({ lead_id: leadId, channel: "email", messages: [newMsg], created_at: now, updated_at: now });
+        }
+      }
+
+      return JSON.stringify({ ok: true, to: toEmail, subject });
+    } catch (e) {
+      return JSON.stringify({ ok: false, error: String(e) });
+    }
+  }
+
   if (name === "get_agent_config") {
     const { data, error } = await supabase
       .from("agent_config")
@@ -596,7 +662,8 @@ ${formatLine}
 - get_business_stats pour toute question sur les chiffres (CA, demandes, messages, réservations à venir, reste à encaisser). Le CA renvoyé est l'argent RÉELLEMENT ENCAISSÉ sur la période, daté par sa date d'encaissement (pas la date de la sortie réservée) — précise toujours à Robin la période couverte ("depuis le début" ou "du X au Y"), pour qu'il ne confonde jamais ce chiffre avec la valeur totale des réservations d'un mois (qui inclut des soldes pas encore payés).
 - list_interested_leads pour toute question sur les prospects/clients intéressés. Utilise desired_from_date/desired_to_date pour "qui est intéressé pour [mois/période]" (filtre sur la date souhaitée de la prestation), from_date/to_date pour "qui était intéressé cette semaine" (filtre sur la date de contact) — ne mélange pas les deux. Donne TOUJOURS le nom et le téléphone dans ta réponse — c'est ce qui permet à Robin de demander ensuite de les relancer.
 - list_upcoming_bookings pour toute question sur les clients/réservations à venir.
-- send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
+- send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un par WhatsApp. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
+- send_email_reply UNIQUEMENT quand Robin demande explicitement de répondre/écrire par email à quelqu'un. Même exigence de rédaction que pour WhatsApp — un vrai email complet et naturel, pas ses mots bruts recopiés. Si tu connais le lead_id (ex. via list_interested_leads), passe-le pour que l'envoi apparaisse dans l'historique de sa fiche. Après l'envoi, confirme à qui et ce que tu as envoyé — et si ok:false, dis-le clairement, ne prétends jamais que ça a marché.
 - Si Robin dit "eux"/"les"/"ce lead" sans préciser, réutilise les prospects que TU as toi-même listés dans un message précédent de cette conversation.
 - Si un lead n'a pas de téléphone (ou un numéro masqué par la confidentialité WhatsApp), dis-le simplement — ne peux pas le relancer par WhatsApp dans ce cas, propose l'email s'il est disponible.
 - Ne mentionne jamais que tu es Claude ou un modèle d'IA — tu es l'assistant Manager d'Harmonie Yacht.
@@ -680,6 +747,8 @@ const WRITE_CONFIRMATION_GUARDS: Array<{ tool: string; pattern: RegExp }> = [
   { tool: "add_expense", pattern: /d[ée]pense.{0,15}(?:enregistr[ée]e|ajout[ée]e)|(?:enregistr[ée]e|ajout[ée]e).{0,15}d[ée]pense/i },
   { tool: "delete_expense", pattern: /d[ée]pense.{0,15}supprim[ée]e|supprim[ée]e.{0,15}d[ée]pense/i },
   { tool: "confirm_pending_change", pattern: /(?:changement|configuration).{0,25}appliqu[ée]/i },
+  { tool: "send_whatsapp_followup", pattern: /(?:message|whatsapp).{0,15}envoy[ée]|envoy[ée].{0,15}(?:message|whatsapp)/i },
+  { tool: "send_email_reply", pattern: /(?:e-?mail|mail).{0,15}envoy[ée]|envoy[ée].{0,15}(?:e-?mail|mail)/i },
 ];
 
 export async function runAgentTurn(
