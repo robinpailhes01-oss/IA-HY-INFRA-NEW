@@ -293,7 +293,7 @@ export async function runTool(
     let query = supabase
       .from("leads")
       .select(
-        "id, first_name, last_name, phone, email, interested_offer, occasion, party_size, desired_date, score, status, created_at",
+        "id, first_name, last_name, phone, real_phone, email, interested_offer, occasion, party_size, desired_date, score, status, created_at",
       )
       .eq("archived", false);
 
@@ -313,11 +313,18 @@ export async function runTool(
     const { data, error } = await query.limit(25);
     if (error) return JSON.stringify({ error: error.message });
     // deno-lint-ignore no-explicit-any
-    const cleaned = (data ?? []).map((l: any) =>
-      isWhatsAppLid(l.phone)
-        ? { ...l, phone: null, phone_note: "Numéro masqué (confidentialité WhatsApp) — relance impossible par WhatsApp, propose l'email si disponible." }
-        : l,
-    );
+    const cleaned = (data ?? []).map((l: any) => {
+      const { real_phone, ...rest } = l;
+      if (!isWhatsAppLid(rest.phone)) return rest;
+      // Numéro masqué par WhatsApp (LID) au niveau de l'API — mais si on a
+      // réussi à résoudre le vrai numéro entre-temps (voir wa_lid_map), on le
+      // donne directement comme "phone" : la relance WhatsApp redevient
+      // possible normalement, pas besoin de passer par l'email.
+      if (real_phone) {
+        return { ...rest, phone: real_phone, phone_note: "Numéro réel résolu à partir d'un contact WhatsApp masqué — relance WhatsApp normale possible." };
+      }
+      return { ...rest, phone: null, phone_note: "Numéro masqué (confidentialité WhatsApp) — relance impossible par WhatsApp pour l'instant, propose l'email si disponible." };
+    });
     return JSON.stringify(cleaned);
   }
 
@@ -660,7 +667,7 @@ export function buildSystemPrompt(channel: "telegram" | "dashboard"): string {
 RÈGLES :
 ${formatLine}
 - get_business_stats pour toute question sur les chiffres (CA, demandes, messages, réservations à venir, reste à encaisser). Le CA renvoyé est l'argent RÉELLEMENT ENCAISSÉ sur la période, daté par sa date d'encaissement (pas la date de la sortie réservée) — précise toujours à Robin la période couverte ("depuis le début" ou "du X au Y"), pour qu'il ne confonde jamais ce chiffre avec la valeur totale des réservations d'un mois (qui inclut des soldes pas encore payés).
-- list_interested_leads pour toute question sur les prospects/clients intéressés. Utilise desired_from_date/desired_to_date pour "qui est intéressé pour [mois/période]" (filtre sur la date souhaitée de la prestation), from_date/to_date pour "qui était intéressé cette semaine" (filtre sur la date de contact) — ne mélange pas les deux. Donne TOUJOURS le nom et le téléphone dans ta réponse — c'est ce qui permet à Robin de demander ensuite de les relancer.
+- list_interested_leads pour toute question sur les prospects/clients intéressés. Utilise desired_from_date/desired_to_date pour "qui est intéressé pour [mois/période]" (filtre sur la date souhaitée de la prestation), from_date/to_date pour "qui était intéressé cette semaine" (filtre sur la date de contact) — ne mélange pas les deux. Donne TOUJOURS le nom et le téléphone dans ta réponse — c'est ce qui permet à Robin de demander ensuite de les relancer. Certains numéros apparaissent masqués (confidentialité WhatsApp) mais se résolvent parfois automatiquement avec le temps — dans ce cas l'outil te redonne directement un vrai numéro utilisable, la relance WhatsApp redevient possible normalement.
 - list_upcoming_bookings pour toute question sur les clients/réservations à venir.
 - send_whatsapp_followup UNIQUEMENT quand Robin demande explicitement de contacter/relancer quelqu'un par WhatsApp. Rédige un vrai message WhatsApp complet et naturel à partir de son instruction (ex: "dis que la météo est magnifique" → compose un message chaleureux qui le dit vraiment, pas juste ces mots). Après l'envoi, confirme à qui et ce que tu as envoyé.
 - send_email_reply UNIQUEMENT quand Robin demande explicitement de répondre/écrire par email à quelqu'un. Même exigence de rédaction que pour WhatsApp — un vrai email complet et naturel, pas ses mots bruts recopiés. Si tu connais le lead_id (ex. via list_interested_leads), passe-le pour que l'envoi apparaisse dans l'historique de sa fiche. Après l'envoi, confirme à qui et ce que tu as envoyé — et si ok:false, dis-le clairement, ne prétends jamais que ça a marché.

@@ -51,8 +51,17 @@ app.post('/send', async (req, res) => {
     const match = exists?.find((e) => e.exists);
 
     let jid: string;
+    // Clé utilisée pour la conversation/pause — par défaut le numéro fourni,
+    // mais si ce numéro est en fait le vrai numéro résolu d'un contact connu
+    // par son LID (voir wa_lid_map), on reste sur l'identité LID d'origine :
+    // c'est elle qui porte l'historique et l'état de pause suivis par Léa,
+    // sinon on créerait une conversation en double et Léa pourrait continuer
+    // à répondre en parallèle sur le fil LID pendant qu'on écrit sur l'autre.
+    let identityPhone = phone;
     if (match) {
       jid = match.jid;
+      const { data: mapping } = await supabase.from('wa_lid_map').select('lid').eq('phone', phone).maybeSingle();
+      if (mapping?.lid) identityPhone = mapping.lid;
     } else {
       // Fallback LID (WhatsApp privacy mode) : si on a déjà une conversation
       // avec ce "phone", le numéro est un LID valide qui ne se résout pas via
@@ -71,10 +80,10 @@ app.post('/send', async (req, res) => {
 
     const sent = await sock.sendMessage(jid, { text: message });
     // Save + pause (human is taking over)
-    const conv = await upsertConversation(phone);
+    const conv = await upsertConversation(identityPhone);
     if (conv) {
       await saveMessage(conv.id, true, message, true, sent?.key?.id ?? undefined);
-      await pauseConversation(phone);
+      await pauseConversation(identityPhone);
     }
     res.json({ ok: true });
   } catch (err) {

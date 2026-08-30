@@ -12,12 +12,21 @@ import {
   saveMessage,
   isConversationPaused,
   pauseConversation,
+  upsertLidMapping,
 } from './supabase.js';
 import { askLea } from './lea.js';
 
 // pino's CJS default-import under NodeNext resolves to a namespace; unwrap .default at runtime
 const pino: any = (pinoModule as any).default ?? pinoModule;
 const logger = pino({ level: 'silent' });
+
+// Même format que customerPhone plus bas : "+<digits>", quel que soit le
+// suffixe d'origine (@s.whatsapp.net ou @lid).
+function jidToPhone(jid: string | null | undefined): string | null {
+  if (!jid) return null;
+  const digits = jid.replace(/@(s\.whatsapp\.net|lid)$/, '');
+  return digits ? '+' + digits : null;
+}
 
 // IDs of messages Léa sent — used to ignore echoes
 const leaSentIds = new Set<string>();
@@ -135,6 +144,52 @@ export async function connectToWhatsApp(): Promise<void> {
       connected = true;
       qrCode = null;
       console.log('✅ WhatsApp connecté !');
+    }
+  });
+
+  // Résolution LID → numéro réel — voir migration wa_lid_phone_mapping.
+  // Trois sources possibles, toutes réellement émises par Baileys (vérifié
+  // dans son code source, pas une supposition) :
+  //  - 'chats.phoneNumberShare' : le client partage explicitement son numéro
+  //    (WhatsApp envoie {lid, jid} directement, cas le plus fiable).
+  //  - 'contacts.upsert'/'contacts.update' : sync des contacts du compte —
+  //    un Contact peut porter à la fois .lid et .jid quand WhatsApp connaît
+  //    déjà la correspondance pour ce compte (ex. contact enregistré côté
+  //    téléphone principal de Robin, qui LUI montre le vrai numéro).
+  //  - 'messaging-history.set' : sync initiale/périodique des chats, où
+  //    chaque chat peut porter .lid en plus de son id.
+  sock.ev.on('chats.phoneNumberShare', ({ lid, jid }) => {
+    const lidPhone = jidToPhone(lid);
+    const realPhone = jidToPhone(jid);
+    if (lidPhone && realPhone) {
+      console.log(`🔓 Numéro partagé explicitement : ${lidPhone} → ${realPhone}`);
+      upsertLidMapping(lidPhone, realPhone, 'phone_share').catch((e) => console.error('[whatsapp] upsertLidMapping:', e));
+    }
+  });
+
+  const handleContacts = (contacts: Array<{ id?: string; lid?: string; jid?: string }>) => {
+    for (const c of contacts) {
+      const lidCandidate = c.lid ?? (c.id?.endsWith('@lid') ? c.id : null);
+      const phoneCandidate = c.jid ?? (c.id?.endsWith('@s.whatsapp.net') ? c.id : null);
+      const lidPhone = jidToPhone(lidCandidate);
+      const realPhone = jidToPhone(phoneCandidate);
+      if (lidPhone && realPhone) {
+        console.log(`🔓 Contact résolu : ${lidPhone} → ${realPhone}`);
+        upsertLidMapping(lidPhone, realPhone, 'contact_sync').catch((e) => console.error('[whatsapp] upsertLidMapping:', e));
+      }
+    }
+  };
+  sock.ev.on('contacts.upsert', handleContacts);
+  sock.ev.on('contacts.update', handleContacts);
+
+  sock.ev.on('messaging-history.set', ({ chats }) => {
+    for (const chat of chats as Array<{ id?: string; lidJid?: string }>) {
+      const lidPhone = jidToPhone(chat.lidJid);
+      const realPhone = jidToPhone(chat.id);
+      if (lidPhone && realPhone) {
+        console.log(`🔓 Chat historique résolu : ${lidPhone} → ${realPhone}`);
+        upsertLidMapping(lidPhone, realPhone, 'history_sync').catch((e) => console.error('[whatsapp] upsertLidMapping:', e));
+      }
     }
   });
 

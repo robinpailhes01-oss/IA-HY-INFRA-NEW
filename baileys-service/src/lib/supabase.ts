@@ -123,6 +123,20 @@ export async function resumeConversation(customerPhone: string) {
     .eq('customer_phone', customerPhone);
 }
 
+// Résolution LID → numéro réel (voir migration wa_lid_phone_mapping). Appelé
+// dès que Baileys nous révèle la correspondance (partage explicite du numéro,
+// sync des contacts/historique) — on garde une trace dans wa_lid_map ET on
+// remplit leads.real_phone pour tout lead déjà identifié par ce LID, afin que
+// le Manager et le dashboard puissent enfin le relancer directement.
+export async function upsertLidMapping(lid: string, phone: string, source = 'baileys') {
+  if (!lid || !phone || lid === phone) return;
+  await supabase.from('wa_lid_map').upsert(
+    { lid, phone, source, updated_at: new Date().toISOString() },
+    { onConflict: 'lid' },
+  );
+  await supabase.from('leads').update({ real_phone: phone }).eq('phone', lid).is('real_phone', null);
+}
+
 // Vide la table wa_auth_state — appelé quand WhatsApp invalide la session
 // (déconnexion de l'appareil lié dans WhatsApp Business). Sans ça, le service
 // resterait coincé avec des credentials morts au lieu de générer un nouveau QR.
