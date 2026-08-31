@@ -14,42 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      analytics_daily_snapshots: {
-        Row: {
-          created_at: string
-          id: string
-          pageviews: number
-          snapshot_date: string
-          top_pages: Json
-          top_referrers: Json
-          updated_at: string
-          vercel_project_id: string
-          visitors: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          pageviews?: number
-          snapshot_date: string
-          top_pages?: Json
-          top_referrers?: Json
-          updated_at?: string
-          vercel_project_id: string
-          visitors?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          pageviews?: number
-          snapshot_date?: string
-          top_pages?: Json
-          top_referrers?: Json
-          updated_at?: string
-          vercel_project_id?: string
-          visitors?: number
-        }
-        Relationships: []
-      }
       ad_stats: {
         Row: {
           bookings_attributed: number | null
@@ -137,6 +101,230 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_config_history: {
+        Row: {
+          applied_at: string
+          column_name: string
+          description: string
+          id: string
+          key_name: string | null
+          new_value: Json
+          old_value: Json | null
+          source: string
+        }
+        Insert: {
+          applied_at?: string
+          column_name: string
+          description: string
+          id?: string
+          key_name?: string | null
+          new_value: Json
+          old_value?: Json | null
+          source?: string
+        }
+        Update: {
+          applied_at?: string
+          column_name?: string
+          description?: string
+          id?: string
+          key_name?: string | null
+          new_value?: Json
+          old_value?: Json | null
+          source?: string
+        }
+        Relationships: []
+      }
+      agent_config_pending_changes: {
+        Row: {
+          chat_id: string
+          column_name: string
+          created_at: string
+          description: string
+          id: string
+          key_name: string | null
+          new_value: Json
+          old_value: Json | null
+          status: string
+        }
+        Insert: {
+          chat_id: string
+          column_name: string
+          created_at?: string
+          description: string
+          id?: string
+          key_name?: string | null
+          new_value: Json
+          old_value?: Json | null
+          status?: string
+        }
+        Update: {
+          chat_id?: string
+          column_name?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key_name?: string | null
+          new_value?: Json
+          old_value?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      analytics_daily_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          pageviews: number
+          snapshot_date: string
+          top_pages: Json
+          top_referrers: Json
+          updated_at: string
+          vercel_project_id: string
+          visitors: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pageviews?: number
+          snapshot_date: string
+          top_pages?: Json
+          top_referrers?: Json
+          updated_at?: string
+          vercel_project_id: string
+          visitors?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pageviews?: number
+          snapshot_date?: string
+          top_pages?: Json
+          top_referrers?: Json
+          updated_at?: string
+          vercel_project_id?: string
+          visitors?: number
+        }
+        Relationships: []
+      }
+      bank_accounts: {
+        Row: {
+          authorized_balance_cents: number
+          balance_cents: number
+          balance_updated_at: string | null
+          created_at: string
+          currency: string
+          iban: string | null
+          id: string
+          is_main: boolean
+          name: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          authorized_balance_cents?: number
+          balance_cents?: number
+          balance_updated_at?: string | null
+          created_at?: string
+          currency?: string
+          iban?: string | null
+          id: string
+          is_main?: boolean
+          name?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          authorized_balance_cents?: number
+          balance_cents?: number
+          balance_updated_at?: string | null
+          created_at?: string
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_main?: boolean
+          name?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bank_transactions: {
+        Row: {
+          amount_cents: number
+          bank_account_id: string | null
+          cashflow_category: string | null
+          counterparty_name: string | null
+          created_at: string
+          currency: string
+          emitted_at: string | null
+          id: string
+          label: string | null
+          note: string | null
+          operation_type: string | null
+          qonto_category: string | null
+          qonto_id: string
+          qonto_updated_at: string | null
+          raw: Json
+          reference: string | null
+          settled_at: string | null
+          side: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          bank_account_id?: string | null
+          cashflow_category?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          currency?: string
+          emitted_at?: string | null
+          id?: string
+          label?: string | null
+          note?: string | null
+          operation_type?: string | null
+          qonto_category?: string | null
+          qonto_id: string
+          qonto_updated_at?: string | null
+          raw?: Json
+          reference?: string | null
+          settled_at?: string | null
+          side: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          bank_account_id?: string | null
+          cashflow_category?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          currency?: string
+          emitted_at?: string | null
+          id?: string
+          label?: string | null
+          note?: string | null
+          operation_type?: string | null
+          qonto_category?: string | null
+          qonto_id?: string
+          qonto_updated_at?: string | null
+          raw?: Json
+          reference?: string | null
+          settled_at?: string | null
+          side?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_dates: {
         Row: {
           created_at: string | null
@@ -206,6 +394,7 @@ export type Database = {
           source_channel: string | null
           start_time: string | null
           status: string | null
+          stripe_session_id: string | null
           total_amount: number | null
           updated_at: string | null
         }
@@ -244,6 +433,7 @@ export type Database = {
           source_channel?: string | null
           start_time?: string | null
           status?: string | null
+          stripe_session_id?: string | null
           total_amount?: number | null
           updated_at?: string | null
         }
@@ -282,6 +472,7 @@ export type Database = {
           source_channel?: string | null
           start_time?: string | null
           status?: string | null
+          stripe_session_id?: string | null
           total_amount?: number | null
           updated_at?: string | null
         }
@@ -298,6 +489,59 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_outreach: {
+        Row: {
+          campaign: string
+          created_at: string
+          email_body_html: string | null
+          email_subject: string | null
+          error: string | null
+          id: string
+          legacy_client_id: string
+          provider: string
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign: string
+          created_at?: string
+          email_body_html?: string | null
+          email_subject?: string | null
+          error?: string | null
+          id?: string
+          legacy_client_id: string
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign?: string
+          created_at?: string
+          email_body_html?: string | null
+          email_subject?: string | null
+          error?: string | null
+          id?: string
+          legacy_client_id?: string
+          provider?: string
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_outreach_legacy_client_id_fkey"
+            columns: ["legacy_client_id"]
+            isOneToOne: false
+            referencedRelation: "legacy_clients"
             referencedColumns: ["id"]
           },
         ]
@@ -592,6 +836,24 @@ export type Database = {
           },
         ]
       }
+      email_unsubscribes: {
+        Row: {
+          email: string
+          source_campaign: string | null
+          unsubscribed_at: string
+        }
+        Insert: {
+          email: string
+          source_campaign?: string | null
+          unsubscribed_at?: string
+        }
+        Update: {
+          email?: string
+          source_campaign?: string | null
+          unsubscribed_at?: string
+        }
+        Relationships: []
+      }
       event_bookings: {
         Row: {
           created_at: string | null
@@ -724,6 +986,7 @@ export type Database = {
       expenses: {
         Row: {
           amount: number
+          bank_transaction_id: string | null
           category: string
           created_at: string | null
           created_by: string | null
@@ -738,6 +1001,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bank_transaction_id?: string | null
           category: string
           created_at?: string | null
           created_by?: string | null
@@ -752,6 +1016,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_transaction_id?: string | null
           category?: string
           created_at?: string | null
           created_by?: string | null
@@ -765,6 +1030,13 @@ export type Database = {
           recurrence_period?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_bank_transaction_id_fkey"
+            columns: ["bank_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bank_transactions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_linked_booking_id_fkey"
             columns: ["linked_booking_id"]
@@ -1325,6 +1597,7 @@ export type Database = {
           occasion: string | null
           party_size: number | null
           phone: string | null
+          real_phone: string | null
           score: number | null
           source_channel: string | null
           source_status: string | null
@@ -1353,6 +1626,7 @@ export type Database = {
           occasion?: string | null
           party_size?: number | null
           phone?: string | null
+          real_phone?: string | null
           score?: number | null
           source_channel?: string | null
           source_status?: string | null
@@ -1381,11 +1655,57 @@ export type Database = {
           occasion?: string | null
           party_size?: number | null
           phone?: string | null
+          real_phone?: string | null
           score?: number | null
           source_channel?: string | null
           source_status?: string | null
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      legacy_clients: {
+        Row: {
+          created_at: string
+          email: string | null
+          event_date: string | null
+          event_year: number | null
+          first_name: string | null
+          ics_uid: string
+          id: string
+          last_name: string | null
+          offer_summary: string | null
+          phone: string | null
+          raw_description: string | null
+          source_file: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          event_date?: string | null
+          event_year?: number | null
+          first_name?: string | null
+          ics_uid: string
+          id?: string
+          last_name?: string | null
+          offer_summary?: string | null
+          phone?: string | null
+          raw_description?: string | null
+          source_file?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          event_date?: string | null
+          event_year?: number | null
+          first_name?: string | null
+          ics_uid?: string
+          id?: string
+          last_name?: string | null
+          offer_summary?: string | null
+          phone?: string | null
+          raw_description?: string | null
+          source_file?: string | null
         }
         Relationships: []
       }
@@ -1416,6 +1736,141 @@ export type Database = {
           notification_preferences?: Json | null
           permissions?: Json | null
           role?: string | null
+        }
+        Relationships: []
+      }
+      prospects: {
+        Row: {
+          adresse: string
+          aides_totales: number | null
+          co2_evite_kg_an: number | null
+          code_postal: string | null
+          cout_installation_ttc: number | null
+          created_at: string
+          date_photo_satellite: string | null
+          economie_annuelle: number | null
+          email: string | null
+          heures_ensoleillement: number | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nb_panneaux_recommande: number | null
+          nom: string
+          notes: string | null
+          orientation_principale: string | null
+          panneaux_detectes: string | null
+          prenom: string
+          production_annuelle_kwh: number | null
+          proposition_html: string | null
+          proposition_id: string | null
+          proposition_vue_at: string | null
+          puissance_kwc: number | null
+          qualite_imagerie: string | null
+          reste_a_charge: number | null
+          score_solaire: number | null
+          site_web: string | null
+          statut: Database["public"]["Enums"]["prospect_statut"]
+          surface_toit_m2: number | null
+          telephone: string | null
+          temps_retour_ans: number | null
+          updated_at: string
+          ville: string
+        }
+        Insert: {
+          adresse: string
+          aides_totales?: number | null
+          co2_evite_kg_an?: number | null
+          code_postal?: string | null
+          cout_installation_ttc?: number | null
+          created_at?: string
+          date_photo_satellite?: string | null
+          economie_annuelle?: number | null
+          email?: string | null
+          heures_ensoleillement?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nb_panneaux_recommande?: number | null
+          nom: string
+          notes?: string | null
+          orientation_principale?: string | null
+          panneaux_detectes?: string | null
+          prenom: string
+          production_annuelle_kwh?: number | null
+          proposition_html?: string | null
+          proposition_id?: string | null
+          proposition_vue_at?: string | null
+          puissance_kwc?: number | null
+          qualite_imagerie?: string | null
+          reste_a_charge?: number | null
+          score_solaire?: number | null
+          site_web?: string | null
+          statut?: Database["public"]["Enums"]["prospect_statut"]
+          surface_toit_m2?: number | null
+          telephone?: string | null
+          temps_retour_ans?: number | null
+          updated_at?: string
+          ville: string
+        }
+        Update: {
+          adresse?: string
+          aides_totales?: number | null
+          co2_evite_kg_an?: number | null
+          code_postal?: string | null
+          cout_installation_ttc?: number | null
+          created_at?: string
+          date_photo_satellite?: string | null
+          economie_annuelle?: number | null
+          email?: string | null
+          heures_ensoleillement?: number | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nb_panneaux_recommande?: number | null
+          nom?: string
+          notes?: string | null
+          orientation_principale?: string | null
+          panneaux_detectes?: string | null
+          prenom?: string
+          production_annuelle_kwh?: number | null
+          proposition_html?: string | null
+          proposition_id?: string | null
+          proposition_vue_at?: string | null
+          puissance_kwc?: number | null
+          qualite_imagerie?: string | null
+          reste_a_charge?: number | null
+          score_solaire?: number | null
+          site_web?: string | null
+          statut?: Database["public"]["Enums"]["prospect_statut"]
+          surface_toit_m2?: number | null
+          telephone?: string | null
+          temps_retour_ans?: number | null
+          updated_at?: string
+          ville?: string
+        }
+        Relationships: []
+      }
+      qonto_sync_state: {
+        Row: {
+          id: boolean
+          last_error: string | null
+          last_run_at: string | null
+          last_synced_at: string | null
+          transactions_synced: number
+        }
+        Insert: {
+          id?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          last_synced_at?: string | null
+          transactions_synced?: number
+        }
+        Update: {
+          id?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          last_synced_at?: string | null
+          transactions_synced?: number
         }
         Relationships: []
       }
@@ -1518,6 +1973,7 @@ export type Database = {
           date: string
           id: string
           note: string | null
+          payment_kind: string | null
           type: string
         }
         Insert: {
@@ -1527,6 +1983,7 @@ export type Database = {
           date: string
           id?: string
           note?: string | null
+          payment_kind?: string | null
           type: string
         }
         Update: {
@@ -1536,6 +1993,7 @@ export type Database = {
           date?: string
           id?: string
           note?: string | null
+          payment_kind?: string | null
           type?: string
         }
         Relationships: [
@@ -1544,122 +2002,6 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_unsubscribes: {
-        Row: {
-          email: string
-          source_campaign: string | null
-          unsubscribed_at: string
-        }
-        Insert: {
-          email: string
-          source_campaign?: string | null
-          unsubscribed_at?: string
-        }
-        Update: {
-          email?: string
-          source_campaign?: string | null
-          unsubscribed_at?: string
-        }
-        Relationships: []
-      }
-      legacy_clients: {
-        Row: {
-          created_at: string
-          email: string | null
-          event_date: string | null
-          event_year: number | null
-          first_name: string | null
-          ics_uid: string
-          id: string
-          last_name: string | null
-          offer_summary: string | null
-          phone: string | null
-          raw_description: string | null
-          source_file: string | null
-        }
-        Insert: {
-          created_at?: string
-          email?: string | null
-          event_date?: string | null
-          event_year?: number | null
-          first_name?: string | null
-          ics_uid: string
-          id?: string
-          last_name?: string | null
-          offer_summary?: string | null
-          phone?: string | null
-          raw_description?: string | null
-          source_file?: string | null
-        }
-        Update: {
-          created_at?: string
-          email?: string | null
-          event_date?: string | null
-          event_year?: number | null
-          first_name?: string | null
-          ics_uid?: string
-          id?: string
-          last_name?: string | null
-          offer_summary?: string | null
-          phone?: string | null
-          raw_description?: string | null
-          source_file?: string | null
-        }
-        Relationships: []
-      }
-      client_outreach: {
-        Row: {
-          campaign: string
-          created_at: string
-          email_body_html: string | null
-          email_subject: string | null
-          error: string | null
-          id: string
-          legacy_client_id: string
-          provider: string
-          provider_message_id: string | null
-          sent_at: string | null
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          campaign: string
-          created_at?: string
-          email_body_html?: string | null
-          email_subject?: string | null
-          error?: string | null
-          id?: string
-          legacy_client_id: string
-          provider?: string
-          provider_message_id?: string | null
-          sent_at?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          campaign?: string
-          created_at?: string
-          email_body_html?: string | null
-          email_subject?: string | null
-          error?: string | null
-          id?: string
-          legacy_client_id?: string
-          provider?: string
-          provider_message_id?: string | null
-          sent_at?: string | null
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "client_outreach_legacy_client_id_fkey"
-            columns: ["legacy_client_id"]
-            isOneToOne: false
-            referencedRelation: "legacy_clients"
             referencedColumns: ["id"]
           },
         ]
@@ -1709,6 +2051,66 @@ export type Database = {
           score?: number
           site_url?: string
           warning_count?: number
+        }
+        Relationships: []
+      }
+      telegram_manager_conversations: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          messages: Json
+          updated_at: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          messages?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          account: string
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          id: string
+          note: string | null
+          source: string
+          type: string
+        }
+        Insert: {
+          account?: string
+          amount: number
+          category: string
+          created_at?: string
+          date: string
+          id: string
+          note?: string | null
+          source?: string
+          type: string
+        }
+        Update: {
+          account?: string
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          id?: string
+          note?: string | null
+          source?: string
+          type?: string
         }
         Relationships: []
       }
@@ -1804,6 +2206,30 @@ export type Database = {
         }
         Relationships: []
       }
+      wa_lid_map: {
+        Row: {
+          created_at: string
+          lid: string
+          phone: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          lid: string
+          phone: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          lid?: string
+          phone?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       wa_messages: {
         Row: {
           body: string
@@ -1880,13 +2306,15 @@ export type Database = {
       }
     }
     Views: {
-      lead_last_message: {
+      dashboard_stats: {
         Row: {
-          last_from_me: boolean | null
-          last_is_from_human: boolean | null
-          last_message_at: string | null
-          lead_id: string | null
-          site_link_sent: boolean | null
+          ca_pipeline: number | null
+          ca_signe: number | null
+          roi_moyen_ans: number | null
+          total_analyses: number | null
+          total_propositions: number | null
+          total_prospects: number | null
+          total_signes: number | null
         }
         Relationships: []
       }
@@ -1938,12 +2366,44 @@ export type Database = {
           },
         ]
       }
+      lead_last_message: {
+        Row: {
+          last_from_me: boolean | null
+          last_is_from_human: boolean | null
+          last_message_at: string | null
+          lead_id: string | null
+          site_link_sent: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wa_conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      get_booked_slots: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          booking_type: string
+          date: string
+          end_time: string
+          start_time: string
+        }[]
+      }
       wa_inbox_cleanup: { Args: never; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      prospect_statut:
+        | "nouveau"
+        | "proposition_envoyee"
+        | "visite_planifiee"
+        | "signe"
+        | "perdu"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2070,6 +2530,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      prospect_statut: [
+        "nouveau",
+        "proposition_envoyee",
+        "visite_planifiee",
+        "signe",
+        "perdu",
+      ],
+    },
   },
 } as const

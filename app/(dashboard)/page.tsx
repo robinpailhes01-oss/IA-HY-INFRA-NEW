@@ -114,6 +114,7 @@ export default async function OverviewPage() {
     leadsStatusRes,
     hotLeadsRes,
     awaitingReplyRes,
+    bankAccountsRes,
   ] = await Promise.all([
     supabase
       .from("goals")
@@ -192,6 +193,12 @@ export default async function OverviewPage() {
       .from("lead_last_message")
       .select("lead_id")
       .eq("last_from_me", false),
+    // ── Solde bancaire réel, alimenté par la synchro Qonto ──
+    supabase
+      .from("bank_accounts")
+      .select("balance_cents, balance_updated_at")
+      .neq("status", "closed")
+      .returns<{ balance_cents: number | null; balance_updated_at: string | null }[]>(),
   ]);
 
   const goal = goalRes.data;
@@ -221,13 +228,27 @@ export default async function OverviewPage() {
     .reduce((s, e) => s + (e.amount ?? 0), 0);
   const ytdMargin = caYtd - opexYtd;
 
+  // Trésorerie réelle : somme des soldes bancaires remontés par qonto-sync.
+  // null tant qu'aucun compte n'a été synchronisé — on affiche alors « Qonto
+  // non connecté » plutôt qu'un 0 € qui ressemblerait à un compte vide.
+  const bankAccounts = bankAccountsRes.data ?? [];
+  const treasury = bankAccounts.length
+    ? bankAccounts.reduce((s, a) => s + (a.balance_cents ?? 0), 0) / 100
+    : null;
+  const lastBalanceAt = bankAccounts
+    .map((a) => a.balance_updated_at)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1);
+  const treasuryUpdatedLabel = lastBalanceAt
+    ? `maj ${formatDateLong(lastBalanceAt.slice(0, 10))}`
+    : "jamais synchronisé";
+
   const outstandingOf = (b: BookingMetricRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
   const outstanding = metrics
     .filter((b) => b.status !== "cancelled")
     .reduce((s, b) => s + outstandingOf(b), 0);
-  const collected = caYtd;
-
   const upcomingCount = metrics.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",
   ).length;
@@ -441,8 +462,16 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="primary" hint="hors annulations" index={0} />
         <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
-        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="revenus − dépenses" index={2} />
-        <KpiCard label="Déjà encaissé" value={collected} format="eur" icon={Banknote} accent="gold" hint="revenus + soldes perçus" index={3} />
+        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
+        {/* Solde bancaire réel (Qonto). La marge nette ci-contre est un résultat
+            comptable : elle ignore tout ce qui sort du compte sans être saisi
+            (charges sociales, prélèvements, échéances). Les deux côte à côte
+            évitent de lire l'une pour l'autre. */}
+        {treasury === null ? (
+          <KpiCard label="Trésorerie réelle" value={0} format="eur" icon={Banknote} accent="gold" hint="Qonto non connecté" index={3} />
+        ) : (
+          <KpiCard label="Trésorerie réelle" value={treasury} format="eur" icon={Banknote} accent="gold" hint={`solde Qonto · ${treasuryUpdatedLabel}`} index={3} />
+        )}
       </div>
 
       {/* ── Secondaire ─────────────────────────────────────────────── */}
