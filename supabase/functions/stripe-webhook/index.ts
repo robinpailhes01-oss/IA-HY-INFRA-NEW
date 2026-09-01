@@ -222,6 +222,12 @@ Deno.serve(async (req) => {
   const formule = md.formule ?? BOOKING_TYPE_LABEL[bookingType] ?? "réservation";
   const nom = md.nom ?? "Client";
   const email = md.email || session.customer_details?.email || session.customer_email || "";
+  // Téléphone : renseigné par Stripe uniquement si la session Checkout active
+  // phone_number_collection côté site. Stripe le renvoie déjà en E.164 (+33…),
+  // donc rien à normaliser ici. Sans lui, le client reste injoignable et le
+  // trigger link_booking_to_lead ne peut pas rapprocher la réservation du lead
+  // WhatsApp correspondant (il matche sur customers.phone → leads.phone).
+  const phone = session.customer_details?.phone || md.telephone || md.phone || "";
   const dateOnly = md.date ?? "";
   const startTime = md.startTime || null;
   const endTime = md.endTime || null;
@@ -243,14 +249,23 @@ Deno.serve(async (req) => {
   // Client : on retrouve par email, sinon on crée.
   let customerId: string | null = null;
   if (email) {
-    const { data: existing } = await supabase.from("customers").select("id").eq("email", email).maybeSingle();
+    const { data: existing } = await supabase
+      .from("customers")
+      .select("id, phone")
+      .eq("email", email)
+      .maybeSingle();
     customerId = existing?.id ?? null;
+    // Client déjà connu mais sans téléphone (réservation antérieure à la
+    // collecte du numéro) : on complète sa fiche au passage.
+    if (customerId && phone && !existing?.phone) {
+      await supabase.from("customers").update({ phone }).eq("id", customerId);
+    }
   }
   if (!customerId) {
     const { first, last } = splitName(nom);
     const { data: created, error } = await supabase
       .from("customers")
-      .insert({ first_name: first, last_name: last, email: email || null, acquisition_channel: "website" })
+      .insert({ first_name: first, last_name: last, email: email || null, phone: phone || null, acquisition_channel: "website" })
       .select("id")
       .single();
     if (error) {
