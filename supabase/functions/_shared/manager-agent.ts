@@ -9,6 +9,9 @@
 // requête entrante, envoi de la réponse).
 
 import type { createClient } from "npm:@supabase/supabase-js@2";
+// Spécialité financière : outils et handlers vivent dans leur propre module
+// (trésorerie, caisse espèces, canaux d'encaissement, audit des trous).
+import { FINANCE_TOOLS, runFinanceTool } from "./finance-tools.ts";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
@@ -212,6 +215,7 @@ export const TOOLS = [
       },
     },
   },
+  ...FINANCE_TOOLS,
 ];
 
 const AD_CHANNELS = ["instagram_ads", "tiktok_ads", "meta_ads", "google_ads"];
@@ -642,6 +646,11 @@ export async function runTool(
     });
   }
 
+  // Outils financiers (module dédié) — renvoie null si le nom ne lui appartient
+  // pas, auquel cas on retombe bien sur l'erreur d'outil inconnu ci-dessous.
+  const financeResult = await runFinanceTool(supabase, name, input);
+  if (financeResult !== null) return financeResult;
+
   return JSON.stringify({ error: `Outil inconnu: ${name}` });
 }
 
@@ -680,6 +689,18 @@ ${formatLine}
 - delete_expense dès que Robin demande de supprimer/retirer/annuler une dépense (ex. "supprime la dépense gazoil", "c'était un doublon, enlève-le"). Appelle D'ABORD list_expenses sur la période concernée pour retrouver l'id exact — ne devine JAMAIS un id. S'il y a plusieurs dépenses qui correspondent (même catégorie/montant proches), décris-les à Robin et demande laquelle avant de supprimer. Même règle anti-hallucination que pour add_expense : ne confirme "supprimé" qu'après un tool_result ok:true réel.
 - ⚠️ Tu n'as PAS d'outil pour supprimer ou corriger un encaissement (revenues) lié à une réservation — uniquement les dépenses (expenses). Si Robin demande de supprimer/corriger un encaissement, dis-le clairement et propose de vérifier ça avec lui plutôt que d'inventer une action.
 - get_marketing_performance pour toute question sur l'efficacité des pubs ou le ROI (ex. "combien de réservations grâce aux pubs", "est-ce que la pub est rentable"). Il te donne à la fois le budget pub dépensé (catégorie 'marketing') et les réservations/CA venant des canaux Instagram Ads, TikTok Ads, Meta Ads, Google Ads sur la même période — compare les deux dans ta réponse.
+
+GESTION FINANCIÈRE (ta spécialité — c'est là qu'on t'attend le plus) :
+- get_financial_status pour toute question sur la situation d'ensemble : 'où j'en suis', 'combien il me reste', 'ma trésorerie', 'mon score', 'est-ce que ça va mieux'. Donne la trésorerie RÉELLE (banque + caisse), pas un résultat comptable.
+- ⚠️ RÈGLE ABSOLUE : ne présente JAMAIS un chiffre financier comme complet si l'outil renvoie des sources_manquantes. Dis explicitement à Robin ce qui n'est pas branché et donc ce que le chiffre ne couvre pas. Un chiffre faux présenté comme sûr est exactement ce qui lui a fait croire pendant 8 mois qu'il avait 18 800 € alors qu'il en avait 6 000.
+- Ne confonds jamais ces trois choses, et aide Robin à ne pas les confondre : la TRÉSORERIE (ce qu'il y a réellement sur le compte + en caisse), le CHIFFRE D'AFFAIRES (ce qui a été encaissé sur une période), et la MARGE NETTE (chiffre d'affaires moins charges, un résultat comptable qui ne dit rien de ce qui est disponible).
+- record_cash_movement dès que Robin parle d'espèces : 'j'ai encaissé 350 en liquide' (direction in), 'j'ai payé 60 de gasoil en espèces' (direction out), 'j'ai déposé 400 à la banque' (direction deposit). Les espèces sont le SEUL flux que le système ne peut pas récupérer tout seul — encourage Robin à te les dire au fil de l'eau, c'est 20 secondes et ça évite un trou dans les comptes.
+- ⚠️ Un dépôt d'espèces en banque n'est JAMAIS du chiffre d'affaires : c'est de l'argent qui change de poche et qui réapparaîtra en crédit sur le compte. Si Robin dit 'j'ai déposé X', utilise direction='deposit', jamais 'in'.
+- Même règle anti-hallucination que pour les dépenses : ne confirme un mouvement d'espèces qu'après un tool_result ok:true reçu dans CE tour. Si ok:false, dis-le franchement.
+- list_cash_movements pour 'combien j'ai en liquide' ou l'historique de la caisse.
+- get_revenue_by_channel pour 'comment mes clients paient', 'combien en espèces', 'combien me coûtent les commissions'.
+- get_data_gaps_report quand Robin demande ce qui manque, pourquoi les chiffres ne collent pas, d'où vient un écart — et appelle-le AUSSI de toi-même avant toute analyse financière importante, pour savoir sur quoi tu peux t'engager et sur quoi tu dois rester prudent.
+- Tu es son associé sur l'argent, pas un tableur : quand un chiffre est préoccupant (autonomie faible, charges qui dépassent les encaissements), dis-le clairement et propose une piste concrète. Quand tout va bien, dis-le aussi simplement.
 
 MODIFIER LA CONFIGURATION DE LÉA (offres, prix, règles) :
 - Dès que Robin demande de changer une offre, un prix, ou une règle de comportement de Léa : appelle D'ABORD get_agent_config pour voir la structure et la valeur actuelles exactes (ne devine jamais une clé ou un prix).
@@ -756,6 +777,7 @@ const WRITE_CONFIRMATION_GUARDS: Array<{ tool: string; pattern: RegExp }> = [
   { tool: "confirm_pending_change", pattern: /(?:changement|configuration).{0,25}appliqu[ée]/i },
   { tool: "send_whatsapp_followup", pattern: /(?:message|whatsapp).{0,15}envoy[ée]|envoy[ée].{0,15}(?:message|whatsapp)/i },
   { tool: "send_email_reply", pattern: /(?:e-?mail|mail).{0,15}envoy[ée]|envoy[ée].{0,15}(?:e-?mail|mail)/i },
+  { tool: "record_cash_movement", pattern: /(?:esp[èe]ces|liquide|caisse).{0,20}(?:enregistr[ée]|ajout[ée]|not[ée])|(?:enregistr[ée]|ajout[ée]|not[ée]).{0,20}(?:esp[èe]ces|liquide|caisse)/i },
 ];
 
 export async function runAgentTurn(
