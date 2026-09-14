@@ -2306,6 +2306,43 @@ export type Database = {
       }
     }
     Views: {
+      site_daily_snapshots: {
+        Row: {
+          snapshot_date: string | null
+          visitors: number | null
+          pageviews: number | null
+          top_referrers: Json | null
+          top_pages: Json | null
+        }
+        Relationships: []
+      }
+      site_traffic_by_source: {
+        Row: {
+          day: string | null
+          source_label: string | null
+          source_group: string | null
+          visitors: number | null
+          pageviews: number | null
+        }
+        Relationships: []
+      }
+      site_traffic_daily: {
+        Row: {
+          day: string | null
+          visitors: number | null
+          pageviews: number | null
+        }
+        Relationships: []
+      }
+      site_traffic_by_page: {
+        Row: {
+          day: string | null
+          path: string | null
+          visitors: number | null
+          pageviews: number | null
+        }
+        Relationships: []
+      }
       dashboard_stats: {
         Row: {
           ca_pipeline: number | null
