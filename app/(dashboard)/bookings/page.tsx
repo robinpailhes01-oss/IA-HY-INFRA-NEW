@@ -74,13 +74,18 @@ export default async function BookingsPage() {
   const aVenir = bookings.filter(
     (b) => b.date !== null && b.date >= todayIso && b.status !== "cancelled",
   ).length;
-  const resteAEncaisser = bookings
-    .filter((b) => b.status !== "cancelled")
-    .reduce(
-      (sum, b) =>
-        sum + (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0),
-      0,
-    );
+  const resteDe = (b: BookingRow) =>
+    (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
+  const nonAnnulees = bookings.filter((b) => b.status !== "cancelled");
+  const resteAEncaisser = nonAnnulees.reduce((sum, b) => sum + resteDe(b), 0);
+  // Le total ci-dessus couvre TOUTES les réservations, passées comprises, alors
+  // que la liste « Soldes à encaisser » plus bas ne montre que les sorties à
+  // venir. Sans cette distinction, le KPI paraît faux (1 919 € affichés contre
+  // ~500 € réellement listés) : l'écart, ce sont des sorties déjà faites dont
+  // le solde a été perçu sur place mais jamais marqué comme encaissé.
+  const resteEnRetard = nonAnnulees
+    .filter((b) => b.date !== null && b.date < todayIso)
+    .reduce((sum, b) => sum + resteDe(b), 0);
 
   const toCollect: SettleTarget[] = bookings
     .filter(
@@ -101,6 +106,30 @@ export default async function BookingsPage() {
       balanceDue: b.balance_due ?? 0,
       sourceChannel: b.source_channel,
     }));
+
+  // Sorties déjà passées dont le solde n'a jamais été marqué comme encaissé.
+  // Presque toujours de l'argent bien perçu le jour J (espèces ou terminal)
+  // mais jamais enregistré — d'où l'intérêt de pouvoir le solder en un clic.
+  const enRetard: SettleTarget[] = bookings
+    .filter(
+      (b) =>
+        b.status !== "cancelled" &&
+        b.date !== null &&
+        b.date < todayIso &&
+        (b.balance_due ?? 0) > 0,
+    )
+    .map((b) => ({
+      id: b.id,
+      customerName: fullName(
+        b.customers?.first_name ?? null,
+        b.customers?.last_name ?? null,
+      ),
+      offerName: b.offer_name,
+      date: b.date!,
+      balanceDue: b.balance_due ?? 0,
+      sourceChannel: b.source_channel,
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   // Toutes les sorties à venir, payées ou non — contrairement à toCollect
   // (ci-dessus) qui ne garde que celles avec un solde à percevoir.
@@ -215,7 +244,12 @@ export default async function BookingsPage() {
           value={resteAEncaisser}
           format="eur"
           icon={Wallet}
-          accent="success"
+          accent={resteEnRetard > 0 ? "gold" : "success"}
+          hint={
+            resteEnRetard > 0
+              ? `dont ${Math.round(resteEnRetard)} € sur des sorties déjà passées`
+              : "sur les sorties à venir"
+          }
           index={2}
         />
       </div>
@@ -231,6 +265,22 @@ export default async function BookingsPage() {
           <BalanceAgenda items={toCollect} editableById={editableById} />
         </CardContent>
       </Card>
+
+      {enRetard.length > 0 && (
+        <Card className="enter-up" style={{ animationDelay: "280ms" }}>
+          <CardHeader>
+            <CardTitle>Soldes en retard</CardTitle>
+            <CardDescription>
+              Sorties déjà passées dont le solde n&apos;a jamais été marqué comme encaissé —
+              si l&apos;argent a bien été perçu le jour J, encaisse-les ici pour que les
+              chiffres redeviennent justes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BalanceAgenda items={enRetard} editableById={editableById} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="enter-up" style={{ animationDelay: "300ms" }}>
         <CardHeader>
