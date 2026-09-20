@@ -77,12 +77,17 @@ export default async function BookingsPage() {
   const resteDe = (b: BookingRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
   const nonAnnulees = bookings.filter((b) => b.status !== "cancelled");
-  const resteAEncaisser = nonAnnulees.reduce((sum, b) => sum + resteDe(b), 0);
-  // Le total ci-dessus couvre TOUTES les réservations, passées comprises, alors
-  // que la liste « Soldes à encaisser » plus bas ne montre que les sorties à
-  // venir. Sans cette distinction, le KPI paraît faux (1 919 € affichés contre
-  // ~500 € réellement listés) : l'écart, ce sont des sorties déjà faites dont
-  // le solde a été perçu sur place mais jamais marqué comme encaissé.
+  // « Reste à encaisser » = uniquement l'argent pas encore perçu sur des sorties
+  // À VENIR. Y mélanger les sorties passées rendait le chiffre illisible : il
+  // affichait 1 919 € quand seuls ~500 € concernaient vraiment des sorties à
+  // venir, le reste étant des soldes déjà perçus sur place mais jamais marqués.
+  // Une date absente (carte cadeau pas encore planifiée) compte comme à venir —
+  // la sortie n'a pas eu lieu, l'argent reste attendu.
+  const resteAEncaisser = nonAnnulees
+    .filter((b) => b.date === null || b.date >= todayIso)
+    .reduce((sum, b) => sum + resteDe(b), 0);
+  // Les sorties passées non soldées ne disparaissent pas pour autant : elles
+  // sortent du KPI mais restent listées plus bas, à régulariser.
   const resteEnRetard = nonAnnulees
     .filter((b) => b.date !== null && b.date < todayIso)
     .reduce((sum, b) => sum + resteDe(b), 0);
@@ -244,11 +249,11 @@ export default async function BookingsPage() {
           value={resteAEncaisser}
           format="eur"
           icon={Wallet}
-          accent={resteEnRetard > 0 ? "gold" : "success"}
+          accent="success"
           hint={
             resteEnRetard > 0
-              ? `dont ${Math.round(resteEnRetard)} € sur des sorties déjà passées`
-              : "sur les sorties à venir"
+              ? `sorties à venir · ${Math.round(resteEnRetard)} € en retard à régulariser`
+              : "sorties à venir"
           }
           index={2}
         />

@@ -246,8 +246,11 @@ export default async function OverviewPage() {
 
   const outstandingOf = (b: BookingMetricRow) =>
     (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
+  // Même définition que sur la page Réservations : le reste à encaisser ne
+  // compte QUE les sorties à venir. Les sorties passées non soldées relèvent
+  // d'une régularisation (elles sont listées là-bas), pas d'argent à attendre.
   const outstanding = metrics
-    .filter((b) => b.status !== "cancelled")
+    .filter((b) => b.status !== "cancelled" && b.date >= todayIso)
     .reduce((s, b) => s + outstandingOf(b), 0);
   const upcomingCount = metrics.filter(
     (b) => b.date >= todayIso && b.status !== "cancelled",

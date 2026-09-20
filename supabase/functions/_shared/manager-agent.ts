@@ -274,11 +274,15 @@ export async function runTool(
     const bookings = bookingsRes.data ?? [];
     // deno-lint-ignore no-explicit-any
     const upcoming = bookings.filter((b: any) => b.date && b.date >= today).length;
-    const resteAEncaisser = bookings.reduce(
+    // Même définition que le dashboard : uniquement les sorties À VENIR. Une
+    // sortie passée non soldée est une régularisation à faire, pas de l'argent
+    // encore attendu — les mélanger gonflait le chiffre sans que Robin voie
+    // pourquoi (1 919 € annoncés pour ~500 € réellement à venir).
+    const resteAEncaisser = bookings
       // deno-lint-ignore no-explicit-any
-      (s: number, b: any) => s + (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0),
-      0,
-    );
+      .filter((b: any) => b.date && b.date >= today)
+      // deno-lint-ignore no-explicit-any
+      .reduce((s: number, b: any) => s + (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0), 0);
     return JSON.stringify({
       periode: from ? { from, to } : "depuis le début",
       demandes_traitees: leadsRes.count ?? 0,
