@@ -17,82 +17,67 @@
       html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0c2b45; }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0c2b45; }
       .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-      .veil { position: absolute; pointer-events: none; }
-      .lyric { position: absolute; left: 0; right: 0; display: flex; align-items: center; justify-content: center; }
+      .lyric { position: absolute; left: 0; right: 0; height: 94px; display: flex; align-items: center; justify-content: center; }
       .lyric span {
         display: inline-block;
         font-family: "Instrument Serif", serif;
-        font-size: 66px;
+        font-size: 72px;
         line-height: 1.3;
         letter-spacing: 0.005em;
         white-space: nowrap;
         color: var(--c);
-        text-shadow: 0 0 22px var(--glow);
       }
-      #l1 { top: 340px; height: 121px; --c: #3E1728; --glow: rgba(255, 239, 246, 0.28); }
-      #l2 { top: 340px; height: 121px; --c: #0C2B45; --glow: rgba(235, 246, 255, 0.28); }
-      #l3 { top: 340px; height: 121px; --c: #EBF6FF; --glow: rgba(12, 43, 69, 0.28); }
-      #l3-veil { top: 210px; left: 41px; width: 997px; height: 381px; }
-      #l3-veil { background: radial-gradient(closest-side, rgba(12, 43, 69, 0.15) 0%, rgba(12, 43, 69, 0.15) 70%, rgba(12, 43, 69, 0.00) 100%); }
-      #l4 { top: 340px; height: 121px; --c: #0C2B45; --glow: rgba(235, 246, 255, 0.28); }
-      #l5 { top: 340px; height: 121px; --c: #0C2B45; --glow: rgba(234, 247, 255, 0.28); }
-      #l6 { top: 340px; height: 121px; --c: #002D3D; --glow: rgba(230, 249, 255, 0.28); }
-      #l6-veil { top: 210px; left: -18px; width: 1116px; height: 381px; }
-      #l6-veil { background: radial-gradient(closest-side, rgba(230, 249, 255, 0.10) 0%, rgba(230, 249, 255, 0.10) 70%, rgba(230, 249, 255, 0.00) 100%); }
-      #l7 { top: 340px; height: 121px; --c: #172446; --glow: rgba(245, 248, 250, 0.28); }
-      #l8 { top: 340px; height: 121px; --c: #0C2B45; --glow: rgba(234, 247, 255, 0.28); }
+      #l1 { top: 353px; --c: #3D172A; }
+      #l2 { top: 353px; --c: #0C2B45; }
+      #l3 { top: 353px; --c: #000B1F; }
+      #l4 { top: 353px; --c: #0C2B45; }
+      #l5 { top: 353px; --c: #0C2B45; }
+      #l6 { top: 523px; --c: #000F18; }
+      #l7 { top: 353px; --c: #182446; }
+      #l8 { top: 353px; --c: #0C2B45; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="27.2333" data-width="1080" data-height="1920">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="27.233333" data-width="1080" data-height="1920">
       <video id="plan01" class="clip shot" src="assets/rushes/plan01.mp4" muted playsinline
-        data-start="0.0000" data-duration="3.4333" data-track-index="0"></video>
+        data-start="0.000000" data-duration="3.449999" data-track-index="0"></video>
       <video id="plan02" class="clip shot" src="assets/rushes/plan02.mp4" muted playsinline
-        data-start="3.4333" data-duration="2.6000" data-track-index="0"></video>
+        data-start="3.433333" data-duration="2.616666" data-track-index="0"></video>
       <video id="plan03" class="clip shot" src="assets/rushes/plan03.mp4" muted playsinline
-        data-start="6.0333" data-duration="2.0000" data-track-index="0"></video>
+        data-start="6.033333" data-duration="2.016666" data-track-index="0"></video>
       <video id="plan04" class="clip shot" src="assets/rushes/plan04.mp4" muted playsinline
-        data-start="8.0333" data-duration="1.5000" data-track-index="0"></video>
+        data-start="8.033333" data-duration="1.516666" data-track-index="0"></video>
       <video id="plan05" class="clip shot" src="assets/rushes/plan05.mp4" muted playsinline
-        data-start="9.5333" data-duration="1.5333" data-track-index="0"></video>
+        data-start="9.533333" data-duration="1.550000" data-track-index="0"></video>
       <video id="plan06" class="clip shot" src="assets/rushes/plan06.mp4" muted playsinline
-        data-start="11.0667" data-duration="2.5667" data-track-index="0"></video>
+        data-start="11.066666" data-duration="2.583333" data-track-index="0"></video>
       <video id="plan07" class="clip shot" src="assets/rushes/plan07.mp4" muted playsinline
-        data-start="13.6333" data-duration="4.3000" data-track-index="0"></video>
+        data-start="13.633333" data-duration="4.316666" data-track-index="0"></video>
       <video id="plan08" class="clip shot" src="assets/rushes/plan08.mp4" muted playsinline
-        data-start="17.9333" data-duration="2.5000" data-track-index="0"></video>
+        data-start="17.933333" data-duration="2.516666" data-track-index="0"></video>
       <video id="plan09" class="clip shot" src="assets/rushes/plan09.mp4" muted playsinline
-        data-start="20.4333" data-duration="3.6333" data-track-index="0"></video>
+        data-start="20.433333" data-duration="3.650000" data-track-index="0"></video>
       <video id="plan10" class="clip shot" src="assets/rushes/plan10.mp4" muted playsinline
-        data-start="24.0667" data-duration="3.1667" data-track-index="0"></video>
-      <div id="l3-veil" class="clip veil" data-start="6.0333" data-duration="2.0000" data-track-index="2"></div>
-      <div id="l6-veil" class="clip veil" data-start="14.6333" data-duration="3.3000" data-track-index="2"></div>
-      <div id="l1" class="clip lyric" data-start="0.0000" data-duration="3.4333" data-track-index="3"><span>oh, life</span></div>
-      <div id="l2" class="clip lyric" data-start="3.4333" data-duration="2.6000" data-track-index="3"><span>it’s bigger</span></div>
-      <div id="l3" class="clip lyric" data-start="6.0333" data-duration="2.0000" data-track-index="3"><span>it’s bigger than you</span></div>
-      <div id="l4" class="clip lyric" data-start="8.0333" data-duration="3.0334" data-track-index="3"><span>and you are not me</span></div>
-      <div id="l5" class="clip lyric" data-start="11.0667" data-duration="2.5666" data-track-index="3"><span>the lengths that I will go to</span></div>
-      <div id="l6" class="clip lyric" data-start="14.6333" data-duration="3.3000" data-track-index="3"><span>the distance in your eyes</span></div>
-      <div id="l7" class="clip lyric" data-start="20.4333" data-duration="3.6334" data-track-index="3"><span>oh, no, I’ve said too much</span></div>
-      <div id="l8" class="clip lyric" data-start="24.9667" data-duration="2.2666" data-track-index="3"><span>I haven’t said enough</span></div>
-      <audio id="music" src="assets/bgm.mp3" data-start="0" data-duration="27.2333" data-track-index="11" data-volume="1"></audio>
+        data-start="24.066666" data-duration="3.166666" data-track-index="0"></video>
+      <div id="l1" class="clip lyric" data-start="0.000000" data-duration="3.416666" data-track-index="3"><span>oh, life</span></div>
+      <div id="l2" class="clip lyric" data-start="3.450000" data-duration="2.566666" data-track-index="3"><span>it’s bigger</span></div>
+      <div id="l3" class="clip lyric" data-start="6.016666" data-duration="2.000000" data-track-index="3"><span>it’s bigger than you</span></div>
+      <div id="l4" class="clip lyric" data-start="8.049999" data-duration="3.000000" data-track-index="3"><span>and you are not me</span></div>
+      <div id="l5" class="clip lyric" data-start="11.116666" data-duration="2.500000" data-track-index="3"><span>the lengths that I will go to</span></div>
+      <div id="l6" class="clip lyric" data-start="14.616666" data-duration="3.300000" data-track-index="3"><span>the distance in your eyes</span></div>
+      <div id="l7" class="clip lyric" data-start="20.416666" data-duration="3.633333" data-track-index="3"><span>oh, no, I’ve said too much</span></div>
+      <div id="l8" class="clip lyric" data-start="25.016666" data-duration="2.216666" data-track-index="3"><span>I haven’t said enough</span></div>
+      <audio id="music" src="assets/bgm.mp3" data-start="0" data-duration="27.233333" data-track-index="11" data-volume="1"></audio>
     </div>
     <script>
       const tl = gsap.timeline({ paused: true });
-      tl.to("#l1 span", { opacity: 0, duration: 0.2, ease: "power1.in" }, 3.2333);
-      tl.fromTo("#l2 span", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }, 3.4333);
-      tl.to("#l2 span", { opacity: 0, duration: 0.2, ease: "power1.in" }, 5.8333);
-      tl.fromTo("#l3 span, #l3-veil", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }, 6.0333);
-      tl.to("#l3 span, #l3-veil", { opacity: 0, duration: 0.2, ease: "power1.in" }, 7.8333);
-      tl.fromTo("#l4 span", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }, 8.0333);
-      tl.to("#l4 span", { opacity: 0, duration: 0.2, ease: "power1.in" }, 10.8667);
-      tl.fromTo("#l5 span", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" }, 11.0667);
-      tl.to("#l5 span", { opacity: 0, duration: 0.2, ease: "power1.in" }, 13.4333);
-      tl.fromTo("#l6 span, #l6-veil", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 14.6333);
-      tl.to("#l6 span, #l6-veil", { opacity: 0, duration: 0.2, ease: "power1.in" }, 17.7333);
-      tl.fromTo("#l7 span", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 20.4333);
-      tl.to("#l7 span", { opacity: 0, duration: 0.2, ease: "power1.in" }, 23.8667);
-      tl.fromTo("#l8 span", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 24.9667);
+      tl.fromTo("#l2 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 3.433333);
+      tl.fromTo("#l3 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 6.000000);
+      tl.fromTo("#l4 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 8.033333);
+      tl.fromTo("#l5 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 11.100000);
+      tl.fromTo("#l6 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 14.600000);
+      tl.fromTo("#l7 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 20.400000);
+      tl.fromTo("#l8 span", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 25.000000);
       window.__timelines["main"] = tl;
       tl.seek(0);
     </script>

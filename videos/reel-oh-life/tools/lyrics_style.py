@@ -1,31 +1,43 @@
-"""Place et colore chaque ligne de paroles selon la règle DESIGN (A + bloc C si besoin).
-Usage : python3 -I lyrics_style.py <dossier_clips> <police.woff2> <sortie.json>
+"""Place et colore chaque ligne de paroles selon la règle DESIGN (système A + bloc C en dernier recours).
+
+Usage : python3 -I tools/lyrics_style.py <dossier_clips> <police.woff2> <sortie.json>
+
+Règle appliquée (v3, après relecture du brouillon) :
+- temps exacts en images (30 i/s), repris du reel de référence ;
+- position commune (y = 400) tant qu'elle passe ; sinon la plus proche qui passe ;
+- couleur = teinte du plan (OKLCH), version très foncée ou très claire, jamais noir/blanc neutres ;
+  on fonce / éclaircit l'encre par paliers avant de bouger la ligne ;
+- contrôle MOT PAR MOT et IMAGE PAR IMAGE (15 i/s) : chaque mot ≥ 3:1 sur chaque image,
+  la ligne ≥ 4,5:1 sur au moins 90 % des images ; jamais sur le soleil ;
+- pas de voile en ovale (il se voit comme une tache) ; bloc arrondi façon C seulement si rien ne passe ;
+- on garde la même polarité (clair/foncé) que la ligne précédente quand c'est possible.
 """
-import sys, json, subprocess, tempfile, os
+import sys, json, subprocess
 import numpy as np
-from PIL import Image, ImageFont, ImageFilter
+from PIL import ImageFont
 
 CLIPS, FONT, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
-W, H, SIZE, LH = 1080, 1920, 66, 1.3
-PAD_X, PAD_Y = 36, 18
-SAFE_L, SAFE_R = 108, 972
-Y_MIN, Y_MAX = 400, 1380          # centre de ligne : sous l'UI du haut (marge 192 + air), au-dessus de y=1500
+FPS, W, H = 30, 1080, 1920
+SIZE, LH = 72, 1.3
+Y_PREF, Y_MIN, Y_MAX = 400, 250, 1380     # centre de ligne ; encre au-dessus de 192 px et bien au-dessus de y = 1500
+INK_UP, INK_DOWN = 34, 30                  # zone d'encre autour du centre (corps + ascendantes) à 72 px
+CUTS = [0, 103, 181, 241, 286, 332, 409, 538, 613, 722, 817]
+LINES = [  # id, texte, image de début (incluse), image de fin (exclue) — calées sur le reel de référence
+    ('l1', 'oh, life', 0, 103),
+    ('l2', 'it’s bigger', 104, 181),
+    ('l3', 'it’s bigger than you', 181, 241),
+    ('l4', 'and you are not me', 242, 332),
+    ('l5', 'the lengths that I will go to', 334, 409),
+    ('l6', 'the distance in your eyes', 439, 538),
+    ('l7', 'oh, no, I’ve said too much', 613, 722),
+    ('l8', 'I haven’t said enough', 751, 817),
+]
 SITE_LIGHT = {'Écume': '#F5F8FA', 'Sable': '#EFE7D8', 'Pêche': '#F0C9A0'}
 SITE_DARK = {'Encre océan': '#0C2B45', 'Encre': '#14314C', 'Océan profond': '#123A5C', 'Océan': '#1A4C74'}
+DARK_LADDER = [0.27, 0.24, 0.21, 0.18, 0.15]   # on fonce l encre avant de déplacer la ligne
+LIGHT_LADDER = [(0.97, 0.022), (0.985, 0.014), (0.995, 0.006)]
+STEP = 2  # une image sur deux
 
-# plan : (début global, fin globale)
-SLOTS = {1: (0.0, 3.4333), 2: (3.4333, 6.0333), 3: (6.0333, 8.0333), 4: (8.0333, 9.5333), 5: (9.5333, 11.0667),
-         6: (11.0667, 13.6333), 7: (13.6333, 17.9333), 8: (17.9333, 20.4333), 9: (20.4333, 24.0667), 10: (24.0667, 27.2333)}
-LINES = [
-    ('l1', 'oh, life', 0.0, 3.4333),
-    ('l2', 'it’s bigger', 3.4333, 6.0333),
-    ('l3', 'it’s bigger than you', 6.0333, 8.0333),
-    ('l4', 'and you are not me', 8.0333, 11.0667),
-    ('l5', 'the lengths that I will go to', 11.0667, 13.6333),
-    ('l6', 'the distance in your eyes', 14.6333, 17.9333),
-    ('l7', 'oh, no, I’ve said too much', 20.4333, 24.0667),
-    ('l8', 'I haven’t said enough', 24.9667, 27.2333),
-]
 
 # ---------- couleur ----------
 def srgb_to_lin(c):
@@ -36,12 +48,12 @@ def lin_to_srgb(c):
     c = np.clip(c, 0, 1)
     return np.where(c <= 0.0031308, 12.92 * c, 1.055 * c ** (1 / 2.4) - 0.055) * 255
 
-def rel_lum(rgb):
-    r, g, b = srgb_to_lin(rgb)
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+def rel_lum_arr(rgb):  # (..., 3) -> (...)
+    lin = srgb_to_lin(rgb)
+    return lin[..., 0] * 0.2126 + lin[..., 1] * 0.7152 + lin[..., 2] * 0.0722
 
-def contrast(l1, l2):
-    hi, lo = max(l1, l2), min(l1, l2)
+def contrast(a, b):
+    hi, lo = np.maximum(a, b), np.minimum(a, b)
     return (hi + 0.05) / (lo + 0.05)
 
 def rgb_to_oklch(rgb):
@@ -53,7 +65,7 @@ def rgb_to_oklch(rgb):
     L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s
     a = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s
     bb = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
-    return L, float(np.hypot(a, bb)), float(np.degrees(np.arctan2(bb, a)) % 360)
+    return float(L), float(np.hypot(a, bb)), float(np.degrees(np.arctan2(bb, a)) % 360)
 
 def oklch_to_rgb(L, C, h):
     a, b = C * np.cos(np.radians(h)), C * np.sin(np.radians(h))
@@ -63,7 +75,7 @@ def oklch_to_rgb(L, C, h):
     r = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
     g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
     bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
-    return lin_to_srgb(np.array([r, g, bl]))
+    return np.round(lin_to_srgb(np.array([r, g, bl])))
 
 def hex2rgb(h):
     return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], dtype=np.float64)
@@ -73,133 +85,121 @@ def rgb2hex(c):
 
 def oklab_dist(c1, c2):
     L1, C1, h1 = rgb_to_oklch(c1); L2, C2, h2 = rgb_to_oklch(c2)
-    a1, b1 = C1 * np.cos(np.radians(h1)), C1 * np.sin(np.radians(h1))
-    a2, b2 = C2 * np.cos(np.radians(h2)), C2 * np.sin(np.radians(h2))
-    return float(np.sqrt((L1 - L2) ** 2 + (a1 - a2) ** 2 + (b1 - b2) ** 2))
+    p1 = np.array([L1, C1 * np.cos(np.radians(h1)), C1 * np.sin(np.radians(h1))])
+    p2 = np.array([L2, C2 * np.cos(np.radians(h2)), C2 * np.sin(np.radians(h2))])
+    return float(np.linalg.norm(p1 - p2))
 
 def snap(c, table):
-    best = min(table.items(), key=lambda kv: oklab_dist(c, hex2rgb(kv[1])))
-    return (hex2rgb(best[1]), best[0]) if oklab_dist(c, hex2rgb(best[1])) < 0.015 else (c, None)  # seuil serré : garder la nuance du plan
+    name, hx = min(table.items(), key=lambda kv: oklab_dist(c, hex2rgb(kv[1])))
+    return (hex2rgb(hx), name) if oklab_dist(c, hex2rgb(hx)) < 0.015 else (c, None)
+
 
 # ---------- images ----------
-def grab(clip, times):
-    tmp = tempfile.mkdtemp()
+def decode(clip, n_frames):
+    """Toutes les images du segment (uint8, n,H,W,3)."""
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', clip, '-frames:v', str(n_frames), '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'],
+                         check=True, capture_output=True).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, H, W, 3)
+
+def frames_for(f0, f1):
+    """Images globales f0..f1 (pas STEP), décodées depuis le bon segment."""
     out = []
-    for i, t in enumerate(times):
-        f = f'{tmp}/{i}.png'
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{t:.3f}', '-i', clip, '-frames:v', '1', f], check=True)
-        out.append(np.asarray(Image.open(f).convert('RGB')).astype(np.float64))
-    return out
+    for k in range(10):
+        a, b = max(f0, CUTS[k]), min(f1, CUTS[k + 1])
+        if b <= a:
+            continue
+        clip = decode(f'{CLIPS}/plan{k + 1:02d}.mp4', CUTS[k + 1] - CUTS[k])
+        out += [clip[g - CUTS[k]] for g in range(a, b, STEP)]
+    return np.stack(out)
 
 font = ImageFont.truetype(FONT, SIZE)
-res = {'font_size': SIZE, 'line_height': LH, 'lines': []}
-for lid, text, t0, t1 in LINES:
-    x0b, _, x1b, _ = font.getbbox(text)
-    tw = x1b - x0b
-    box_w = tw + 2 * PAD_X
-    box_h = int(SIZE * LH) + 2 * PAD_Y
-    bx0 = int((W - box_w) / 2)
-    assert bx0 + PAD_X >= SAFE_L and bx0 + box_w - PAD_X <= SAFE_R, f'{text} trop large ({tw}px)'
-    # images : toutes les 0,2 s pendant l'affichage, sur chaque plan traversé
-    frames = []
-    for n, (s0, s1) in SLOTS.items():
-        a, b = max(t0, s0), min(t1, s1)
-        if b - a <= 0.01:
-            continue
-        ts = np.arange(a + 0.05, b - 0.02, 0.2) - s0
-        frames += grab(os.path.join(CLIPS, f'plan{n:02d}.mp4'), ts)
-    stack = np.stack(frames)
-    gray = stack.mean(axis=3)
-    # carte de « bruit » : bords sur image floutée (ignore le grain), pour le placement
-    edges = []
-    for g in gray:
-        gi = Image.fromarray(g.astype(np.uint8)).resize((W // 4, H // 4)).filter(ImageFilter.GaussianBlur(1.2))
-        a = np.asarray(gi).astype(np.float64)
-        e = np.zeros_like(a); e[:-1] += np.abs(np.diff(a, axis=0)); e[:, :-1] += np.abs(np.diff(a, axis=1))
-        edges.append(np.asarray(Image.fromarray(e.astype(np.float32)).resize((W, H))))
-    edges = np.stack(edges)
-    costs = []
-    for yc in range(Y_MIN, Y_MAX + 1, 10):
-        y0, y1 = yc - box_h // 2, yc + box_h // 2
-        reg = stack[:, y0:y1, bx0:bx0 + box_w]
-        lum = reg.mean(axis=3)
-        e = edges[:, y0:y1, bx0:bx0 + box_w].mean()
-        spread = np.percentile(lum, 90) - np.percentile(lum, 10)
-        sun = (lum > 245).mean()
-        # halo : zone élargie (soleil juste à côté = éblouissement)
-        halo = stack[:, max(0, y0 - 120):min(H, y1 + 120), :].mean(axis=3)
-        glare = (halo > 250).mean()
-        costs.append((yc, 4.0 * e + 0.25 * spread + 400 * sun + 120 * glare))
-    res['lines'].append({'id': lid, 'text': text, 't0': t0, 't1': t1, 'text_w': tw, 'box': [bx0, box_w, box_h],
-                         'costs': costs, '_stack': stack})
+res = {'font_size': SIZE, 'line_height': LH, 'fps': FPS, 'cuts': CUTS, 'y_pref': Y_PREF, 'lines': []}
+prev_pol = None
+for lid, text, f0, f1 in LINES:
+    tw = font.getlength(text)
+    x0 = (W - tw) / 2
+    words, pos = [], 0
+    for wd in text.split(' '):
+        i = text.index(wd, pos); pos = i + len(wd)
+        l, _, r, _ = font.getbbox(wd)
+        wx = x0 + font.getlength(text[:i])
+        words.append((int(wx + l) - 4, int(wx + r) + 4))
+    assert x0 >= 108 and x0 + tw <= 972, f'« {text} » sort de la zone sûre'
+    fr = frames_for(f0, f1)  # uint8
+    n = len(fr)
+    lut = srgb_to_lin(np.arange(256)).astype(np.float32)
+    lum_img = 0.2126 * lut[fr[..., 0]] + 0.7152 * lut[fr[..., 1]] + 0.0722 * lut[fr[..., 2]]  # n,H,W (float32)
 
-# position commune (paroles au même endroit) sauf si une ligne y souffre trop
-ys = [c[0] for c in res['lines'][0]['costs']]
-norm = []
-for ln in res['lines']:
-    cs = np.array([c[1] for c in ln['costs']])
-    norm.append((cs - cs.min()) / (cs.max() - cs.min() + 1e-9))
-total = np.sum(norm, axis=0) + 0.002 * np.abs(np.array(ys) - 760) / 10   # léger penchant pour le tiers supérieur-centre
-y_common = ys[int(np.argmin(total))]
-res['y_common'] = y_common
+    def stats_at(yc):
+        ya, yb = yc - INK_UP, yc + INK_DOWN
+        word_rgb = np.stack([fr[:, ya:yb, a:b].mean(axis=(1, 2), dtype=np.float64) for a, b in words], axis=1)  # n, mots, 3
+        line_rgb = fr[:, ya:yb, words[0][0]:words[-1][1]].mean(axis=(1, 2), dtype=np.float64)                    # n, 3
+        halo = lum_img[:, max(0, ya - 120):yb + 120, int(x0) - 60:int(x0 + tw) + 60]
+        glare = float((halo > 0.95).mean())
+        return rel_lum_arr(word_rgb), rel_lum_arr(line_rgb), line_rgb.mean(axis=0), glare
 
-for ln, nc in zip(res['lines'], norm):
-    i_common = ys.index(y_common)
-    i_best = int(np.argmin(nc))
-    yc = y_common if nc[i_common] <= 0.35 else ys[i_best]
-    ln['y_center'] = yc
-    ln['moved'] = yc != y_common
-    bx0, box_w, box_h = ln['box']
-    y0, y1 = yc - box_h // 2, yc + box_h // 2
-    reg = ln['_stack'][:, y0:y1, bx0:bx0 + box_w].reshape(-1, 3)
-    mean_rgb = reg.mean(axis=0)
-    lums = rel_lum(reg.T)
-    p10, p50, p90 = np.percentile(lums, [10, 50, 90])
-    mean_l = float(rel_lum(mean_rgb))
-    L, C, h = rgb_to_oklch(mean_rgb)
-    if C < 0.03:  # zone presque neutre : teinte la plus saturée des pixels colorés
-        hs = np.array([rgb_to_oklch(px) for px in reg[::max(1, len(reg) // 3000)]])
+    def passes(txt_l, wl, ll):
+        cw = contrast(txt_l, wl)        # n, mots
+        cl = contrast(txt_l, ll)        # n
+        return cw.min() >= 3.0 and (cl >= 4.5).mean() >= 0.9, float(cw.min()), float(np.median(cl)), float(np.percentile(cl, 10))
+
+    def hue_of(mean_rgb, yc):
+        L, C, h = rgb_to_oklch(mean_rgb)
+        if C >= 0.03:
+            return h
+        ya, yb = yc - INK_UP, yc + INK_DOWN
+        px = fr[::max(1, n // 6), ya:yb:4, words[0][0]:words[-1][1]:4].reshape(-1, 3).astype(np.float64)
+        hs = np.array([rgb_to_oklch(p) for p in px[::max(1, len(px) // 800)]])
         col = hs[hs[:, 1] > 0.04]
-        h = float(np.degrees(np.arctan2(np.sin(np.radians(col[:, 2])).mean(), np.cos(np.radians(col[:, 2])).mean())) % 360) if len(col) else 245.0
-    light, ln_l = snap(oklch_to_rgb(0.97, 0.022, h), SITE_LIGHT)
-    dark_h = h if not (20 <= h <= 110) else 350.0   # orange/jaune assombri vire au brun : on passe au lie-de-vin
-    dark, ln_d = snap(oklch_to_rgb(0.27, 0.065, dark_h), SITE_DARK)
+        if not len(col):
+            return 245.0
+        return float(np.degrees(np.arctan2(np.sin(np.radians(col[:, 2])).mean(), np.cos(np.radians(col[:, 2])).mean())) % 360)
 
-    def evaluate(txt, veil_rgb, alpha):
-        bg_mean = mean_rgb * (1 - alpha) + veil_rgb * alpha
-        lt = float(rel_lum(txt))
-        # pire cas : pixels du fond les moins favorables
-        worst_bg = p90 if lt > mean_l else p10
-        worst_rgb_l = worst_bg * (1 - alpha) + float(rel_lum(veil_rgb)) * alpha  # approx en luminance
-        return contrast(lt, float(rel_lum(bg_mean))), contrast(lt, worst_rgb_l)
+    def candidates(h):
+        dh = 350.0 if 20 <= h <= 110 else h   # orange/jaune assombri vire au brun : lie-de-vin
+        dark = [snap(oklch_to_rgb(L, 0.065 * min(1, L / 0.27 + 0.2), dh), SITE_DARK) + (i,) for i, L in enumerate(DARK_LADDER)]
+        light = [snap(oklch_to_rgb(L, C, h), SITE_LIGHT) + (i,) for i, (L, C) in enumerate(LIGHT_LADDER)]
+        return {'foncé': dark, 'clair': light}
 
-    options = []
-    for name, txt, veil in (('clair', light, dark), ('foncé', dark, light)):
-        for alpha in np.arange(0, 0.4501, 0.05):
-            cm, cw = evaluate(txt, veil, alpha)
-            if cm >= 4.5 and cw >= 3.0:
-                options.append((alpha + (0.15 if name == 'foncé' and alpha > 0 else 0), name, txt, veil, round(alpha, 2), cm, cw))
-                break
-    if options:
-        options.sort(key=lambda o: (o[0], -o[6]))
-        _, mode, txt, veil, alpha, cm, cw = options[0]
-        treatment = 'nu' if alpha == 0 else 'voile'
-    else:  # bloc discret façon C
-        mode = 'clair' if mean_l < 0.36 else 'foncé'
-        txt = light if mode == 'clair' else dark
-        Lb, Cb, hb = rgb_to_oklch(mean_rgb)
-        veil = oklch_to_rgb(0.34 if mode == 'clair' else 0.955, min(Cb, 0.08), h)
+    chosen = None
+    ys = sorted(range(Y_MIN, Y_MAX + 1, 10), key=lambda y: (abs(y - Y_PREF), y))
+    for yc in ys:
+        wl, ll, mean_rgb, glare = stats_at(yc)
+        if glare > 0.005:
+            continue
+        h = hue_of(mean_rgb, yc)
+        cands = candidates(h)
+        order = [prev_pol, 'clair' if prev_pol == 'foncé' else 'foncé'] if prev_pol else ['foncé', 'clair']
+        options = []
+        for pol in order:
+            for rgb, site_name, step in cands[pol]:
+                ok, cmin, cmed, cp10 = passes(float(rel_lum_arr(rgb)), wl, ll)
+                if ok:
+                    options.append((step + (0.8 if pol != order[0] else 0), pol, rgb, site_name, step, cmin, cmed, cp10))
+                    break
+        if options:
+            options.sort(key=lambda o: (o[0], -o[5]))
+            _, pol, rgb, site_name, step, cmin, cmed, cp10 = options[0]
+            chosen = dict(y_center=yc, polarity=pol, treatment='nu', text_hex=rgb2hex(rgb), site_color=site_name, ladder_step=step,
+                          hue=round(h, 1), contrast_word_min=round(cmin, 2), contrast_line_median=round(cmed, 2),
+                          contrast_line_p10=round(cp10, 2), zone_mean_hex=rgb2hex(mean_rgb))
+            break
+    if chosen is None:  # dernier recours : bloc arrondi teinté par le plan (façon C), à la position commune
+        wl, ll, mean_rgb, _ = stats_at(Y_PREF)
+        h = hue_of(mean_rgb, Y_PREF)
+        mean_l = float(rel_lum_arr(mean_rgb))
+        pol = 'clair' if mean_l < 0.36 else 'foncé'
+        txt = candidates(h)[pol][0][0]
+        block = oklch_to_rgb(0.34 if pol == 'clair' else 0.955, min(rgb_to_oklch(mean_rgb)[1], 0.08), h)
         alpha = 0.88
-        cm, cw = evaluate(txt, veil, alpha)
-        treatment = 'bloc'
-    ln.update({'mode': mode, 'treatment': treatment, 'text_hex': rgb2hex(txt), 'veil_hex': rgb2hex(veil), 'alpha': float(alpha),
-               'contrast_mean': round(cm, 2), 'contrast_worst': round(cw, 2), 'hue': round(h, 1),
-               'zone_mean_hex': rgb2hex(mean_rgb), 'zone_lum': [round(float(p10), 3), round(mean_l, 3), round(float(p90), 3)]})
+        bl = rel_lum_arr(block[None, :])[0]
+        cmin = float(contrast(float(rel_lum_arr(txt)), wl * (1 - alpha) + bl * alpha).min())
+        chosen = dict(y_center=Y_PREF, polarity=pol, treatment='bloc', text_hex=rgb2hex(txt), block_hex=rgb2hex(block), block_alpha=alpha,
+                      hue=round(h, 1), contrast_word_min=round(cmin, 2), zone_mean_hex=rgb2hex(mean_rgb))
+    prev_pol = chosen['polarity']
+    res['lines'].append(dict(id=lid, text=text, f0=f0, f1=f1, text_w=round(tw, 1), **chosen))
+    c = res['lines'][-1]
+    print(f"{lid} y={c['y_center']:4d} {c['polarity']:5s} {c['treatment']:4s} {c['text_hex']} palier={c.get('ladder_step', '-')} "
+          f"mot_min={c['contrast_word_min']} ligne_méd={c.get('contrast_line_median', '-')} p10={c.get('contrast_line_p10', '-')} « {text} »", flush=True)
 
-for ln in res['lines']:
-    ln.pop('_stack'); ln['costs'] = [c for c in ln['costs'] if c[0] % 50 == 0]
 json.dump(res, open(OUT, 'w'), indent=1, ensure_ascii=False)
-print('y commun', res['y_common'])
-for ln in res['lines']:
-    print(f"{ln['id']} y={ln['y_center']}{'*' if ln['moved'] else ' '} {ln['mode']:5s} {ln['treatment']:5s} txt={ln['text_hex']} voile={ln['veil_hex']}@{ln['alpha']} "
-          f"C={ln['contrast_mean']}/{ln['contrast_worst']} zone={ln['zone_mean_hex']} {ln['zone_lum']} w={ln['text_w']}  « {ln['text']} »")
