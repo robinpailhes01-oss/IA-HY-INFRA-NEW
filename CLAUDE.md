@@ -6,6 +6,8 @@ Les vidéos sont écrites en HTML avec HyperFrames (HeyGen) et rendues en MP4.
 Les projets vidéo vivent dans `videos/<nom-du-projet>/`, séparés du site Next.js.
 Les skills HyperFrames sont dans `.claude/skills/` : les utiliser avant d'écrire une composition (`/hyperframes` est le point d'entrée).
 Répondre à Robin en français, simplement, en expliquant chaque étape en une phrase.
+L'identité visuelle et éditoriale est dans `DESIGN.md` : la lire avant toute vidéo. Robin note ses envies en vrac dans `idees.md`.
+**À chaque correction de la part de Robin, proposer d'ajouter la règle correspondante dans `DESIGN.md`.**
 
 ## Règles créatives (toutes les vidéos)
 
