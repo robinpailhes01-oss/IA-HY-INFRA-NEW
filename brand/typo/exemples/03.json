@@ -1,0 +1,33 @@
+{
+ "mode": "aucun texte : Aucune zone sûre (visage/soleil/zone chargée sans place pour un bloc) pour l'accroche : pas de texte sur ce plan.",
+ "ton": null,
+ "duree_texte": 2.7,
+ "variables": {
+  "--hy-texte": null,
+  "--hy-secondaire": null
+ },
+ "contrastes": {},
+ "zone": {
+  "haut": null,
+  "bords_moyens": null,
+  "bords_max": null,
+  "refus": {
+   "0": {
+    "visage": 85,
+    "soleil": 0,
+    "bas": 0
+   }
+  }
+ },
+ "contraste_moyen_min": null,
+ "contraste_pire_min": null,
+ "capture": "03.png",
+ "cartes": {
+  "1": {
+   "image": "f002.png",
+   "t": 1.0,
+   "png": "03.png"
+  }
+ },
+ "niveau": null
+}

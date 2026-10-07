@@ -1,0 +1,259 @@
+{
+ "plan": "frames/07",
+ "images": 12,
+ "images_nettoyees": 0,
+ "duree_texte": 6.0,
+ "minutage": {
+  "carte1_accroche": [
+   0.0,
+   3.3
+  ],
+  "carte2_ligne_secondaire": [
+   3.3,
+   5.9
+  ],
+  "accroche_lisible_s": 2.6,
+  "ligne_secondaire_lisible_s": 1.9,
+  "sortie": [
+   5.5,
+   5.9
+  ]
+ },
+ "cartes": {
+  "1": {
+   "image": "f003.png",
+   "t": 1.5,
+   "png": "07.png"
+  },
+  "2": {
+   "image": "f009.png",
+   "t": 4.5,
+   "png": "07-carte2.png"
+  }
+ },
+ "capture": "07.png",
+ "page": "07.html",
+ "niveau": 1,
+ "mode": "voile 0.15",
+ "ton": "fonce",
+ "texte_nom_site": "Encre océan",
+ "groupe": null,
+ "variables": {
+  "--hy-texte": "#0C2B45",
+  "--hy-secondaire": "#123A5C",
+  "--hy-haut": "240px",
+  "--hy-voile": "245 248 250",
+  "--hy-voile-a": "0.15",
+  "--hy-voile-debut": "192px",
+  "--hy-voile-fin": "713px",
+  "--hy-bloc": "0 0 0",
+  "--hy-bloc-accroche-a": "0",
+  "--hy-bloc-info-a": "0"
+ },
+ "attributs": {
+  "#root": {
+   "data-duration": "6"
+  },
+  "video#plan": {
+   "data-duration": "6"
+  },
+  "#texte": {
+   "data-duree": "6",
+   "data-info": "1",
+   "data-bloc-accroche": "0",
+   "data-bloc-info": "0"
+  },
+  "#voile": {
+   "data-forme": "haut"
+  }
+ },
+ "cfg": {
+  "texte": "#0C2B45",
+  "secondaire": "#123A5C",
+  "haut": 240,
+  "duree": 6.0,
+  "voile": {
+   "couleur": "#F5F8FA",
+   "a": 0.15,
+   "forme": "haut",
+   "debut": 192,
+   "fin": 713
+  },
+  "bloc": "#000000",
+  "bloc_accroche_a": 0,
+  "bloc_info_a": 0,
+  "bloc_accroche": 0,
+  "bloc_info": 0,
+  "info": 1,
+  "accroche": [
+   "Ce soir, tu dors",
+   "sur l’eau."
+  ],
+  "info_texte": "Nuit à bord · Port de Carnon"
+ },
+ "contrastes": {
+  "accroche-l1": {
+   "couleur": "#0C2B45",
+   "moyenne": 4.78,
+   "pire": 4.46,
+   "boite": {
+    "moyenne": 4.78,
+    "pire": 4.46
+   },
+   "lettres": {
+    "moyenne": 4.79,
+    "pire": 4.5
+   },
+   "image_moyenne_min": "f000.png",
+   "image_pire": "f000.png",
+   "boite_px": [
+    108,
+    240,
+    739,
+    375
+   ]
+  },
+  "accroche-l2": {
+   "couleur": "#0C2B45",
+   "moyenne": 5.32,
+   "pire": 4.69,
+   "boite": {
+    "moyenne": 5.32,
+    "pire": 4.69
+   },
+   "lettres": {
+    "moyenne": 5.36,
+    "pire": 4.85
+   },
+   "image_moyenne_min": "f000.png",
+   "image_pire": "f000.png",
+   "boite_px": [
+    108,
+    375,
+    519,
+    509
+   ]
+  },
+  "info-l1": {
+   "couleur": "#123A5C",
+   "moyenne": 5.23,
+   "pire": 4.84,
+   "boite": {
+    "moyenne": 5.24,
+    "pire": 4.85
+   },
+   "lettres": {
+    "moyenne": 5.23,
+    "pire": 4.84
+   },
+   "image_moyenne_min": "f003.png",
+   "image_pire": "f011.png",
+   "boite_px": [
+    108,
+    593,
+    875,
+    665
+   ]
+  }
+ },
+ "verification_ok": true,
+ "contraste_moyen_min": 4.78,
+ "contraste_pire_min": 4.46,
+ "seuils": {
+  "moyenne": 4.6,
+  "pire": 3.0,
+  "pire_bloc": 4.5
+ },
+ "sans_traitement": {
+  "accroche-l1": {
+   "moyenne": 3.84,
+   "pire": 3.54
+  },
+  "accroche-l2": {
+   "moyenne": 4.4,
+   "pire": 3.76
+  },
+  "info-l1": {
+   "moyenne": 4.53,
+   "pire": 4.13
+  }
+ },
+ "zone": {
+  "haut": 240,
+  "bas_texte": 665.2,
+  "fond_moyen": "#72A1DB",
+  "Y_moyen": 0.341,
+  "teinte": 254.0,
+  "teinte_foncee": 254.0,
+  "accent": "#74A6DF",
+  "bords_moyens": {
+   "accroche": 0.0052,
+   "info": 0.0033
+  },
+  "bords_max": {
+   "accroche": 0.0063,
+   "info": 0.0073
+  },
+  "refus": {
+   "visage": 27,
+   "soleil": 8,
+   "bas": 0
+  }
+ },
+ "prevision": {
+  "clair": [
+   {
+    "niveau": 2,
+    "voile_a": 0,
+    "blocs": [
+     "accroche",
+     "info"
+    ],
+    "bloc_a": 0.6
+   }
+  ],
+  "fonce": [
+   {
+    "niveau": 1,
+    "voile_a": 0.15,
+    "blocs": [],
+    "bloc_a": 0.0
+   }
+  ]
+ },
+ "verifications": [
+  {
+   "niveau": 1,
+   "voile_a": 0.15,
+   "blocs": [],
+   "bloc_a": 0.0,
+   "ok": true,
+   "lignes_en_echec": [],
+   "moyenne_min": 4.78,
+   "pire_min": 4.46
+  }
+ ],
+ "boites_lignes": [
+  [
+   "accroche-l1",
+   108,
+   240,
+   739,
+   375
+  ],
+  [
+   "accroche-l2",
+   108,
+   375,
+   519,
+   509
+  ],
+  [
+   "info-l1",
+   108,
+   593,
+   875,
+   665
+  ]
+ ]
+}

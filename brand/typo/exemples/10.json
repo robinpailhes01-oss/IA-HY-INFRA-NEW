@@ -1,0 +1,258 @@
+{
+ "plan": "frames/10",
+ "images": 12,
+ "images_nettoyees": 0,
+ "duree_texte": 6.0,
+ "minutage": {
+  "carte1_accroche": [
+   0.0,
+   3.3
+  ],
+  "carte2_ligne_secondaire": [
+   3.3,
+   5.9
+  ],
+  "accroche_lisible_s": 2.6,
+  "ligne_secondaire_lisible_s": 1.9,
+  "sortie": [
+   5.5,
+   5.9
+  ]
+ },
+ "cartes": {
+  "1": {
+   "image": "f003.png",
+   "t": 1.5,
+   "png": "10.png"
+  },
+  "2": {
+   "image": "f009.png",
+   "t": 4.5,
+   "png": "10-carte2.png"
+  }
+ },
+ "capture": "10.png",
+ "page": "10.html",
+ "niveau": 0,
+ "mode": "texte nu",
+ "ton": "fonce",
+ "texte_nom_site": "Encre océan",
+ "groupe": "coucher de soleil",
+ "variables": {
+  "--hy-texte": "#0C2B45",
+  "--hy-secondaire": "#052F51",
+  "--hy-haut": "384px",
+  "--hy-voile": "245 248 250",
+  "--hy-voile-a": "0",
+  "--hy-voile-debut": "336px",
+  "--hy-voile-fin": "857px",
+  "--hy-bloc": "0 0 0",
+  "--hy-bloc-accroche-a": "0",
+  "--hy-bloc-info-a": "0"
+ },
+ "attributs": {
+  "#root": {
+   "data-duration": "6"
+  },
+  "video#plan": {
+   "data-duration": "6"
+  },
+  "#texte": {
+   "data-duree": "6",
+   "data-info": "1",
+   "data-bloc-accroche": "0",
+   "data-bloc-info": "0"
+  },
+  "#voile": {
+   "data-forme": "aucun"
+  }
+ },
+ "cfg": {
+  "texte": "#0C2B45",
+  "secondaire": "#052F51",
+  "haut": 384,
+  "duree": 6.0,
+  "voile": {
+   "couleur": "#F5F8FA",
+   "a": 0,
+   "forme": "aucun",
+   "debut": 336,
+   "fin": 857
+  },
+  "bloc": "#000000",
+  "bloc_accroche_a": 0,
+  "bloc_info_a": 0,
+  "bloc_accroche": 0,
+  "bloc_info": 0,
+  "info": 1,
+  "accroche": [
+   "Coucher de soleil",
+   "en mer"
+  ],
+  "info_texte": "À 15 min de Montpellier"
+ },
+ "contrastes": {
+  "accroche-l1": {
+   "couleur": "#0C2B45",
+   "moyenne": 5.43,
+   "pire": 5.0,
+   "boite": {
+    "moyenne": 5.43,
+    "pire": 5.0
+   },
+   "lettres": {
+    "moyenne": 5.47,
+    "pire": 5.04
+   },
+   "image_moyenne_min": "f008.png",
+   "image_pire": "f008.png",
+   "boite_px": [
+    108,
+    384,
+    834,
+    519
+   ]
+  },
+  "accroche-l2": {
+   "couleur": "#0C2B45",
+   "moyenne": 6.0,
+   "pire": 5.36,
+   "boite": {
+    "moyenne": 6.0,
+    "pire": 5.36
+   },
+   "lettres": {
+    "moyenne": 6.03,
+    "pire": 5.48
+   },
+   "image_moyenne_min": "f001.png",
+   "image_pire": "f001.png",
+   "boite_px": [
+    108,
+    519,
+    428,
+    653
+   ]
+  },
+  "info-l1": {
+   "couleur": "#052F51",
+   "moyenne": 7.04,
+   "pire": 6.11,
+   "boite": {
+    "moyenne": 7.04,
+    "pire": 6.11
+   },
+   "lettres": {
+    "moyenne": 7.09,
+    "pire": 6.14
+   },
+   "image_moyenne_min": "f008.png",
+   "image_pire": "f005.png",
+   "boite_px": [
+    108,
+    737,
+    762,
+    809
+   ]
+  }
+ },
+ "verification_ok": true,
+ "contraste_moyen_min": 5.43,
+ "contraste_pire_min": 5.0,
+ "seuils": {
+  "moyenne": 4.6,
+  "pire": 3.0,
+  "pire_bloc": 4.5
+ },
+ "sans_traitement": {
+  "accroche-l1": {
+   "moyenne": 5.43,
+   "pire": 5.0
+  },
+  "accroche-l2": {
+   "moyenne": 6.0,
+   "pire": 5.36
+  },
+  "info-l1": {
+   "moyenne": 7.04,
+   "pire": 6.11
+  }
+ },
+ "zone": {
+  "haut": 384,
+  "bas_texte": 809.2,
+  "fond_moyen": "#A9A0B3",
+  "Y_moyen": 0.398,
+  "teinte": 42.9,
+  "teinte_foncee": 275.2,
+  "accent": "#D4734A",
+  "bords_moyens": {
+   "accroche": 0.0043,
+   "info": 0.0049
+  },
+  "bords_max": {
+   "accroche": 0.0045,
+   "info": 0.0053
+  },
+  "refus": {
+   "visage": 40,
+   "soleil": 0,
+   "bas": 0
+  }
+ },
+ "prevision": {
+  "clair": [
+   {
+    "niveau": 2,
+    "voile_a": 0,
+    "blocs": [
+     "accroche"
+    ],
+    "bloc_a": 0.6
+   }
+  ],
+  "fonce": [
+   {
+    "niveau": 0,
+    "voile_a": 0,
+    "blocs": [],
+    "bloc_a": 0.0
+   }
+  ]
+ },
+ "verifications": [
+  {
+   "niveau": 0,
+   "voile_a": 0,
+   "blocs": [],
+   "bloc_a": 0.0,
+   "ok": true,
+   "lignes_en_echec": [],
+   "moyenne_min": 5.43,
+   "pire_min": 5.0
+  }
+ ],
+ "boites_lignes": [
+  [
+   "accroche-l1",
+   108,
+   384,
+   834,
+   519
+  ],
+  [
+   "accroche-l2",
+   108,
+   519,
+   428,
+   653
+  ],
+  [
+   "info-l1",
+   108,
+   737,
+   762,
+   809
+  ]
+ ]
+}

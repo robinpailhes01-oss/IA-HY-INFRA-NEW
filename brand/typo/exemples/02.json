@@ -1,0 +1,212 @@
+{
+ "plan": "frames/02",
+ "images": 6,
+ "images_nettoyees": 0,
+ "duree_texte": 2.8,
+ "minutage": {
+  "carte1_accroche": [
+   0.0,
+   2.7
+  ],
+  "accroche_lisible_s": 2.0,
+  "sortie": [
+   2.3,
+   2.7
+  ]
+ },
+ "cartes": {
+  "1": {
+   "image": "f003.png",
+   "t": 1.5,
+   "png": "02.png"
+  }
+ },
+ "capture": "02.png",
+ "page": "02.html",
+ "niveau": 1,
+ "mode": "voile 0.05 (ligne secondaire au plan suivant : plan trop court (2.80 s < 5 s))",
+ "ton": "fonce",
+ "texte_nom_site": "Encre océan",
+ "groupe": null,
+ "variables": {
+  "--hy-texte": "#0C2B45",
+  "--hy-secondaire": "#123A5C",
+  "--hy-haut": "240px",
+  "--hy-voile": "245 248 250",
+  "--hy-voile-a": "0.05",
+  "--hy-voile-debut": "192px",
+  "--hy-voile-fin": "557px",
+  "--hy-bloc": "0 0 0",
+  "--hy-bloc-accroche-a": "0",
+  "--hy-bloc-info-a": "0"
+ },
+ "attributs": {
+  "#root": {
+   "data-duration": "2.8"
+  },
+  "video#plan": {
+   "data-duration": "2.8"
+  },
+  "#texte": {
+   "data-duree": "2.8",
+   "data-info": "0",
+   "data-bloc-accroche": "0",
+   "data-bloc-info": "0"
+  },
+  "#voile": {
+   "data-forme": "haut"
+  }
+ },
+ "cfg": {
+  "texte": "#0C2B45",
+  "secondaire": "#123A5C",
+  "haut": 240,
+  "duree": 2.8,
+  "voile": {
+   "couleur": "#F5F8FA",
+   "a": 0.05,
+   "forme": "haut",
+   "debut": 192,
+   "fin": 557
+  },
+  "bloc": "#000000",
+  "bloc_accroche_a": 0,
+  "bloc_info_a": 0,
+  "bloc_accroche": 0,
+  "bloc_info": 0,
+  "info": 0,
+  "accroche": [
+   "Ce soir, tu dors",
+   "sur l’eau."
+  ],
+  "info_texte": "Nuit à bord · Port de Carnon"
+ },
+ "contrastes": {
+  "accroche-l1": {
+   "couleur": "#0C2B45",
+   "moyenne": 4.75,
+   "pire": 4.32,
+   "boite": {
+    "moyenne": 4.75,
+    "pire": 4.32
+   },
+   "lettres": {
+    "moyenne": 4.79,
+    "pire": 4.37
+   },
+   "image_moyenne_min": "f003.png",
+   "image_pire": "f003.png",
+   "boite_px": [
+    108,
+    240,
+    739,
+    375
+   ]
+  },
+  "accroche-l2": {
+   "couleur": "#0C2B45",
+   "moyenne": 5.09,
+   "pire": 4.72,
+   "boite": {
+    "moyenne": 5.09,
+    "pire": 4.72
+   },
+   "lettres": {
+    "moyenne": 5.12,
+    "pire": 4.82
+   },
+   "image_moyenne_min": "f003.png",
+   "image_pire": "f003.png",
+   "boite_px": [
+    108,
+    375,
+    519,
+    509
+   ]
+  }
+ },
+ "verification_ok": true,
+ "contraste_moyen_min": 4.75,
+ "contraste_pire_min": 4.32,
+ "seuils": {
+  "moyenne": 4.6,
+  "pire": 3.0,
+  "pire_bloc": 4.5
+ },
+ "sans_traitement": {
+  "accroche-l1": {
+   "moyenne": 4.46,
+   "pire": 4.02
+  },
+  "accroche-l2": {
+   "moyenne": 4.8,
+   "pire": 4.43
+  }
+ },
+ "zone": {
+  "haut": 240,
+  "bas_texte": 509.2,
+  "fond_moyen": "#5D95D7",
+  "Y_moyen": 0.287,
+  "teinte": 253.4,
+  "teinte_foncee": 253.4,
+  "accent": "#74AAE1",
+  "bords_moyens": {
+   "accroche": 0.0017
+  },
+  "bords_max": {
+   "accroche": 0.0018
+  },
+  "refus": {
+   "visage": 0,
+   "soleil": 0,
+   "bas": 0
+  }
+ },
+ "prevision": {
+  "clair": [
+   {
+    "niveau": 1,
+    "voile_a": 0.35,
+    "blocs": [],
+    "bloc_a": 0.0
+   }
+  ],
+  "fonce": [
+   {
+    "niveau": 1,
+    "voile_a": 0.05,
+    "blocs": [],
+    "bloc_a": 0.0
+   }
+  ]
+ },
+ "verifications": [
+  {
+   "niveau": 1,
+   "voile_a": 0.05,
+   "blocs": [],
+   "bloc_a": 0.0,
+   "ok": true,
+   "lignes_en_echec": [],
+   "moyenne_min": 4.75,
+   "pire_min": 4.32
+  }
+ ],
+ "boites_lignes": [
+  [
+   "accroche-l1",
+   108,
+   240,
+   739,
+   375
+  ],
+  [
+   "accroche-l2",
+   108,
+   375,
+   519,
+   509
+  ]
+ ]
+}

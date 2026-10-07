@@ -1,0 +1,214 @@
+{
+ "plan": "frames/09",
+ "images": 8,
+ "images_nettoyees": 0,
+ "duree_texte": 4.04,
+ "minutage": {
+  "carte1_accroche": [
+   0.0,
+   3.94
+  ],
+  "accroche_lisible_s": 3.24,
+  "sortie": [
+   3.54,
+   3.94
+  ]
+ },
+ "cartes": {
+  "1": {
+   "image": "f003.png",
+   "t": 1.5,
+   "png": "09.png"
+  }
+ },
+ "capture": "09.png",
+ "page": "09.html",
+ "niveau": 0,
+ "mode": "texte nu (ligne secondaire au plan suivant : plan trop court (4.04 s < 5 s))",
+ "ton": "fonce",
+ "texte_nom_site": "Encre océan",
+ "groupe": "coucher de soleil",
+ "variables": {
+  "--hy-texte": "#0C2B45",
+  "--hy-secondaire": "#052F51",
+  "--hy-haut": "240px",
+  "--hy-voile": "245 248 250",
+  "--hy-voile-a": "0",
+  "--hy-voile-debut": "192px",
+  "--hy-voile-fin": "557px",
+  "--hy-bloc": "0 0 0",
+  "--hy-bloc-accroche-a": "0",
+  "--hy-bloc-info-a": "0"
+ },
+ "attributs": {
+  "#root": {
+   "data-duration": "4.04"
+  },
+  "video#plan": {
+   "data-duration": "4.04"
+  },
+  "#texte": {
+   "data-duree": "4.04",
+   "data-info": "0",
+   "data-bloc-accroche": "0",
+   "data-bloc-info": "0"
+  },
+  "#voile": {
+   "data-forme": "aucun"
+  }
+ },
+ "cfg": {
+  "texte": "#0C2B45",
+  "secondaire": "#052F51",
+  "haut": 240,
+  "duree": 4.04,
+  "voile": {
+   "couleur": "#F5F8FA",
+   "a": 0,
+   "forme": "aucun",
+   "debut": 192,
+   "fin": 557
+  },
+  "bloc": "#000000",
+  "bloc_accroche_a": 0,
+  "bloc_info_a": 0,
+  "bloc_accroche": 0,
+  "bloc_info": 0,
+  "info": 0,
+  "accroche": [
+   "Coucher de soleil",
+   "en mer"
+  ],
+  "info_texte": "À 15 min de Montpellier"
+ },
+ "contrastes": {
+  "accroche-l1": {
+   "couleur": "#0C2B45",
+   "moyenne": 5.2,
+   "pire": 4.58,
+   "boite": {
+    "moyenne": 5.2,
+    "pire": 4.58
+   },
+   "lettres": {
+    "moyenne": 5.23,
+    "pire": 4.64
+   },
+   "image_moyenne_min": "f003.png",
+   "image_pire": "f003.png",
+   "boite_px": [
+    108,
+    240,
+    834,
+    375
+   ]
+  },
+  "accroche-l2": {
+   "couleur": "#0C2B45",
+   "moyenne": 6.53,
+   "pire": 5.79,
+   "boite": {
+    "moyenne": 6.53,
+    "pire": 5.79
+   },
+   "lettres": {
+    "moyenne": 6.67,
+    "pire": 6.25
+   },
+   "image_moyenne_min": "f006.png",
+   "image_pire": "f005.png",
+   "boite_px": [
+    108,
+    375,
+    428,
+    509
+   ]
+  }
+ },
+ "verification_ok": true,
+ "contraste_moyen_min": 5.2,
+ "contraste_pire_min": 4.58,
+ "seuils": {
+  "moyenne": 4.6,
+  "pire": 3.0,
+  "pire_bloc": 4.5
+ },
+ "sans_traitement": {
+  "accroche-l1": {
+   "moyenne": 5.19,
+   "pire": 4.56
+  },
+  "accroche-l2": {
+   "moyenne": 6.52,
+   "pire": 5.77
+  }
+ },
+ "zone": {
+  "haut": 240,
+  "bas_texte": 509.2,
+  "fond_moyen": "#A9A0B3",
+  "Y_moyen": 0.36,
+  "teinte": 42.9,
+  "teinte_foncee": 275.2,
+  "accent": "#D4734A",
+  "bords_moyens": {
+   "accroche": 0.0039
+  },
+  "bords_max": {
+   "accroche": 0.0041
+  },
+  "refus": {
+   "visage": 31,
+   "soleil": 18,
+   "bas": 0
+  }
+ },
+ "prevision": {
+  "clair": [
+   {
+    "niveau": 2,
+    "voile_a": 0,
+    "blocs": [
+     "accroche"
+    ],
+    "bloc_a": 0.6
+   }
+  ],
+  "fonce": [
+   {
+    "niveau": 0,
+    "voile_a": 0,
+    "blocs": [],
+    "bloc_a": 0.0
+   }
+  ]
+ },
+ "verifications": [
+  {
+   "niveau": 0,
+   "voile_a": 0,
+   "blocs": [],
+   "bloc_a": 0.0,
+   "ok": true,
+   "lignes_en_echec": [],
+   "moyenne_min": 5.2,
+   "pire_min": 4.58
+  }
+ ],
+ "boites_lignes": [
+  [
+   "accroche-l1",
+   108,
+   240,
+   834,
+   375
+  ],
+  [
+   "accroche-l2",
+   108,
+   375,
+   428,
+   509
+  ]
+ ]
+}

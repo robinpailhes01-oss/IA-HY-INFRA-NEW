@@ -1,0 +1,278 @@
+{
+ "plan": "frames/05",
+ "images": 11,
+ "images_nettoyees": 0,
+ "duree_texte": 5.7,
+ "minutage": {
+  "carte1_accroche": [
+   0.0,
+   3.12
+  ],
+  "carte2_ligne_secondaire": [
+   3.12,
+   5.6
+  ],
+  "accroche_lisible_s": 2.42,
+  "ligne_secondaire_lisible_s": 1.78,
+  "sortie": [
+   5.2,
+   5.6
+  ]
+ },
+ "cartes": {
+  "1": {
+   "image": "f003.png",
+   "t": 1.5,
+   "png": "05.png"
+  },
+  "2": {
+   "image": "f009.png",
+   "t": 4.5,
+   "png": "05-carte2.png"
+  }
+ },
+ "capture": "05.png",
+ "page": "05.html",
+ "niveau": 2,
+ "mode": "bloc sur l'accroche + la ligne secondaire",
+ "ton": "fonce",
+ "texte_nom_site": "Encre océan",
+ "groupe": null,
+ "variables": {
+  "--hy-texte": "#0C2B45",
+  "--hy-secondaire": "#123A5C",
+  "--hy-haut": "240px",
+  "--hy-voile": "245 248 250",
+  "--hy-voile-a": "0",
+  "--hy-voile-debut": "192px",
+  "--hy-voile-fin": "754px",
+  "--hy-bloc": "229 242 255",
+  "--hy-bloc-accroche-a": "0.6",
+  "--hy-bloc-info-a": "0.6"
+ },
+ "attributs": {
+  "#root": {
+   "data-duration": "5.7"
+  },
+  "video#plan": {
+   "data-duration": "5.7"
+  },
+  "#texte": {
+   "data-duree": "5.7",
+   "data-info": "1",
+   "data-bloc-accroche": "1",
+   "data-bloc-info": "1"
+  },
+  "#voile": {
+   "data-forme": "aucun"
+  }
+ },
+ "cfg": {
+  "texte": "#0C2B45",
+  "secondaire": "#123A5C",
+  "haut": 240,
+  "duree": 5.7,
+  "voile": {
+   "couleur": "#F5F8FA",
+   "a": 0,
+   "forme": "aucun",
+   "debut": 192,
+   "fin": 754
+  },
+  "bloc": "#E5F2FF",
+  "bloc_accroche_a": 0.6,
+  "bloc_info_a": 0.6,
+  "bloc_accroche": 1,
+  "bloc_info": 1,
+  "info": 1,
+  "accroche": [
+   "Ce soir, tu dors",
+   "sur l’eau."
+  ],
+  "info_texte": "Nuit à bord · Port de Carnon"
+ },
+ "contrastes": {
+  "accroche-l1": {
+   "couleur": "#0C2B45",
+   "moyenne": 8.49,
+   "pire": 7.11,
+   "boite": {
+    "moyenne": 8.49,
+    "pire": 7.11
+   },
+   "lettres": {
+    "moyenne": 8.55,
+    "pire": 7.35
+   },
+   "image_moyenne_min": "f010.png",
+   "image_pire": "f010.png",
+   "boite_px": [
+    108,
+    256,
+    739,
+    388
+   ]
+  },
+  "accroche-l2": {
+   "couleur": "#0C2B45",
+   "moyenne": 10.98,
+   "pire": 10.76,
+   "boite": {
+    "moyenne": 10.98,
+    "pire": 10.76
+   },
+   "lettres": {
+    "moyenne": 10.99,
+    "pire": 10.78
+   },
+   "image_moyenne_min": "f010.png",
+   "image_pire": "f008.png",
+   "boite_px": [
+    108,
+    439,
+    519,
+    571
+   ]
+  },
+  "info-l1": {
+   "couleur": "#123A5C",
+   "moyenne": 8.14,
+   "pire": 6.64,
+   "boite": {
+    "moyenne": 8.25,
+    "pire": 6.73
+   },
+   "lettres": {
+    "moyenne": 8.14,
+    "pire": 6.64
+   },
+   "image_moyenne_min": "f004.png",
+   "image_pire": "f004.png",
+   "boite_px": [
+    108,
+    632,
+    875,
+    692
+   ]
+  }
+ },
+ "verification_ok": true,
+ "contraste_moyen_min": 8.14,
+ "contraste_pire_min": 6.64,
+ "seuils": {
+  "moyenne": 4.6,
+  "pire": 3.0,
+  "pire_bloc": 4.5
+ },
+ "sans_traitement": {
+  "accroche-l1": {
+   "moyenne": 4.16,
+   "pire": 2.13
+  },
+  "accroche-l2": {
+   "moyenne": 7.69,
+   "pire": 4.22
+  },
+  "info-l1": {
+   "moyenne": 6.46,
+   "pire": 3.69
+  }
+ },
+ "zone": {
+  "haut": 240,
+  "bas_texte": 706.3,
+  "fond_moyen": "#A9C3DE",
+  "Y_moyen": 0.527,
+  "teinte": 249.5,
+  "teinte_foncee": 249.5,
+  "accent": "#7EAFCE",
+  "bords_moyens": {
+   "accroche": 0.0163,
+   "info": 0.0114
+  },
+  "bords_max": {
+   "accroche": 0.0275,
+   "info": 0.0247
+  },
+  "refus": {
+   "visage": 63,
+   "soleil": 0,
+   "bas": 0
+  }
+ },
+ "prevision": {
+  "clair": [
+   {
+    "niveau": 2,
+    "voile_a": 0,
+    "blocs": [
+     "accroche",
+     "info"
+    ],
+    "bloc_a": 0.66
+   }
+  ],
+  "fonce": [
+   {
+    "niveau": 2,
+    "voile_a": 0,
+    "blocs": [
+     "accroche"
+    ],
+    "bloc_a": 0.6
+   }
+  ]
+ },
+ "verifications": [
+  {
+   "niveau": 2,
+   "voile_a": 0,
+   "blocs": [
+    "accroche"
+   ],
+   "bloc_a": 0.6,
+   "ok": false,
+   "lignes_en_echec": [
+    "info"
+   ],
+   "moyenne_min": 5.01,
+   "pire_min": 2.73
+  },
+  {
+   "niveau": 2,
+   "voile_a": 0,
+   "blocs": [
+    "accroche",
+    "info"
+   ],
+   "bloc_a": 0.6,
+   "ok": true,
+   "lignes_en_echec": [],
+   "moyenne_min": 8.14,
+   "pire_min": 6.64
+  }
+ ],
+ "boites_lignes": [
+  [
+   "accroche-l1",
+   63,
+   240,
+   784,
+   409
+  ],
+  [
+   "accroche-l2",
+   63,
+   423,
+   564,
+   592
+  ],
+  [
+   "info-l1",
+   80,
+   620,
+   902,
+   706
+  ]
+ ]
+}

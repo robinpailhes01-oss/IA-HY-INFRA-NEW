@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Reel texte Harmonie</title>
+    <!--
+      SYSTEME TYPO FINAL - Harmonie Yacht, reels 9:16 (1080x1920)
+      A « continuite avec le site » + bloc de C « seulement si besoin ».
+
+      Polices (2, fichiers locaux dans fonts/) :
+        Instrument Serif 400 (romain + italique) -> accroche, 132 px, 2 lignes, la fin en italique
+        Instrument Sans 500                      -> ligne secondaire, 60 px, 1 ligne
+      Mise en page : ferre a gauche a x = 108 (zone title-safe), haut du texte entre y = 240 et
+      y = 1500 - hauteur, filet fin 72 x 2 px dans la couleur secondaire (jamais en or : l'or #A07838
+      reste au logo).
+
+      Trois niveaux de traitement du fond, du plus discret au plus visible (choisis par adapt.py) :
+        0. rien : le texte nu, dans la couleur tiree du plan ;
+        1. voile teinte du plan, en filtre degrade photo : <= 0,40 s il assombrit, <= 0,20 s il eclaircit ;
+        2. bloc arrondi par ligne (style C), teinte du plan, seulement sur les lignes qui en ont besoin
+           (zone chargee ou contraste insuffisant). Les lettres restent a x = 108 : le fond du bloc deborde
+           a gauche (x = 63 pour l'accroche, 80 pour la ligne secondaire), dans la zone action-safe (54 px).
+
+      Deux « cartes », jamais plus de 2 lignes a l'ecran (regle CLAUDE.md n° 2) :
+        carte 1 = l'accroche (2 lignes) des 0 s ; carte 2 = la ligne secondaire, qui remplace l'accroche.
+        La carte 2 n'existe que si le texte reste au moins 5 s (data-info="1") ; sinon la ligne secondaire
+        va sur le plan suivant (data-info="0"). data-duree = duree du texte = duree du plan, 6 s au plus :
+        tout sort avant la coupe. Garder data-duree egal au data-duration de #root et de la video.
+
+      NE PAS choisir les couleurs a la main. Lancer :
+        python3 -I adapt.py <image_ou_dossier_d_images_du_plan> --duree <s> --accroche "L1" "L2" --info "..."
+      puis recopier la sortie "variables" dans le bloc VARS ci-dessous et "attributs" sur #root / #texte / #voile.
+      Separateur « · » entoure d'espaces demi-cadratin (U+2002). Accroche coupee a la main, la fin en italique.
+      Rien d'important sous y = 1500 (legende et boutons Instagram).
+    -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("fonts/instrument-serif-latin-400-normal.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("fonts/instrument-serif-latin-400-italic.woff2") format("woff2");
+        font-weight: 400;
+        font-style: italic;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Instrument Sans";
+        src: url("fonts/instrument-sans-latin-500-normal.woff2") format("woff2");
+        font-weight: 500;
+        font-style: normal;
+        font-display: block;
+      }
+
+      :root {
+        /*VARS*/
+        --hy-texte: #f5f8fa;
+        --hy-secondaire: #cfe2f5;
+        --hy-haut: 240px;
+        --hy-voile: 12 43 69;
+        --hy-voile-a: 0;
+        --hy-voile-debut: 0px;
+        --hy-voile-fin: 760px;
+        --hy-bloc: 20 56 99;
+        --hy-bloc-accroche-a: 0;
+        --hy-bloc-info-a: 0;
+        /*/VARS*/
+        --hy-marge: 108px; /* zone title-safe laterale */
+        --hy-accroche: 132px;
+        --hy-info: 60px;
+        --hy-voile-fondu: 380px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #0c2b45;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0c2b45;
+      }
+      .plan {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      /* Niveau 1 - voile : teinte du plan (jamais noir), plein du haut du cadre jusqu'a 48 px sous
+         le texte puis fondu sur 380 px (« haut ») ; « bande » si le texte est sous y = 800. */
+      .voile {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        display: none;
+      }
+      .voile[data-forme="haut"] {
+        display: block;
+        background: linear-gradient(
+          180deg,
+          rgb(var(--hy-voile) / var(--hy-voile-a)) 0px,
+          rgb(var(--hy-voile) / var(--hy-voile-a)) var(--hy-voile-fin),
+          rgb(var(--hy-voile) / calc(var(--hy-voile-a) * 0.55)) calc(var(--hy-voile-fin) + var(--hy-voile-fondu) * 0.3),
+          rgb(var(--hy-voile) / calc(var(--hy-voile-a) * 0.18)) calc(var(--hy-voile-fin) + var(--hy-voile-fondu) * 0.65),
+          rgb(var(--hy-voile) / 0) calc(var(--hy-voile-fin) + var(--hy-voile-fondu))
+        );
+      }
+      .voile[data-forme="bande"] {
+        display: block;
+        background: linear-gradient(
+          180deg,
+          rgb(var(--hy-voile) / 0) calc(var(--hy-voile-debut) - var(--hy-voile-fondu)),
+          rgb(var(--hy-voile) / var(--hy-voile-a)) var(--hy-voile-debut),
+          rgb(var(--hy-voile) / var(--hy-voile-a)) var(--hy-voile-fin),
+          rgb(var(--hy-voile) / 0) calc(var(--hy-voile-fin) + var(--hy-voile-fondu))
+        );
+      }
+
+      /* Texte (A) : ferre a gauche, une boite par ligne (pas de <br>). */
+      .texte {
+        position: absolute;
+        left: var(--hy-marge);
+        right: var(--hy-marge);
+        top: var(--hy-haut);
+        margin: 0;
+      }
+      .accroche {
+        margin: 0;
+        font-family: "Instrument Serif", serif;
+        font-weight: 400;
+        font-size: var(--hy-accroche);
+        line-height: 1.02;
+        letter-spacing: -0.012em;
+        color: var(--hy-texte);
+        font-kerning: normal;
+        font-feature-settings: "kern", "liga";
+      }
+      .accroche em {
+        font-style: italic;
+      }
+      .ligne {
+        display: block;
+        width: fit-content;
+        white-space: nowrap;
+      }
+      .filet {
+        width: 72px;
+        height: 2px;
+        margin: 46px 0 36px;
+        background: var(--hy-secondaire);
+        opacity: 0.85;
+        transform-origin: left center;
+      }
+      .info {
+        margin: 0;
+        font-family: "Instrument Sans", sans-serif;
+        font-weight: 500;
+        font-size: var(--hy-info);
+        line-height: 1.2;
+        letter-spacing: 0.004em;
+        color: var(--hy-secondaire);
+      }
+
+      /* Niveau 2 - bloc (C) : un petit bloc arrondi par ligne, teinte par le plan
+         (clair L 0,955 sous texte fonce, profond L 0,34 sous texte clair), opacite minimale. */
+      .texte[data-bloc-accroche="1"] .accroche {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        line-height: 1;
+      }
+      /* Marge gauche negative = marge interieure : les lettres restent alignees a x = 108. */
+      .texte[data-bloc-accroche="1"] .accroche .ligne {
+        padding: 0.12em 0.34em 0.16em;
+        margin-left: -0.34em;
+        border-radius: 31px;
+        background: rgb(var(--hy-bloc) / var(--hy-bloc-accroche-a));
+      }
+      .texte[data-bloc-info="1"] .info {
+        line-height: 1;
+      }
+      .texte[data-bloc-info="1"] .info .ligne {
+        padding: 0.2em 0.46em 0.24em;
+        margin-left: -0.46em;
+        border-radius: 24px;
+        background: rgb(var(--hy-bloc) / var(--hy-bloc-info-a));
+      }
+      /* Le bloc de la ligne secondaire remplace le filet (pas de filet flottant sur une zone chargee). */
+      .texte[data-bloc-info="1"] .filet {
+        display: none;
+      }
+      .texte[data-bloc-info="1"] .info {
+        margin-top: 28px;
+      }
+      .texte[data-bloc-accroche="1"] .filet {
+        margin-top: 34px;
+      }
+      /* Ligne secondaire reportee au plan suivant (pas de place sure : visage, soleil). */
+      .texte[data-info="0"] .filet,
+      .texte[data-info="0"] .info {
+        display: none;
+      }
+
+      /* Mesure (adapt.py) : seules les lettres deviennent transparentes ; voile, blocs et filet restent. */
+      #root[data-mesure="1"] .accroche,
+      #root[data-mesure="1"] .info {
+        color: transparent;
+      }
+      /* Captures fixes (adapt.py) : une carte a la fois, comme dans la video. */
+      #root[data-carte="1"] .info,
+      #root[data-carte="2"] .accroche {
+        visibility: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!--PLAN-->
+      <video
+        id="plan"
+        class="plan clip"
+        data-start="0"
+        data-duration="6"
+        data-track-index="0"
+        src="plan.mp4"
+        muted
+        playsinline
+      ></video>
+      <!--/PLAN-->
+      <div id="voile" class="voile" data-forme="aucun"></div>
+
+      <div id="texte" class="texte" data-duree="6" data-info="1" data-bloc-accroche="0" data-bloc-info="0">
+        <h1 id="accroche" class="accroche">
+          <span id="accroche-l1" class="ligne">Ce soir, tu dors</span>
+          <span id="accroche-l2" class="ligne"><em>sur l’eau.</em></span>
+        </h1>
+        <div id="filet" class="filet"></div>
+        <p id="info" class="info"><span id="info-l1" class="ligne">Nuit à bord · Port de Carnon</span></p>
+      </div>
+    </div>
+    <script>
+      (function () {
+        if (!window.gsap) return; // capture fixe (adapt.py) : pas de timeline
+        var texte = document.getElementById("texte");
+        var D = parseFloat(texte.getAttribute("data-duree")) || 6; // duree du texte = duree du plan (6 s au plus)
+        var info = texte.getAttribute("data-info") === "1";
+        var tl = gsap.timeline({ paused: true });
+        // Carte 1 : l'accroche (2 lignes), lisible des ~0,3 s. Le bloc suit sa ligne.
+        tl.fromTo("#accroche .ligne", { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.9, ease: "power3.out", stagger: 0.12 }, 0);
+        if (info) {
+          // Carte 2 : la ligne secondaire remplace l'accroche (jamais plus de 2 lignes a l'ecran).
+          // Le filet apparait sous l'accroche et reste : il relie les deux cartes.
+          var ta = Math.min(3, 2.3 + (D - 5) * 0.6);
+          tl.fromTo("#filet", { scaleX: 0 }, { scaleX: 1, duration: 0.6, ease: "power2.out" }, 1.4);
+          tl.to("#accroche", { opacity: 0, duration: 0.4, ease: "power1.in" }, ta);
+          tl.fromTo("#info .ligne", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, ta + 0.4);
+        }
+        // Sortie : fondu 0,4 s, termine 0,1 s avant la coupe. Le voile ne s'anime jamais.
+        tl.to("#texte", { opacity: 0, duration: 0.4, ease: "power1.in" }, D - 0.5);
+        window.__timelines = window.__timelines || {};
+        window.__timelines["main"] = tl;
+      })();
+    </script>
+  </body>
+</html>
