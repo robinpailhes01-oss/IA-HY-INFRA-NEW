@@ -1,64 +1,56 @@
 [
  {
   "id": "T1",
-  "shot": 1,
   "f0": 0,
-  "f1": 118,
+  "f1": 123,
   "ligne1": "À 15 min de Montpellier,",
   "ligne2": "l’eau change de couleur."
  },
  {
   "id": "T2",
-  "shot": 4,
-  "f0": 206,
-  "f1": 295,
+  "f0": 211,
+  "f1": 300,
   "ligne1": "Le skipper à la barre,",
   "ligne2": "toi, au soleil."
  },
  {
   "id": "T3",
-  "shot": 8,
-  "f0": 473,
+  "f0": 478,
   "f1": 561,
   "ligne1": "Plus besoin de parler,",
   "ligne2": "l’horizon suffit."
  },
  {
   "id": "T4",
-  "shot": 11,
-  "f0": 651,
-  "f1": 740,
+  "f0": 655,
+  "f1": 745,
   "ligne1": "Puis la lumière",
   "ligne2": "tourne au miel."
  },
  {
   "id": "T5",
-  "shot": 15,
-  "f0": 917,
-  "f1": 1006,
+  "f0": 922,
+  "f1": 1011,
   "ligne1": "Le bateau glisse",
   "ligne2": "sur une mer de cuivre."
  },
  {
   "id": "T6",
-  "shot": 17,
-  "f0": 1095,
-  "f1": 1184,
+  "f0": 1100,
+  "f1": 1189,
   "ligne1": "Chaque reflet s’étire,",
   "ligne2": "et toi avec."
  },
  {
   "id": "T7",
-  "shot": 20,
-  "f0": 1272,
-  "f1": 1362,
+  "f0": 1278,
+  "f1": 1366,
   "ligne1": "Si loin.",
   "ligne2": "Et si près de chez toi."
  },
  {
   "id": "SIG",
-  "shot": 21,
-  "f0": 1377,
+  "f0": 1383,
   "f1": 1502,
   "ligne1": "Harmonie Yacht",
   "ligne2": "Port de Carnon"

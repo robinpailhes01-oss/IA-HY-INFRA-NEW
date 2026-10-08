@@ -1,11 +1,12 @@
 """Prépare les segments du reel depuis les originaux iPhone : HDR->SDR, recadrage éventuel, ralenti, 1080x1920, 30 i/s, muets.
-Usage (depuis le projet) : python3 -I tools/prep_clips.py <dossier_drive> assets/rushes
+Usage (depuis le projet) : python3 -I tools/prep_clips.py <dossier_drive> assets/rushes [numéros de plans, ex. 16,18]
 <dossier_drive> contient <NN>-<driveID>/<fichier>.MOV (voir assets/SOURCES.md). Lit plan.json.
 """
 import sys, json, glob, subprocess
 from concurrent.futures import ThreadPoolExecutor
 
 DRIVE, OUT = sys.argv[1], sys.argv[2]
+ONLY = {int(x) for x in sys.argv[3].split(',')} if len(sys.argv) > 3 else None
 plan = json.load(open('plan.json'))
 TM = ('zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,'
       'zscale=t=bt709:m=bt709:r=tv,format=yuv420p')
@@ -16,6 +17,8 @@ def job(s):
     src = glob.glob(f"{DRIVE}/{s['rush']}-*/*.MOV")[0]
     z, ax, ay, slow = s['zoom'], s['ax'], s['ay'], s['slow']
     vf = TM
+    if s.get('rotate'):
+        vf += f",rotate={s['rotate']}*PI/180"  # horizon redressé ; le zoom (≥ 1,04) cache les coins
     if z > 1:
         vf += f",crop=iw/{z}:ih/{z}:(iw-iw/{z})*{ax}:(ih-ih/{z})*{ay}"
     vf += f",scale=1080:1920:flags=lanczos,setpts={slow}*(PTS-STARTPTS)"
@@ -33,5 +36,5 @@ def job(s):
 
 
 with ThreadPoolExecutor(max_workers=4) as ex:
-    for line in ex.map(job, plan['shots']):
+    for line in ex.map(job, [s for s in plan['shots'] if ONLY is None or s['n'] in ONLY]):
         print(line, flush=True)

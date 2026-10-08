@@ -26,14 +26,19 @@ def rgba(hex_, a):
     return f'rgba({int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)}, {a:.2f})'
 
 
-videos = []
+videos, tweens = [], []
 for i in range(len(CUTS) - 1):
     a, b = CUTS[i], CUTS[i + 1]
     dur = (b - a) / FPS + (HALF if i < len(CUTS) - 2 else 0)
-    videos.append(f'      <video id="plan{i + 1:02d}" class="clip shot" src="assets/rushes/plan{i + 1:02d}.mp4" muted playsinline '
-                  f'data-start="{t(a / FPS)}" data-duration="{t(dur)}" data-track-index="0"></video>')
+    # conteneur non minuté autour de la vidéo (modèle « Pan / Ken Burns » de hyperframes-core) : c'est lui qu'on anime
+    videos.append(f'      <div id="v{i + 1:02d}" class="inner"><video id="plan{i + 1:02d}" class="clip shot" src="assets/rushes/plan{i + 1:02d}.mp4" '
+                  f'muted playsinline data-start="{t(a / FPS)}" data-duration="{t(dur)}" data-track-index="0"></video></div>')
+    push = plan['shots'][i].get('push', 0)
+    if push:
+        tweens.append(f'      tl.fromTo("#v{i + 1:02d}", {{ scale: 1 }}, {{ scale: {1 + push:.3f}, duration: {(b - a) / FPS:.4f}, ease: "none" }}, {t(a / FPS)});')
 
-blocks, css, tweens = [], [], []
+blocks, css = [], []
+INFO = {x['id']: x.get('f_info') for x in plan['texts']}
 for e in lay['texts']:
     tid, f0, f1 = e['id'], e['f0'], e['f1']
     start = f0 / FPS - (HALF if f0 > 0 else 0)
@@ -63,10 +68,13 @@ for e in lay['texts']:
     # entrée
     if f0 > 0:
         tweens.append(f'      tl.fromTo("#{tid} .r1' + (f', #{tid}-voile' if e['treatment'] == 'voile' else '') + f'", {{ opacity: 0 }}, {{ opacity: 1, duration: 0.4, ease: "power2.out" }}, {t(f0 / FPS)});')
-        tweens.append(f'      tl.fromTo("#{tid} .r2, #{tid} .filet", {{ opacity: 0 }}, {{ opacity: 1, duration: 0.4, ease: "power2.out" }}, {t(f0 / FPS + 0.25)});')
+        # ligne 2 (et filet) : 0,5 s après la ligne 1, sur la note suivante ; pour la signature, sur le coup final de la guitare
+        f2 = INFO.get(tid) or (f0 + 15)
+        tweens.append(f'      tl.fromTo("#{tid} .r2, #{tid} .filet", {{ opacity: 0 }}, {{ opacity: 1, duration: 0.4, ease: "power2.out" }}, {t(f2 / FPS)});')
     # sortie (sauf la signature, qui tient jusqu'à la fin)
     if f1 < TOTAL:
-        tweens.append(f'      tl.to("#{tid} .r, #{tid} .filet' + (f', #{tid}-voile' if e['treatment'] == 'voile' else '') + f'", {{ opacity: 0, duration: 0.4, ease: "power1.in" }}, {t(f1 / FPS - 0.5)});')
+        # le voile ne s'efface pas avec le texte (sinon l'exposition « pompe ») : il disparaît sous la coupe
+        tweens.append(f'      tl.to("#{tid} .r, #{tid} .filet", {{ opacity: 0, duration: 0.4, ease: "power1.in" }}, {t(f1 / FPS - 0.5)});')
 
 html = f'''<!doctype html>
 <html lang="fr">
@@ -82,6 +90,7 @@ html = f'''<!doctype html>
       * {{ margin: 0; padding: 0; box-sizing: border-box; }}
       html, body {{ margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0c2b45; }}
       #root {{ position: relative; width: 100%; height: 100%; overflow: hidden; background: #0c2b45; }}
+      .inner {{ position: absolute; inset: 0; transform-origin: 50% 50%; }}
       .shot {{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }}
       .bloc {{ position: absolute; left: {lay["x0"]}px; right: 108px; height: 600px; }}
       .bloc .r {{ position: absolute; left: 0; white-space: nowrap; color: var(--c); font-weight: 400; letter-spacing: -0.005em; }}

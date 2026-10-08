@@ -23,7 +23,7 @@ Y_PREF, Y_MIN = 300, 240
 STEP = 2
 F = {'serif': 'assets/fonts/instrument-serif-latin-400-normal.woff2', 'serif-i': 'assets/fonts/instrument-serif-latin-400-italic.woff2',
      'sans': 'assets/fonts/instrument-sans-latin-500-normal.woff2'}
-SIZE = {'poeme': 100, 'sig-titre': 96, 'sig-info': 60}
+SIZE = {'poeme': 100, 'sig-titre': 120, 'sig-info': 60}
 LH = 1.06
 SITE_LIGHT = {'Écume': '#F5F8FA', 'Sable': '#EFE7D8', 'Pêche': '#F0C9A0'}
 SITE_DARK = {'Encre océan': '#0C2B45', 'Encre': '#14314C', 'Océan profond': '#123A5C', 'Océan': '#1A4C74'}
@@ -151,16 +151,19 @@ for t in texts:
         for x0, x1, ya, yb in words:
             rgb = fr[:, top + ya:top + yb, x0:x1].mean(axis=(1, 2), dtype=np.float64)
             wl.append(rgb)
-        wl = np.stack(wl, axis=1)                                  # n, mots, 3
+        wl = np.stack(wl, axis=1)                                  # n, mots, 3 (RVB moyen sous chaque mot)
         line_rgb = fr[:, top:top + block_h, X0:x_right].mean(axis=(1, 2), dtype=np.float64)
         halo = lum_img[:, max(0, top - 100):min(H, top + block_h + 100), max(0, X0 - 60):min(W, x_right + 60)]
-        return rel_lum_arr(wl), rel_lum_arr(line_rgb), line_rgb.mean(axis=0), float((halo > 0.95).mean())
+        return wl, rel_lum_arr(line_rgb), line_rgb.mean(axis=0), float((halo > 0.95).mean())
 
-    def passes(txt_l, wl, ll):
-        cw = contrast(txt_l, wl)
-        # ligne : moyenne des mots de chaque ligne de texte (les deux lignes du bloc doivent passer)
-        cl = contrast(txt_l, wl.mean(axis=1))
-        return cw.min() >= 3.0 and (cl >= 4.5).mean() >= 0.9, float(cw.min()), float(np.median(cl)), float(np.percentile(cl, 10))
+    def passes(txt_l, w_rgb, ll, veil=None, alpha=0.0):
+        # le voile se mélange aux pixels en RVB (comme le navigateur), puis on calcule la luminance
+        if veil is not None:
+            w_rgb = w_rgb * (1 - alpha) + np.asarray(veil, dtype=np.float64) * alpha
+        cw = contrast(txt_l, rel_lum_arr(w_rgb))                   # n, mots
+        # DESIGN § 4 : chaque MOT ≥ 4,5:1 sur au moins 90 % des images, et ≥ 3:1 sur toutes
+        ok = cw.min() >= 3.0 and ((cw >= 4.5).mean(axis=0) >= 0.9).all()
+        return ok, float(cw.min()), float(np.median(cw)), float(np.percentile(cw, 10))
 
     def hue_of(mean_rgb, top):
         L, C, h = rgb_to_oklch(mean_rgb)
@@ -206,13 +209,12 @@ for t in texts:
         h = hue_of(mean_rgb, Y_PREF)
         c = candidates(h)
         best = None
-        for pol, ink, veil, amax in (('clair', c['clair'][0][0], c['foncé'][0][0], 0.40), ('foncé', c['foncé'][0][0], c['clair'][0][0], 0.20)):
-            vl = float(rel_lum_arr(veil))
+        for pol, inks, veil, amax in (('clair', c['clair'], c['foncé'][0][0], 0.40), ('foncé', c['foncé'], c['clair'][0][0], 0.20)):
+          for ink, _, step in inks:
             for alpha in np.arange(0.05, amax + 1e-9, 0.05):
-                # effet du voile en luminance (approximation linéaire, prudente sur les mots)
-                ok, cmin, cmed, cp10 = passes(float(rel_lum_arr(ink)), wl * (1 - alpha) + vl * alpha, ll)
+                ok, cmin, cmed, cp10 = passes(float(rel_lum_arr(ink)), wl, ll, veil=veil, alpha=float(alpha))
                 if ok:
-                    cand = (alpha + (0.15 if pol == 'foncé' else 0), pol, ink, veil, round(float(alpha), 2), cmin, cmed, cp10)
+                    cand = (alpha + 0.02 * step + (0.15 if pol == 'foncé' else 0), pol, ink, veil, round(float(alpha), 2), cmin, cmed, cp10)
                     if best is None or cand[0] < best[0]:
                         best = cand
                     break
@@ -228,8 +230,7 @@ for t in texts:
         txt = candidates(h)[pol][0][0]
         block = oklch_to_rgb(0.34 if pol == 'clair' else 0.955, min(rgb_to_oklch(mean_rgb)[1], 0.08), h)
         alpha = 0.88
-        bl = float(rel_lum_arr(block))
-        cmin = float(contrast(float(rel_lum_arr(txt)), wl * (1 - alpha) + bl * alpha).min())
+        cmin = float(contrast(float(rel_lum_arr(txt)), rel_lum_arr(wl * (1 - alpha) + block * alpha)).min())
         chosen = dict(top=Y_PREF, polarity=pol, treatment='bloc', text_hex=rgb2hex(txt), block_hex=rgb2hex(block), block_alpha=alpha,
                       hue=round(h, 1), contrast_word_min=round(cmin, 2), zone_mean_hex=rgb2hex(mean_rgb))
     prev_pol = chosen['polarity']

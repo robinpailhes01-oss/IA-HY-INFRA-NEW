@@ -5,7 +5,7 @@
   {
    "id": "T1",
    "f0": 0,
-   "f1": 118,
+   "f1": 123,
    "rows": [
     {
      "type": "texte",
@@ -28,21 +28,21 @@
    ],
    "block_h": 212,
    "top": 300,
-   "polarity": "foncé",
+   "polarity": "clair",
    "treatment": "voile",
-   "text_hex": "#002D3D",
-   "veil_hex": "#E6F9FF",
-   "veil_alpha": 0.15,
-   "hue": 221.9,
-   "contrast_word_min": 4.32,
-   "contrast_line_median": 5.24,
+   "text_hex": "#F9FEFF",
+   "veil_hex": "#002D3D",
+   "veil_alpha": 0.25,
+   "hue": 222.2,
+   "contrast_word_min": 4.48,
+   "contrast_line_median": 5.11,
    "contrast_line_p10": 4.72,
-   "zone_mean_hex": "#008DAE"
+   "zone_mean_hex": "#008EAF"
   },
   {
    "id": "T2",
-   "f0": 206,
-   "f1": 295,
+   "f0": 211,
+   "f1": 300,
    "rows": [
     {
      "type": "texte",
@@ -67,18 +67,18 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#0C2B45",
-   "site_color": "Encre océan",
-   "ladder_step": 0,
+   "text_hex": "#061F3D",
+   "site_color": null,
+   "ladder_step": 1,
    "hue": 254.6,
-   "contrast_word_min": 3.68,
-   "contrast_line_median": 5.65,
-   "contrast_line_p10": 5.33,
+   "contrast_word_min": 4.19,
+   "contrast_line_median": 6.31,
+   "contrast_line_p10": 5.88,
    "zone_mean_hex": "#79A6DF"
   },
   {
    "id": "T3",
-   "f0": 473,
+   "f0": 478,
    "f1": 561,
    "rows": [
     {
@@ -104,19 +104,19 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#0C2B45",
-   "site_color": "Encre océan",
-   "ladder_step": 0,
-   "hue": 249.3,
-   "contrast_word_min": 4.23,
-   "contrast_line_median": 4.91,
-   "contrast_line_p10": 4.87,
-   "zone_mean_hex": "#669DD3"
+   "text_hex": "#01203C",
+   "site_color": null,
+   "ladder_step": 1,
+   "hue": 248.8,
+   "contrast_word_min": 5.01,
+   "contrast_line_median": 5.74,
+   "contrast_line_p10": 5.16,
+   "zone_mean_hex": "#689FD4"
   },
   {
    "id": "T4",
-   "f0": 651,
-   "f1": 740,
+   "f0": 655,
+   "f1": 745,
    "rows": [
     {
      "type": "texte",
@@ -146,14 +146,14 @@
    "ladder_step": 0,
    "hue": 250.7,
    "contrast_word_min": 5.22,
-   "contrast_line_median": 6.19,
-   "contrast_line_p10": 6.19,
+   "contrast_line_median": 6.13,
+   "contrast_line_p10": 5.26,
    "zone_mean_hex": "#96ABC3"
   },
   {
    "id": "T5",
-   "f0": 917,
-   "f1": 1006,
+   "f0": 922,
+   "f1": 1011,
    "rows": [
     {
      "type": "texte",
@@ -178,19 +178,19 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#3B182F",
+   "text_hex": "#3D172B",
    "site_color": null,
    "ladder_step": 0,
-   "hue": 342.5,
-   "contrast_word_min": 5.5,
-   "contrast_line_median": 6.02,
-   "contrast_line_p10": 5.99,
-   "zone_mean_hex": "#B69CAB"
+   "hue": 45.1,
+   "contrast_word_min": 4.49,
+   "contrast_line_median": 5.56,
+   "contrast_line_p10": 4.79,
+   "zone_mean_hex": "#EC7D47"
   },
   {
    "id": "T6",
-   "f0": 1095,
-   "f1": 1184,
+   "f0": 1100,
+   "f1": 1189,
    "rows": [
     {
      "type": "texte",
@@ -218,16 +218,16 @@
    "text_hex": "#3D172B",
    "site_color": null,
    "ladder_step": 0,
-   "hue": 50.4,
-   "contrast_word_min": 5.0,
-   "contrast_line_median": 5.64,
-   "contrast_line_p10": 5.61,
-   "zone_mean_hex": "#E68245"
+   "hue": 44.9,
+   "contrast_word_min": 5.09,
+   "contrast_line_median": 6.63,
+   "contrast_line_p10": 5.24,
+   "zone_mean_hex": "#BB9D91"
   },
   {
    "id": "T7",
-   "f0": 1272,
-   "f1": 1362,
+   "f0": 1278,
+   "f1": 1366,
    "rows": [
     {
      "type": "texte",
@@ -252,55 +252,55 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#3F1726",
+   "text_hex": "#40171E",
    "site_color": null,
    "ladder_step": 0,
-   "hue": 359.1,
-   "contrast_word_min": 5.46,
-   "contrast_line_median": 6.01,
-   "contrast_line_p10": 5.83,
-   "zone_mean_hex": "#BB99A3"
+   "hue": 11.9,
+   "contrast_word_min": 4.89,
+   "contrast_line_median": 5.68,
+   "contrast_line_p10": 5.13,
+   "zone_mean_hex": "#BE9498"
   },
   {
    "id": "SIG",
-   "f0": 1377,
+   "f0": 1383,
    "f1": 1502,
    "rows": [
     {
      "type": "texte",
      "texte": "Harmonie Yacht",
      "police": "serif",
-     "taille": 96,
+     "taille": 120,
      "y": 0,
-     "hauteur_ligne": 102,
-     "largeur": 523
+     "hauteur_ligne": 127,
+     "largeur": 654
     },
     {
      "type": "filet",
-     "y": 132
+     "y": 157
     },
     {
      "type": "texte",
      "texte": "Port de Carnon",
      "police": "sans",
      "taille": 60,
-     "y": 164,
+     "y": 189,
      "hauteur_ligne": 64,
      "largeur": 423
     }
    ],
-   "block_h": 228,
+   "block_h": 253,
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#401720",
+   "text_hex": "#30080C",
    "site_color": null,
-   "ladder_step": 0,
-   "hue": 9.2,
-   "contrast_word_min": 4.22,
-   "contrast_line_median": 5.04,
-   "contrast_line_p10": 5.0,
-   "zone_mean_hex": "#BA8E94"
+   "ladder_step": 2,
+   "hue": 19.8,
+   "contrast_word_min": 4.56,
+   "contrast_line_median": 5.46,
+   "contrast_line_p10": 4.69,
+   "zone_mean_hex": "#C08D8C"
   }
  ]
 }
