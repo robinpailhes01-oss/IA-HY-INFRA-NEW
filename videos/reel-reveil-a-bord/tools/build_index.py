@@ -2,7 +2,7 @@
 Usage (depuis le projet) : python3 -I tools/build_index.py layout.json index.html
 
 Copie du reel de référence (Evasion de charme), mesuré image par image : 8 plans fixes, coupes aux mêmes images,
-légende « waking up here » fixe au milieu de l'image du début à la fin. Sans logos Instagram ni écran de fin
+légende « waking up here » fixe au milieu de l'image du début à la fin (v3 : Cormorant Garamond Light Italic, ombre très légère). Sans logos Instagram ni écran de fin
 (demande de Robin) : la vidéo s'arrête à 9,13 s, là où la référence passait à l'écran de fin (musique déjà silencieuse).
 Temps en numéros d'image (30 i/s). Plans vidéo : chevauchement d'une demi-image (le suivant, plus bas dans le DOM, passe dessus).
 """
@@ -36,6 +36,11 @@ for i in range(len(CUTS) - 1):
         tweens.append(f'      tl.fromTo("#v{i + 1:02d}", {{ scale: 1 }}, {{ scale: {1 + push:.3f}, duration: {(b - a) / FPS:.4f}, ease: "none" }}, {t(a / FPS)});')
 
 # ---------- légende fixe ----------
+# v3 (demande de Robin) : écriture ultra élégante (Cormorant Garamond Light Italic), sans bande, ombre très légère
+shadow_css = ''
+if lay['treatment'] == 'ombre':
+    shadow_css = ' text-shadow: ' + ', '.join(f'{dx}px {dy}px {blur}px {rgba(lay["shadow_hex"], a)}' for dx, dy, blur, a in lay['shadow_layers']) + ';'
+
 row = lay['rows'][0]
 c0, c1 = 0.0, TOTAL / FPS
 extra_css, blocks = [], []
@@ -60,8 +65,7 @@ html = f'''<!doctype html>
     <!-- Généré par tools/build_index.py depuis plan.json et layout.json : ne pas éditer à la main. -->
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
     <style>
-      @font-face {{ font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }}
-      @font-face {{ font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: block; }}
+      @font-face {{ font-family: "Cormorant Garamond"; src: url("assets/fonts/cormorant-garamond-latin-300-italic.woff2") format("woff2"); font-weight: 300; font-style: italic; font-display: block; }}
       * {{ margin: 0; padding: 0; box-sizing: border-box; }}
       html, body {{ margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0c2b45; }}
       #root {{ position: relative; width: 100%; height: 100%; overflow: hidden; background: #0c2b45; }}
@@ -70,7 +74,7 @@ html = f'''<!doctype html>
       .voile {{ position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }}
       #legende {{ position: absolute; left: 108px; right: 108px; top: {lay["top"]}px; height: {lay["block_h"]}px; }}
       #legende .w {{ position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; color: {lay["text_hex"]};
-                    font-family: "Instrument Serif", serif; font-weight: 400; font-size: {lay["size"]}px; letter-spacing: {lay.get("letter_spacing_em", 0.005)}em; }}
+                    font-family: "Cormorant Garamond", serif; font-weight: 300; font-size: {lay["size"]}px; letter-spacing: {lay.get("letter_spacing_em", 0.005)}em;{shadow_css} }}
 {chr(10).join(extra_css)}
     </style>
   </head>

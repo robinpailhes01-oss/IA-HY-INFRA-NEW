@@ -1,6 +1,13 @@
 """Place et colore la légende fixe « waking up here » (centrée à mi-hauteur sur tout le reel, comme la référence).
 Usage (depuis le projet) : python3 -I tools/caption_style.py layout.json
 
+v3 (demande de Robin, 08/10/2026 : « on change la typo, enlève le petit fil blanc, une écriture ultra élégante avec un tout
+petit effet d'ombre ») : MODE = 'ombre'. Cormorant Garamond Light Italic, encre claire teintée par les plans (jamais un blanc
+neutre), ombre très légère dans l'encre foncée de la même teinte, sans bande ni voile. Le contraste n'est plus vérifié contre
+le fond seul mais contre l'anneau de 1 à 4 px autour des lettres, ombre comprise (simulation image par image), et affiché par
+plan : sur les draps blancs il reste en dessous du seuil du DESIGN §4, c'est le choix de Robin (lisible grâce à l'ombre).
+
+Mode 'regle' (avant la v3) :
 Règle DESIGN.md §4 : Instrument Serif, minuscules comme la référence, 60 px (minimum de lisibilité mobile), centrée,
 interlettrage aéré comme la référence ; UNE couleur pour toute la vidéo, tirée des plans (teinte OKLCH, encre très foncée
 ou très claire, paliers). Seuils vérifiés MOT PAR MOT et IMAGE PAR IMAGE (toutes les images) :
@@ -14,12 +21,15 @@ import numpy as np
 from PIL import ImageFont
 
 OUT = sys.argv[1]
+POLARITY = sys.argv[2] if len(sys.argv) > 2 else 'clair'   # 'clair' : texte clair + ombre foncée (demande de Robin) ; 'foncé' : variante qui passe le contrôle
 plan = json.load(open('plan.json'))
 FPS, W, H, CUTS = plan['fps'], 1080, 1920, plan['cuts']
 T = plan['caption']
-SIZE, LH, LS = 60, 1.5, 0.06          # 60 px ; interlettrage 0,06 em (référence aérée)
-Y_PREF, RANGE = 957 - 45, 260          # référence : milieu de la ligne à y ≈ 957
-FONT = 'assets/fonts/instrument-serif-latin-400-normal.woff2'
+MODE = 'ombre'
+SIZE, LH, LS = 76, 1.5, 0.02          # 76 px : Cormorant a un petit œil, 76 px ≈ la taille visuelle de 60 px d'Instrument Serif
+Y_PREF, RANGE = 957 - 57, 260          # référence : milieu de la ligne à y ≈ 957
+FONT = 'assets/fonts/cormorant-garamond-latin-300-italic.woff2'
+SHADOW_LAYERS = [(0, 1, 3, 0.60), (0, 0, 10, 0.20)]   # (décalage x, y, flou px, opacité) : une ombre serrée + un halo très léger
 SITE_LIGHT = {'Écume': '#F5F8FA', 'Sable': '#EFE7D8', 'Pêche': '#F0C9A0'}
 SITE_DARK = {'Encre océan': '#0C2B45', 'Encre': '#14314C', 'Océan profond': '#123A5C', 'Océan': '#1A4C74'}
 DARK_LADDER = [0.27, 0.24, 0.21, 0.18, 0.15]
@@ -101,7 +111,7 @@ for w in text.split(' '):
     wx = x0 + ft.getlength(text[:i]) + ls_px * i
     l, t_, r, b_ = ft.getbbox(w, anchor='ls')
     ww = r + ls_px * (len(w) - 1)
-    words.append(dict(w=w, x0=int(wx + l) - 2, x1=int(wx + ww) + 2, ya=int(base_off + t_) - 2, yb=int(base_off + b_) + 2))
+    words.append(dict(w=w, tx=wx, x0=int(wx + l) - 2, x1=int(wx + ww) + 2, ya=int(base_off + t_) - 2, yb=int(base_off + b_) + 2))
     pos = i + len(w)
 
 # ---------- toutes les images, bande utile seulement ----------
@@ -168,9 +178,51 @@ def diagnose(ink, polarity, top, veil=None, alpha=0.0):
         print(f'   « {w} » (moyen/pixels faibles, minimum par plan) ' + ' '.join(per))
 
 
+def diagnose_shadow(ink, shadow, top):
+    """Contraste encre / anneau de 1 à 4 px autour des lettres, ombre comprise, image par image (minimum par plan)."""
+    from PIL import Image, ImageDraw, ImageFilter
+    from scipy.ndimage import binary_dilation
+    hh = Y1 - Y0
+    res = {wd['w']: [] for wd in words}
+    for wd in words:
+        mask = Image.new('L', (W, hh), 0)
+        ImageDraw.Draw(mask).text((wd['tx'], top + base_off - Y0), wd['w'], font=ft, fill=255, anchor='ls', features=None)
+        m = np.array(mask) > 128
+        wd['ring'] = binary_dilation(m, iterations=4) & ~binary_dilation(m, iterations=1)
+        wd['mask'] = mask
+    Li = float(rel_lum(ink))
+    for f in range(len(frames)):
+        im = Image.fromarray(frames[f]).convert('RGBA')
+        for wd in words:
+            for dx, dy, blur, a in SHADOW_LAYERS:
+                sh = Image.new('RGBA', (W, hh), tuple(int(v) for v in shadow) + (0,))
+                alpha = wd['mask'].transform(wd['mask'].size, Image.AFFINE, (1, 0, -dx, 0, 1, -dy)).filter(ImageFilter.GaussianBlur(blur / 2))
+                sh.putalpha(alpha.point(lambda v, a=a: int(v * a)))
+                im = Image.alpha_composite(im, sh)
+        arr = np.asarray(im.convert('RGB')).astype(np.float64)
+        for wd in words:
+            Lr = rel_lum(arr[wd['ring']])
+            res[wd['w']].append(float(contrast(Li, np.median(Lr))))
+    for w, cs in res.items():
+        cs = np.array(cs)
+        print(f"   « {w} » contraste encre / anneau ombré (minimum par plan) " + ' '.join(f'{k}:{cs[shot_of == k].min():.1f}' for k in range(1, len(CUTS))))
+    return min(min(v) for v in res.values())
+
+
 tops = sorted(range(Y_PREF - RANGE, Y_PREF + RANGE + 1, 10), key=lambda y: (abs(y - Y_PREF), y))
 chosen = None
-for top in tops:
+if MODE == 'ombre':
+    c = candidates(hue_at(Y_PREF))
+    if POLARITY == 'clair':
+        ink, shadow = c['clair'][0][0], c['foncé'][0][0]
+    else:                    # texte foncé : petite ombre portée foncée et douce (effet « lettre imprimée »)
+        ink, shadow = c['foncé'][0][0], c['foncé'][0][0]
+        SHADOW_LAYERS[:] = [(0, 2, 5, 0.25)]
+    print(f'diagnostic du choix (ombre, encre {POLARITY}) :')
+    worst = diagnose_shadow(ink, shadow, Y_PREF)
+    chosen = dict(top=Y_PREF, polarity=POLARITY, treatment='ombre', text_hex=rgb2hex(ink), shadow_hex=rgb2hex(shadow),
+                  shadow_layers=SHADOW_LAYERS, contrast_ring_min=round(worst, 2))
+for top in (tops if chosen is None else []):
     st = word_stats(top)
     c = candidates(hue_at(top))
     for pol in ('clair', 'foncé'):               # encre claire d'abord, comme le blanc de la référence
@@ -216,12 +268,13 @@ if chosen is None:   # dernier recours : petit bloc arrondi, teinté par les pla
             break
 
 print('choix :', chosen)
-print('diagnostic encre foncée de la règle, sans voile, à la position préférée :')
-diagnose(candidates(hue_at(Y_PREF))['foncé'][0][0], 'foncé', Y_PREF)
-print(f"diagnostic du choix ({chosen['treatment']}) :")
-fond = {'voile': ('veil_hex', 'veil_alpha'), 'bloc': ('block_hex', 'block_alpha')}.get(chosen['treatment'])
-diagnose(hex2rgb(chosen['text_hex']), chosen['polarity'], chosen['top'],
-         hex2rgb(chosen[fond[0]]) if fond else None, chosen[fond[1]] if fond else 0.0)
-rows = [dict(texte=text, italique=False, f0=T['f0'], y=0, hauteur_ligne=lh, largeur=round(total))]
+if chosen['treatment'] != 'ombre':
+    print('diagnostic encre foncée de la règle, sans voile, à la position préférée :')
+    diagnose(candidates(hue_at(Y_PREF))['foncé'][0][0], 'foncé', Y_PREF)
+    print(f"diagnostic du choix ({chosen['treatment']}) :")
+    fond = {'voile': ('veil_hex', 'veil_alpha'), 'bloc': ('block_hex', 'block_alpha')}.get(chosen['treatment'])
+    diagnose(hex2rgb(chosen['text_hex']), chosen['polarity'], chosen['top'],
+             hex2rgb(chosen[fond[0]]) if fond else None, chosen[fond[1]] if fond else 0.0)
+rows = [dict(texte=text, italique=MODE == 'ombre', f0=T['f0'], y=0, hauteur_ligne=lh, largeur=round(total))]
 out = dict(size=SIZE, line_height=LH, letter_spacing_em=LS, block_h=lh, rows=rows, f1=T['f1'], **chosen)
 json.dump(out, open(OUT, 'w'), indent=1, ensure_ascii=False)
