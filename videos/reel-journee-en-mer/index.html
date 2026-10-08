@@ -18,15 +18,15 @@
       .bloc .r { position: absolute; left: 0; white-space: nowrap; color: var(--c); font-weight: 400; letter-spacing: -0.005em; }
       .voile { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }
       .bloc .filet { position: absolute; left: 0; width: 72px; height: 2px; background: var(--c); }
-      #T1 { top: 300px; --c: #F9FEFF; }
-      #T1-voile { height: 940px; background: linear-gradient(to bottom, rgba(0, 45, 61, 0.25) 0px, rgba(0, 45, 61, 0.25) 560px, rgba(0, 45, 61, 0.00) 940px); }
+      #T1 { top: 300px; --c: #F5F8FA; }
+      #T1-voile { height: 940px; background: linear-gradient(to bottom, rgba(0, 45, 61, 0.30) 0px, rgba(0, 45, 61, 0.30) 560px, rgba(0, 45, 61, 0.00) 940px); }
       #T2 { top: 300px; --c: #061F3D; }
       #T3 { top: 300px; --c: #01203C; }
       #T4 { top: 300px; --c: #0C2B45; }
-      #T5 { top: 300px; --c: #3D172B; }
+      #T5 { top: 300px; --c: #351024; }
       #T6 { top: 300px; --c: #3D172B; }
-      #T7 { top: 300px; --c: #40171E; }
-      #SIG { top: 300px; --c: #30080C; }
+      #T7 { top: 300px; --c: #40171F; }
+      #SIG { top: 300px; --c: #250507; }
     </style>
   </head>
   <body>
@@ -48,10 +48,8 @@
       <div id="v15" class="inner"><video id="plan15" class="clip shot" src="assets/rushes/plan15.mp4" muted playsinline data-start="29.100000" data-duration="1.650000" data-track-index="0"></video></div>
       <div id="v16" class="inner"><video id="plan16" class="clip shot" src="assets/rushes/plan16.mp4" muted playsinline data-start="30.733333" data-duration="2.983333" data-track-index="0"></video></div>
       <div id="v17" class="inner"><video id="plan17" class="clip shot" src="assets/rushes/plan17.mp4" muted playsinline data-start="33.700000" data-duration="2.983333" data-track-index="0"></video></div>
-      <div id="v18" class="inner"><video id="plan18" class="clip shot" src="assets/rushes/plan18.mp4" muted playsinline data-start="36.666666" data-duration="1.283333" data-track-index="0"></video></div>
-      <div id="v19" class="inner"><video id="plan19" class="clip shot" src="assets/rushes/plan19.mp4" muted playsinline data-start="37.933333" data-duration="1.716666" data-track-index="0"></video></div>
-      <div id="v20" class="inner"><video id="plan20" class="clip shot" src="assets/rushes/plan20.mp4" muted playsinline data-start="39.633333" data-duration="2.983333" data-track-index="0"></video></div>
-      <div id="v21" class="inner"><video id="plan21" class="clip shot" src="assets/rushes/plan21.mp4" muted playsinline data-start="42.600000" data-duration="7.466666" data-track-index="0"></video></div>
+      <div id="v18" class="inner"><video id="plan18" class="clip shot" src="assets/rushes/plan18.mp4" muted playsinline data-start="36.666666" data-duration="2.983333" data-track-index="0"></video></div>
+      <div id="v19" class="inner"><video id="plan19" class="clip shot" src="assets/rushes/plan19.mp4" muted playsinline data-start="39.633333" data-duration="10.433333" data-track-index="0"></video></div>
       <div id="T1-voile" class="clip voile" data-start="0.000000" data-duration="4.083333" data-track-index="2"></div>
       <div id="T1" class="clip bloc" data-start="0.000000" data-duration="4.083333" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">À 15 min de Montpellier,</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">l’eau change de couleur.</div></div>
       <div id="T2" class="clip bloc" data-start="7.016666" data-duration="2.966666" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Le skipper à la barre,</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">toi, au soleil.</div></div>
@@ -69,9 +67,7 @@
       tl.fromTo("#v14", { scale: 1 }, { scale: 1.050, duration: 1.3333, ease: "none" }, 27.766666);
       tl.fromTo("#v16", { scale: 1 }, { scale: 1.050, duration: 2.9667, ease: "none" }, 30.733333);
       tl.fromTo("#v17", { scale: 1 }, { scale: 1.040, duration: 2.9667, ease: "none" }, 33.700000);
-      tl.fromTo("#v19", { scale: 1 }, { scale: 1.040, duration: 1.7000, ease: "none" }, 37.933333);
-      tl.fromTo("#v20", { scale: 1 }, { scale: 1.040, duration: 2.9667, ease: "none" }, 39.633333);
-      tl.fromTo("#v21", { scale: 1 }, { scale: 1.050, duration: 7.4667, ease: "none" }, 42.600000);
+      tl.fromTo("#v19", { scale: 1 }, { scale: 1.080, duration: 10.4333, ease: "none" }, 39.633333);
       tl.to("#T1 .r, #T1 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 3.599999);
       tl.fromTo("#T2 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 7.033333);
       tl.fromTo("#T2 .r2, #T2 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 7.533333);

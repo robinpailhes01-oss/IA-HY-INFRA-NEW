@@ -162,7 +162,8 @@ for t in texts:
             w_rgb = w_rgb * (1 - alpha) + np.asarray(veil, dtype=np.float64) * alpha
         cw = contrast(txt_l, rel_lum_arr(w_rgb))                   # n, mots
         # DESIGN § 4 : chaque MOT ≥ 4,5:1 sur au moins 90 % des images, et ≥ 3:1 sur toutes
-        ok = cw.min() >= 3.0 and ((cw >= 4.5).mean(axis=0) >= 0.9).all()
+        # marge de 0,25 : au rendu, les traits fins (déliés, Instrument Sans 60 px) sortent un peu moins contrastés que prévu
+        ok = cw.min() >= 3.0 and ((cw >= 4.75).mean(axis=0) >= 0.9).all()
         return ok, float(cw.min()), float(np.median(cw)), float(np.percentile(cw, 10))
 
     def hue_of(mean_rgb, top):

@@ -8,6 +8,8 @@ v2 (après relecture du brouillon) :
 - Seconde moitié refaite : plans courts sur les passages forts, cadrages vraiment différents (4K recadré),
   un seul plan final continu (plus de faux raccord), « Port de Carnon » posé sur le coup final de la guitare.
 - Plans retirés ou décalés pour éviter les intrusions vues à la relecture (plans 5, 12, 18 du brouillon, bord droit du rush 08).
+v3 (relecture de confirmation) : plus de faux raccord (un seul plan final continu dès le temps 53), plus de plan 19 doublon
+du plan 11 (les reflets ralentis tiennent toute la phrase T6), bas du plan 12 recadré.
 """
 import json
 import numpy as np
@@ -50,16 +52,14 @@ SHOTS = [
     (25, '05', 3.40, 1, 1, .5, .5, 0, 0, 'amies, la photo souvenir (pas de texte)'),
     (27, '08', 3.20, 1, 1, .5, .5, 0, 0, 'le groupe se retourne'),
     (29, '09', 0.50, 2, 1, .5, .5, 0, .05, 'la lumière devient dorée'),
-    (33, '10', 1.10, 2, 1, .5, .5, 0, 0, 'ciel rose, deux personnes à l’avant'),
+    (33, '10', 1.10, 2, 1.10, .5, 0.0, 0, 0, 'ciel rose, deux personnes à l’avant (bas recadré)'),
     (35, '10', 3.40, 2, 1.3, 0.0, .62, 0, 0, 'plus près des deux personnes'),
     (37, '11', 1.00, 2, 1.6, .5, 0.0, 0, .05, 'gros plan sur le ciel en feu'),
     (39, '09', 2.20, 2, 2.0, .5, .3, 0, 0, 'le cockpit, la table, les amis'),
     (41, '11', 2.40, 2, 1.8, .9, .6, 0, .05, 'la mer cuivrée jusqu’à l’horizon'),
     (45, '10', 1.85, 2, 1.8, 1.0, .45, 0, .04, 'côté soleil : le ciel en feu, la mer'),
-    (49, '11', 4.30, 4, 1.5, 1.0, .85, 0, 0, 'reflets dans l’eau, très ralenti'),
-    (51, '09', 2.95, 2, 1.25, .5, .3, 0, .04, 'la proue et le ciel'),
-    (53, '11', 5.90, 2, 1.4, 0.0, 1.0, 0, .04, 'détail de la rambarde'),
-    (57, '11', 7.60, 2, 1.04, .5, .5, -1.1, .05, 'la proue, dernier plan continu (T7 puis signature)'),
+    (49, '11', 4.30, 4, 2.4, .80, .62, 0, 0, 'reflets dans l’eau, très ralenti, plan serré (toute la phrase T6)'),
+    (53, '11', 5.90, 2, 1.04, .5, .5, -1.1, .08, 'la proue, dernier plan continu (T7 puis signature)'),
 ]
 cuts = [0] + [frame_at_beat(s[0]) for s in SHOTS[1:]] + [round(END * FPS)]
 assert all(b > a for a, b in zip(cuts, cuts[1:])), cuts
@@ -74,12 +74,12 @@ for i, (bi, rush, ss, slow, zoom, ax, ay, rot, push, desc) in enumerate(SHOTS):
 S = {s['n']: s for s in plan['shots']}
 def span(a_, b_):
     return S[a_]['f0'], S[b_]['f1']
-texts = [('T1', *span(1, 1)), ('T2', *span(4, 4)), ('T3', *span(8, 8)), ('T4', *span(11, 11)), ('T5', *span(16, 16)), ('T6', *span(18, 19))]
+texts = [('T1', *span(1, 1)), ('T2', *span(4, 4)), ('T3', *span(8, 8)), ('T4', *span(11, 11)), ('T5', *span(16, 16)), ('T6', *span(18, 18))]
 last = S[len(SHOTS)]
 t7_end = frame_at_beat(61)                       # T7 sur la 1re mesure du dernier plan
 sig_title = frame_at_beat(62)                    # « Harmonie Yacht » sur le temps 62
 hit = round(attack(48.23, -0.05, 0.10) * FPS)    # le coup final de la guitare, après le silence
-texts.append(('T7', last['f0'], t7_end))
+texts.append(('T7', frame_at_beat(57), t7_end))   # T7 une mesure après le début du dernier plan
 plan['texts'] = [{'id': k, 'f0': f0, 'f1': f1} for k, f0, f1 in texts]
 plan['texts'].append({'id': 'SIG', 'f0': sig_title, 'f1': plan['total_frames'], 'f_info': hit})
 json.dump(plan, open('plan.json', 'w'), indent=1, ensure_ascii=False)

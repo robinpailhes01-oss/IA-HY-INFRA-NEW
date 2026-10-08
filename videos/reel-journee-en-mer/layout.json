@@ -30,13 +30,13 @@
    "top": 300,
    "polarity": "clair",
    "treatment": "voile",
-   "text_hex": "#F9FEFF",
+   "text_hex": "#F5F8FA",
    "veil_hex": "#002D3D",
-   "veil_alpha": 0.25,
+   "veil_alpha": 0.3,
    "hue": 222.2,
-   "contrast_word_min": 4.48,
-   "contrast_line_median": 5.11,
-   "contrast_line_p10": 4.72,
+   "contrast_word_min": 4.59,
+   "contrast_line_median": 5.21,
+   "contrast_line_p10": 4.83,
    "zone_mean_hex": "#008EAF"
   },
   {
@@ -178,13 +178,13 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#3D172B",
+   "text_hex": "#351024",
    "site_color": null,
-   "ladder_step": 0,
+   "ladder_step": 1,
    "hue": 45.1,
-   "contrast_word_min": 4.49,
-   "contrast_line_median": 5.56,
-   "contrast_line_p10": 4.79,
+   "contrast_word_min": 4.87,
+   "contrast_line_median": 6.03,
+   "contrast_line_p10": 5.19,
    "zone_mean_hex": "#EC7D47"
   },
   {
@@ -218,11 +218,11 @@
    "text_hex": "#3D172B",
    "site_color": null,
    "ladder_step": 0,
-   "hue": 44.9,
-   "contrast_word_min": 5.09,
-   "contrast_line_median": 6.63,
-   "contrast_line_p10": 5.24,
-   "zone_mean_hex": "#BB9D91"
+   "hue": 51.0,
+   "contrast_word_min": 4.88,
+   "contrast_line_median": 5.51,
+   "contrast_line_p10": 4.92,
+   "zone_mean_hex": "#E37E3B"
   },
   {
    "id": "T7",
@@ -252,14 +252,14 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#40171E",
+   "text_hex": "#40171F",
    "site_color": null,
    "ladder_step": 0,
-   "hue": 11.9,
+   "hue": 10.4,
    "contrast_word_min": 4.89,
-   "contrast_line_median": 5.68,
-   "contrast_line_p10": 5.13,
-   "zone_mean_hex": "#BE9498"
+   "contrast_line_median": 5.78,
+   "contrast_line_p10": 5.16,
+   "zone_mean_hex": "#BE959A"
   },
   {
    "id": "SIG",
@@ -293,14 +293,14 @@
    "top": 300,
    "polarity": "foncé",
    "treatment": "nu",
-   "text_hex": "#30080C",
+   "text_hex": "#250507",
    "site_color": null,
-   "ladder_step": 2,
-   "hue": 19.8,
-   "contrast_word_min": 4.56,
-   "contrast_line_median": 5.46,
-   "contrast_line_p10": 4.69,
-   "zone_mean_hex": "#C08D8C"
+   "ladder_step": 3,
+   "hue": 19.5,
+   "contrast_word_min": 4.81,
+   "contrast_line_median": 5.78,
+   "contrast_line_p10": 4.93,
+   "zone_mean_hex": "#C08D8D"
   }
  ]
 }
