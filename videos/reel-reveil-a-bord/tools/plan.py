@@ -6,6 +6,7 @@ Référence (30 i/s) : 8 plans fixes, coupés aux images 50, 96, 132, 165, 186, 
 fixe au milieu de l'image du début à la fin ; écran de fin Instagram à 9,13 s (image 274), retiré à la demande de Robin :
 la vidéo s'arrête là (la musique est silencieuse de 9,1 à 9,5 s, la fin tombe donc sans coupure audible).
 Passages vérifiés image par image (pas de doigt, pas de visage face caméra, pas de logo « NEXT YACHT » visible).
+v2 (correction de Robin) : uniquement des rushs de l'intérieur du bateau.
 Rushes à 60 i/s ralentis ×2 (ralenti exact) pour retrouver le calme des plans fixes de la référence.
 """
 import json
@@ -16,13 +17,13 @@ CUTS = [0, 50, 96, 132, 165, 186, 216, 236, END]
 # (rush, début source s, ralenti, zoom, ax, ay, rôle dans la référence → notre plan)
 SHOTS = [
     ('N17', 0.30, 2, 1, .5, .5, 'chambre (grand plan) → la cabine principale, le lit aux pétales « LOVE »'),
-    ('N09', 0.25, 1, 1, .5, .5, 'petit déjeuner → la table du carré, jus d’orange et viennoiseries'),
-    ('N12', 0.20, 2, 1, .5, .5, 'la terrasse → sortie du port de Carnon au coucher du soleil, les invitées de dos à table'),
-    ('N22', 0.50, 2, 1, .5, .5, 'vue depuis l’abri → sous le bimini, le port en fond'),
-    ('N23', 0.40, 2, 1, .5, .5, 'la femme qui sort → les deux invitées sur la plage avant, face à la mer, de dos'),
+    ('N09', 0.00, 1, 1.2, .5, .8, 'petit déjeuner → la table du carré dressée, deux verres orange et des bougies (recadré : mur clair derrière la légende)'),
+    ('N18', 2.00, 2, 1, .5, .5, 'les draps blancs au soleil → le lit « LOVE » à la lumière du jour, plus près (fin du travelling)'),
+    ('N15', 1.00, 2, 1, .5, .5, 'vue vers l’extérieur → la table aux pétales et les flûtes, les hublots derrière'),
+    ('N01', 0.30, 1, 1, .5, .5, 'la femme qui avance vers la lumière → on avance dans une cabine lumineuse, vers le lit rond'),
     ('N08', 0.60, 1, 1.2, .5, 0.0, 'le lit et la fenêtre → le lit « LOVE », plan fixe (recadré : « LOVE » sous la légende)'),
     ('N19', 1.50, 2, 1, .5, .5, 'le détail (livre et café) → les pétales et le cœur sur le lit'),
-    ('N01', 13.00, 1, 1.25, .5, 0.0, 'la lumière dorée → le yacht au coucher du soleil (recadré : bateau sous la légende)'),
+    ('N10', 0.30, 1, 1, .5, .5, 'la lumière dorée → le carré baigné de lumière dorée'),
 ]
 assert len(SHOTS) == len(CUTS) - 1
 plan = {'fps': FPS, 'total_frames': END, 'cuts': CUTS, 'shots': []}

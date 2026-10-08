@@ -1,10 +1,13 @@
 """Place et colore la légende fixe « waking up here » (centrée à mi-hauteur sur tout le reel, comme la référence).
 Usage (depuis le projet) : python3 -I tools/caption_style.py layout.json
 
-Règle DESIGN.md : Instrument Serif, minuscules comme la référence, 60 px (minimum de lisibilité mobile), centrée ;
-UNE couleur pour toute la vidéo, tirée des plans (teinte OKLCH, encre très foncée ou très claire, paliers) ;
-≥ 4,75:1 sur ≥ 90 % des images et ≥ 3:1 sur toutes ; on déplace d'abord la ligne (au plus près du centre),
-puis voile en dégradé, puis petit bloc arrondi en tout dernier recours.
+Règle DESIGN.md §4 : Instrument Serif, minuscules comme la référence, 60 px (minimum de lisibilité mobile), centrée,
+interlettrage aéré comme la référence ; UNE couleur pour toute la vidéo, tirée des plans (teinte OKLCH, encre très foncée
+ou très claire, paliers). Seuils vérifiés MOT PAR MOT et IMAGE PAR IMAGE (toutes les images) :
+  - contraste avec le fond moyen du mot ≥ 4,5:1 sur toutes les images (≥ 4,75 sur 90 % : marge pour les traits fins) ;
+  - contraste ≥ 3:1 sur les pixels les moins favorables (5e centile du fond sous le mot) sur toutes les images.
+Si ça ne passe pas : déplacer la ligne (au plus près du milieu), puis voile très léger en dégradé depuis le haut,
+puis petit bloc arrondi en tout dernier recours. Affiche le diagnostic par plan pour corriger le cadrage plutôt que le texte.
 """
 import sys, json, subprocess
 import numpy as np
@@ -13,14 +16,15 @@ from PIL import ImageFont
 OUT = sys.argv[1]
 plan = json.load(open('plan.json'))
 FPS, W, H, CUTS = plan['fps'], 1080, 1920, plan['cuts']
-SIZE, LH = 60, 1.5            # 60 px : minimum de lisibilité (la référence est à ≈ 28 px)
-Y_PREF, Y_MIN = 957 - 45, 240   # référence : milieu de la ligne à y ≈ 957 (mi-hauteur)
-STEP = 2
-F = {False: 'assets/fonts/instrument-serif-latin-400-normal.woff2', True: 'assets/fonts/instrument-serif-latin-400-italic.woff2'}
+T = plan['caption']
+SIZE, LH, LS = 60, 1.5, 0.06          # 60 px ; interlettrage 0,06 em (référence aérée)
+Y_PREF, RANGE = 957 - 45, 260          # référence : milieu de la ligne à y ≈ 957
+FONT = 'assets/fonts/instrument-serif-latin-400-normal.woff2'
 SITE_LIGHT = {'Écume': '#F5F8FA', 'Sable': '#EFE7D8', 'Pêche': '#F0C9A0'}
 SITE_DARK = {'Encre océan': '#0C2B45', 'Encre': '#14314C', 'Océan profond': '#123A5C', 'Océan': '#1A4C74'}
 DARK_LADDER = [0.27, 0.24, 0.21, 0.18, 0.15]
 LIGHT_LADDER = [(0.97, 0.022), (0.985, 0.014), (0.995, 0.006)]
+
 
 # ---------- couleur ----------
 def srgb_to_lin(c):
@@ -31,13 +35,12 @@ def lin_to_srgb(c):
     c = np.clip(c, 0, 1)
     return np.where(c <= 0.0031308, 12.92 * c, 1.055 * c ** (1 / 2.4) - 0.055) * 255
 
-def rel_lum_arr(rgb):
+def rel_lum(rgb):
     lin = srgb_to_lin(rgb)
     return lin[..., 0] * 0.2126 + lin[..., 1] * 0.7152 + lin[..., 2] * 0.0722
 
 def contrast(a, b):
-    hi, lo = np.maximum(a, b), np.minimum(a, b)
-    return (hi + 0.05) / (lo + 0.05)
+    return (np.maximum(a, b) + 0.05) / (np.minimum(a, b) + 0.05)
 
 def rgb_to_oklch(rgb):
     r, g, b = srgb_to_lin(rgb)
@@ -76,112 +79,149 @@ def snap(c, table):
     name, hx = min(table.items(), key=lambda kv: oklab_dist(c, hex2rgb(kv[1])))
     return (hex2rgb(hx), name) if oklab_dist(c, hex2rgb(hx)) < 0.015 else (c, None)
 
-
-
-def decode(n):
-    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', f'assets/rushes/plan{n:02d}.mp4', '-frames:v', str(CUTS[n] - CUTS[n - 1]),
-                          '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], check=True, capture_output=True).stdout
-    return np.frombuffer(raw, np.uint8).reshape(-1, H, W, 3)
-
-T = plan['caption']
-f_end = T['f1']
-# images globales (une sur deux) du début du 1er mot à la fin du titre
-frames, gidx = [], []
-for k in range(len(CUTS) - 1):
-    a, b = max(T['f0'], CUTS[k]), min(f_end, CUTS[k + 1])
-    if b > a:
-        clip = decode(k + 1)
-        for g in range(a, b, STEP):
-            frames.append(clip[g - CUTS[k]]); gidx.append(g)
-fr = np.stack(frames); gidx = np.array(gidx)
-lut = srgb_to_lin(np.arange(256)).astype(np.float32)
-lum_img = 0.2126 * lut[fr[..., 0]] + 0.7152 * lut[fr[..., 1]] + 0.0722 * lut[fr[..., 2]]
-
-rows = []
-lh = round(SIZE * LH)
-for i, w in enumerate([T]):
-    ft = ImageFont.truetype(F[bool(w.get('italique'))], SIZE)
-    asc, desc = ft.getmetrics()
-    tw = ft.getlength(w['texte'])
-    x = (W - tw) / 2
-    base = i * lh + (lh - (asc + desc)) / 2 + asc
-    l, t_, r, b_ = ft.getbbox(w['texte'], anchor='ls')
-    rows.append(dict(texte=w['texte'], italique=bool(w.get('italique')), f0=w['f0'], y=i * lh, hauteur_ligne=lh, largeur=round(tw),
-                     box=(int(x + l) - 3, int(x + r) + 3, int(base + t_) - 2, int(base + min(b_, 0.05 * SIZE)) + 2)))
-block_h = lh * len(rows)
-
-def stats_at(top):
-    w_rgb, vis = [], []
-    for r in rows:
-        x0, x1, ya, yb = r['box']
-        w_rgb.append(fr[:, top + ya:top + yb, x0:x1].mean(axis=(1, 2), dtype=np.float64))
-        vis.append(gidx >= r['f0'])
-    w_rgb = np.stack(w_rgb, axis=1); vis = np.stack(vis, axis=1)       # n, mots(, 3)
-    xs0 = min(r['box'][0] for r in rows); xs1 = max(r['box'][1] for r in rows)
-    halo = lum_img[:, max(0, top - 100):min(H, top + block_h + 100), max(0, xs0 - 60):min(W, xs1 + 60)]
-    mean_rgb = np.concatenate([w_rgb[vis[:, k], k] for k in range(len(rows))]).mean(axis=0)
-    return w_rgb, vis, mean_rgb, float((halo > 0.95).mean())
-
-def passes(txt_l, w_rgb, vis, veil=None, alpha=0.0):
-    if veil is not None:
-        w_rgb = w_rgb * (1 - alpha) + np.asarray(veil, dtype=np.float64) * alpha
-    cw = contrast(txt_l, rel_lum_arr(w_rgb))
-    ok, worst = True, 99.0
-    for k in range(cw.shape[1]):
-        c = cw[vis[:, k], k]
-        worst = min(worst, float(c.min()))
-        ok &= c.min() >= 3.0 and (c >= 4.75).mean() >= 0.9
-    return bool(ok), worst
-
-def hue_of(mean_rgb):
-    return rgb_to_oklch(mean_rgb)[2]
-
 def candidates(h):
-    dh = 350.0 if 20 <= h <= 110 else h
+    dh = 350.0 if 20 <= h <= 110 else h      # orange/jaune assombri = brun : on prend un lie-de-vin
     dark = [snap(oklch_to_rgb(L, 0.065 * min(1, L / 0.27 + 0.2), dh), SITE_DARK) + (i,) for i, L in enumerate(DARK_LADDER)]
     light = [snap(oklch_to_rgb(L, C, h), SITE_LIGHT) + (i,) for i, (L, C) in enumerate(LIGHT_LADDER)]
     return {'foncé': dark, 'clair': light}
 
+
+# ---------- géométrie de la ligne (mêmes règles que le CSS : centrée, interlettrage après chaque lettre) ----------
+ft = ImageFont.truetype(FONT, SIZE)
+asc, desc = ft.getmetrics()
+lh = round(SIZE * LH)
+text = T['texte']
+ls_px = LS * SIZE
+total = ft.getlength(text) + ls_px * len(text)
+x0 = (W - total) / 2
+base_off = (lh - (asc + desc)) / 2 + asc          # ligne de base, depuis le haut de la boîte de ligne
+words, pos = [], 0
+for w in text.split(' '):
+    i = text.index(w, pos)
+    wx = x0 + ft.getlength(text[:i]) + ls_px * i
+    l, t_, r, b_ = ft.getbbox(w, anchor='ls')
+    ww = r + ls_px * (len(w) - 1)
+    words.append(dict(w=w, x0=int(wx + l) - 2, x1=int(wx + ww) + 2, ya=int(base_off + t_) - 2, yb=int(base_off + b_) + 2))
+    pos = i + len(w)
+
+# ---------- toutes les images, bande utile seulement ----------
+Y0 = max(0, Y_PREF - RANGE - 10); Y1 = min(H, Y_PREF + RANGE + lh + 10)
+lut = srgb_to_lin(np.arange(256)).astype(np.float32)
+lum, rgbmean, shot_of = [], [], []
+for k in range(len(CUTS) - 1):
+    n = CUTS[k + 1] - CUTS[k]
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', f'assets/rushes/plan{k + 1:02d}.mp4', '-frames:v', str(n),
+                          '-vf', f'crop={W}:{Y1 - Y0}:0:{Y0}', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], check=True, capture_output=True).stdout
+    fr = np.frombuffer(raw, np.uint8).reshape(-1, Y1 - Y0, W, 3)[:n]
+    lum.append(0.2126 * lut[fr[..., 0]] + 0.7152 * lut[fr[..., 1]] + 0.0722 * lut[fr[..., 2]])
+    rgbmean.append(fr)
+    shot_of += [k + 1] * len(fr)
+lum = np.concatenate(lum); frames = np.concatenate(rgbmean); shot_of = np.array(shot_of)
+
+
+def word_stats(top):
+    """Par mot et par image : luminance moyenne du fond, 5e et 95e centiles."""
+    out = []
+    for wd in words:
+        ya, yb = top + wd['ya'] - Y0, top + wd['yb'] - Y0
+        z = lum[:, ya:yb, wd['x0']:wd['x1']].reshape(len(lum), -1)
+        out.append((z.mean(axis=1), np.percentile(z, 5, axis=1), np.percentile(z, 95, axis=1)))
+    return out
+
+
+def veiled(Lbg, veil_rgb, alpha, top):
+    """Luminance après un voile en dégradé depuis le haut (plein jusqu'à 48 px sous la ligne) : mélange en RGB, fond gris équivalent."""
+    if alpha <= 0:
+        return Lbg
+    srgb = np.where(Lbg <= 0.0031308, 12.92 * Lbg, 1.055 * np.clip(Lbg, 0, 1) ** (1 / 2.4) - 0.055) * 255
+    vg = float(rel_lum(np.asarray(veil_rgb)) ** (1 / 2.2) * 255)
+    mix = srgb * (1 - alpha) + vg * alpha
+    return srgb_to_lin(mix)
+
+
+def check(ink_L, polarity, stats, veil=None, alpha=0.0, top=0):
+    res, ok, worst = [], True, 99.0
+    for (m, p5, p95), wd in zip(stats, words):
+        m2 = veiled(m, veil, alpha, top) if veil is not None else m
+        weak = (p5 if polarity == 'foncé' else p95)
+        weak = veiled(weak, veil, alpha, top) if veil is not None else weak
+        cm, cw = contrast(ink_L, m2), contrast(ink_L, weak)
+        good = cm.min() >= 4.5 and (cm >= 4.75).mean() >= 0.9 and cw.min() >= 3.0
+        ok &= bool(good); worst = min(worst, float(cm.min()))
+        res.append((wd['w'], float(cm.min()), float((cm >= 4.75).mean()), float(cw.min()), cm, cw))
+    return ok, worst, res
+
+
+def hue_at(top):
+    ys, ye = top + min(w['ya'] for w in words) - Y0, top + max(w['yb'] for w in words) - Y0
+    m = frames[:, ys:ye, words[0]['x0']:words[-1]['x1']].reshape(-1, 3).mean(axis=0)
+    return rgb_to_oklch(m)[2]
+
+
+def diagnose(ink, polarity, top, veil=None, alpha=0.0):
+    _, _, res = check(float(rel_lum(ink)), polarity, word_stats(top), veil, alpha, top)
+    for w, *_r, cm, cw in res:
+        per = []
+        for k in range(1, len(CUTS)):
+            s = shot_of == k
+            per.append(f'{k}:{cm[s].min():.1f}/{cw[s].min():.1f}')
+        print(f'   « {w} » (moyen/pixels faibles, minimum par plan) ' + ' '.join(per))
+
+
+tops = sorted(range(Y_PREF - RANGE, Y_PREF + RANGE + 1, 10), key=lambda y: (abs(y - Y_PREF), y))
 chosen = None
-for top in sorted(range(Y_MIN, 1500 - block_h + 1, 10), key=lambda y: (abs(y - Y_PREF), y)):
-    if abs(top - Y_PREF) > 260:      # la légende reste vers le milieu de l'image (sinon : voile)
-        continue
-    w_rgb, vis, mean_rgb, glare = stats_at(top)
-    if glare > 0.005:
-        continue
-    c = candidates(hue_of(mean_rgb))
-    opts = []
-    for pol in ('foncé', 'clair'):
+for top in tops:
+    st = word_stats(top)
+    c = candidates(hue_at(top))
+    for pol in ('clair', 'foncé'):               # encre claire d'abord, comme le blanc de la référence
         for rgb, site, step in c[pol]:
-            ok, worst = passes(float(rel_lum_arr(rgb)), w_rgb, vis)
+            ok, worst, _ = check(float(rel_lum(rgb)), pol, st)
             if ok:
-                opts.append((step, pol, rgb, site, worst)); break
-    if opts:
-        opts.sort(key=lambda o: (o[1] != 'clair', o[0], -o[4]))   # encre claire d'abord, comme le blanc de la référence
-        step, pol, rgb, site, worst = opts[0]
-        chosen = dict(top=top, polarity=pol, treatment='nu', text_hex=rgb2hex(rgb), site_color=site, ladder_step=step, contrast_word_min=round(worst, 2))
+                chosen = dict(top=top, polarity=pol, treatment='nu', text_hex=rgb2hex(rgb), site_color=site, ladder_step=step,
+                              contrast_word_min=round(worst, 2))
+                break
+        if chosen:
+            break
+    if chosen:
         break
 if chosen is None:   # voile en dégradé depuis le haut, à la position préférée
-    w_rgb, vis, mean_rgb, _ = stats_at(Y_PREF)
-    c = candidates(hue_of(mean_rgb)); best = None
+    st = word_stats(Y_PREF); c = candidates(hue_at(Y_PREF)); best = None
     for pol, inks, veil, amax in (('clair', c['clair'], c['foncé'][0][0], 0.40), ('foncé', c['foncé'], c['clair'][0][0], 0.20)):
         for ink, _, step in inks:
             for alpha in np.arange(0.05, amax + 1e-9, 0.05):
-                ok, worst = passes(float(rel_lum_arr(ink)), w_rgb, vis, veil=veil, alpha=float(alpha))
+                ok, worst, _ = check(float(rel_lum(ink)), pol, st, veil, float(alpha), Y_PREF)
                 if ok:
                     cand = (alpha + 0.02 * step + (0.15 if pol == 'foncé' else 0), pol, ink, veil, round(float(alpha), 2), worst)
-                    if best is None or cand[0] < best[0]: best = cand
+                    if best is None or cand[0] < best[0]:
+                        best = cand
                     break
     if best:
         _, pol, ink, veil, alpha, worst = best
-        chosen = dict(top=Y_PREF, polarity=pol, treatment='voile', text_hex=rgb2hex(ink), veil_hex=rgb2hex(veil), veil_alpha=alpha, contrast_word_min=round(worst, 2))
-if chosen is None:   # dernier recours : petit bloc arrondi par mot, teinté par les plans
-    w_rgb, vis, mean_rgb, _ = stats_at(Y_PREF)
-    h = hue_of(mean_rgb); pol = 'clair' if float(rel_lum_arr(mean_rgb)) < 0.36 else 'foncé'
-    txt = candidates(h)[pol][0][0]
-    block = oklch_to_rgb(0.34 if pol == 'clair' else 0.955, min(rgb_to_oklch(mean_rgb)[1], 0.08), h)
-    ok, worst = passes(float(rel_lum_arr(txt)), w_rgb, vis, veil=block, alpha=0.88)
-    chosen = dict(top=Y_PREF, polarity=pol, treatment='bloc', text_hex=rgb2hex(txt), block_hex=rgb2hex(block), block_alpha=0.88, contrast_word_min=round(worst, 2))
-out = dict(size=SIZE, line_height=LH, block_h=block_h, rows=[{k: v for k, v in r.items() if k != 'box'} for r in rows], f1=f_end, **chosen)
+        chosen = dict(top=Y_PREF, polarity=pol, treatment='voile', text_hex=rgb2hex(ink), veil_hex=rgb2hex(veil), veil_alpha=alpha,
+                      contrast_word_min=round(worst, 2))
+if chosen is None:   # dernier recours : petit bloc arrondi, teinté par les plans, le plus transparent qui passe
+    st = word_stats(Y_PREF); h = hue_at(Y_PREF); c = candidates(h)
+    for pol, inks, blocks in (('foncé', c['foncé'], [(0.955, 0.03), (0.93, 0.04)]), ('clair', c['clair'], [(0.34, 0.06), (0.30, 0.05)])):
+        for Lb, Cb in blocks:
+            block = oklch_to_rgb(Lb, Cb, h)
+            for alpha in np.arange(0.30, 0.95, 0.05):
+                ok, worst, _ = check(float(rel_lum(inks[0][0])), pol, st, block, float(alpha), Y_PREF)
+                if ok:
+                    chosen = dict(top=Y_PREF, polarity=pol, treatment='bloc', text_hex=rgb2hex(inks[0][0]), block_hex=rgb2hex(block),
+                                  block_alpha=round(float(alpha), 2), contrast_word_min=round(worst, 2))
+                    break
+            if chosen:
+                break
+        if chosen:
+            break
+
+print('choix :', chosen)
+print('diagnostic encre foncée de la règle, sans voile, à la position préférée :')
+diagnose(candidates(hue_at(Y_PREF))['foncé'][0][0], 'foncé', Y_PREF)
+print(f"diagnostic du choix ({chosen['treatment']}) :")
+fond = {'voile': ('veil_hex', 'veil_alpha'), 'bloc': ('block_hex', 'block_alpha')}.get(chosen['treatment'])
+diagnose(hex2rgb(chosen['text_hex']), chosen['polarity'], chosen['top'],
+         hex2rgb(chosen[fond[0]]) if fond else None, chosen[fond[1]] if fond else 0.0)
+rows = [dict(texte=text, italique=False, f0=T['f0'], y=0, hauteur_ligne=lh, largeur=round(total))]
+out = dict(size=SIZE, line_height=LH, letter_spacing_em=LS, block_h=lh, rows=rows, f1=T['f1'], **chosen)
 json.dump(out, open(OUT, 'w'), indent=1, ensure_ascii=False)
-print({k: v for k, v in out.items() if k != 'rows'})

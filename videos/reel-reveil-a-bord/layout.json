@@ -1,6 +1,7 @@
 {
  "size": 60,
  "line_height": 1.5,
+ "letter_spacing_em": 0.06,
  "block_h": 90,
  "rows": [
   {
@@ -9,15 +10,15 @@
    "f0": 0,
    "y": 0,
    "hauteur_ligne": 90,
-   "largeur": 315
+   "largeur": 365
   }
  ],
  "f1": 274,
  "top": 912,
  "polarity": "foncé",
- "treatment": "voile",
- "text_hex": "#230515",
- "veil_hex": "#FFF1E8",
- "veil_alpha": 0.05,
- "contrast_word_min": 4.52
+ "treatment": "bloc",
+ "text_hex": "#3D172B",
+ "block_hex": "#FFEBDE",
+ "block_alpha": 0.4,
+ "contrast_word_min": 6.62
 }

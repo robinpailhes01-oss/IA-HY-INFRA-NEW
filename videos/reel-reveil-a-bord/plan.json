@@ -31,52 +31,52 @@
    "f0": 50,
    "f1": 96,
    "rush": "N09",
-   "src_start": 0.25,
+   "src_start": 0.0,
    "src_dur": 1.5333,
    "slow": 1,
-   "zoom": 1,
+   "zoom": 1.2,
    "ax": 0.5,
-   "ay": 0.5,
-   "desc": "petit déjeuner → la table du carré, jus d’orange et viennoiseries"
+   "ay": 0.8,
+   "desc": "petit déjeuner → la table du carré dressée, deux verres orange et des bougies (recadré : mur clair derrière la légende)"
   },
   {
    "n": 3,
    "f0": 96,
    "f1": 132,
-   "rush": "N12",
-   "src_start": 0.2,
+   "rush": "N18",
+   "src_start": 2.0,
    "src_dur": 0.6,
    "slow": 2,
    "zoom": 1,
    "ax": 0.5,
    "ay": 0.5,
-   "desc": "la terrasse → sortie du port de Carnon au coucher du soleil, les invitées de dos à table"
+   "desc": "les draps blancs au soleil → le lit « LOVE » à la lumière du jour, plus près (fin du travelling)"
   },
   {
    "n": 4,
    "f0": 132,
    "f1": 165,
-   "rush": "N22",
-   "src_start": 0.5,
+   "rush": "N15",
+   "src_start": 1.0,
    "src_dur": 0.55,
    "slow": 2,
    "zoom": 1,
    "ax": 0.5,
    "ay": 0.5,
-   "desc": "vue depuis l’abri → sous le bimini, le port en fond"
+   "desc": "vue vers l’extérieur → la table aux pétales et les flûtes, les hublots derrière"
   },
   {
    "n": 5,
    "f0": 165,
    "f1": 186,
-   "rush": "N23",
-   "src_start": 0.4,
-   "src_dur": 0.35,
-   "slow": 2,
+   "rush": "N01",
+   "src_start": 0.3,
+   "src_dur": 0.7,
+   "slow": 1,
    "zoom": 1,
    "ax": 0.5,
    "ay": 0.5,
-   "desc": "la femme qui sort → les deux invitées sur la plage avant, face à la mer, de dos"
+   "desc": "la femme qui avance vers la lumière → on avance dans une cabine lumineuse, vers le lit rond"
   },
   {
    "n": 6,
@@ -108,14 +108,14 @@
    "n": 8,
    "f0": 236,
    "f1": 274,
-   "rush": "N01",
-   "src_start": 13.0,
+   "rush": "N10",
+   "src_start": 0.3,
    "src_dur": 1.2667,
    "slow": 1,
-   "zoom": 1.25,
+   "zoom": 1,
    "ax": 0.5,
-   "ay": 0.0,
-   "desc": "la lumière dorée → le yacht au coucher du soleil (recadré : bateau sous la légende)"
+   "ay": 0.5,
+   "desc": "la lumière dorée → le carré baigné de lumière dorée"
   }
  ],
  "caption": {

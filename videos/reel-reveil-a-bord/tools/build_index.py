@@ -70,7 +70,7 @@ html = f'''<!doctype html>
       .voile {{ position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }}
       #legende {{ position: absolute; left: 108px; right: 108px; top: {lay["top"]}px; height: {lay["block_h"]}px; }}
       #legende .w {{ position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; color: {lay["text_hex"]};
-                    font-family: "Instrument Serif", serif; font-weight: 400; font-size: {lay["size"]}px; letter-spacing: 0.005em; }}
+                    font-family: "Instrument Serif", serif; font-weight: 400; font-size: {lay["size"]}px; letter-spacing: {lay.get("letter_spacing_em", 0.005)}em; }}
 {chr(10).join(extra_css)}
     </style>
   </head>
