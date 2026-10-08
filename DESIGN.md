@@ -41,8 +41,10 @@ Deux polices seulement, les mêmes que le site, en fichiers locaux (licence libr
 |---|---|---|
 | **Instrument Serif** | accroches, titres, paroles | 400 romain + italique |
 | **Instrument Sans** | lignes d'information (lieu, offre) | 500 |
+| **Cormorant Garamond** | légende fine « cocon » (mise en page C) | 300 italique |
 
-- **Minimaliste et élégante** : casse de phrase, jamais tout en capitales ; pas d'ombre, pas de halo, pas de contour, pas d'effet tape-à-l'œil.
+- **Minimaliste et élégante** : casse de phrase, jamais tout en capitales ; pas d'ombre, pas de halo, pas de contour, pas d'effet tape-à-l'œil
+  (seule exception : l'ombre très légère de la mise en page C, demandée par Robin).
 - **Tailles minimales sur un canvas 1080 × 1920** : accroche ≥ 90 px, texte ≥ 60 px. Les déliés d'Instrument Serif sont fins : ne pas descendre sous ces tailles.
 - **Jamais plus de 2 lignes à l'écran en même temps.**
 
@@ -60,6 +62,15 @@ Deux mises en page, selon la vidéo :
 - Instrument Serif **72 px**, **centrée**, une phrase à la fois, toujours à la même hauteur (y ≈ 400) sauf si le plan l'interdit.
 - Apparition en 2 images, disparition franche sur la coupe, calées **à l'image près** sur la musique ou la référence.
 - Outil : `videos/reel-oh-life/tools/lyrics_style.py`.
+
+**C. Légende fine « cocon » (copie d'un reel élégant)** — validée par Robin le 08/10/2026 sur le reel « waking up here »
+- **Cormorant Garamond Light Italic** (300 italique), **76 px**, minuscules comme la référence, interlettrage 0,02 em,
+  **centrée à mi-hauteur** (milieu de la ligne à y ≈ 957), fixe du début à la fin.
+- **Encre claire** teintée par les plans (OKLCH 0,97 ; 0,022, jamais un blanc neutre) avec **une ombre très légère par
+  derrière**, dans l'encre foncée de la même teinte : `0 1px 3px` à 60 % + halo `0 0 10px` à 20 %. **Pas de bande, pas de bloc.**
+- Exception validée par Robin : sur les draps blancs, le contrôle de contraste de `check` échoue (il ne compte pas l'ombre) ;
+  c'est accepté pour cette mise en page, la lisibilité vient de l'ombre. Vérifier quand même à l'œil, à la taille réelle.
+- Outil : `videos/reel-reveil-a-bord/tools/caption_style.py` (mode `ombre`).
 
 ## 4. Couleur du texte : elle s'adapte à chaque plan
 

@@ -12,13 +12,13 @@ L'identité visuelle et éditoriale est dans `DESIGN.md` : la lire avant toute v
 ## Règles créatives (toutes les vidéos)
 
 1. **Accroche dans les 2 premières secondes** : un visuel fort et/ou un texte d'accroche visible dès la seconde 0, jamais d'intro lente ni de logo seul.
-2. **Texte lisible sur mobile** : corps de texte ≥ 60 px sur un canvas 1080×1920, titres ≥ 90 px, contraste fort (le contrôle WCAG de `check` doit passer), pas plus de 2 lignes courtes à la fois.
+2. **Texte lisible sur mobile** : corps de texte ≥ 60 px sur un canvas 1080×1920, titres ≥ 90 px, contraste fort (le contrôle WCAG de `check` doit passer, sauf exception validée par Robin et notée dans `DESIGN.md`), pas plus de 2 lignes courtes à la fois.
 3. **Zones sûres du format 9:16 (1080×1920)** : tout le visible reste dans la zone « action-safe » (marge de 5 %, soit 54 px) ; le texte et le contenu clé restent dans la zone « title-safe » (marge de 10 %, soit 108 px sur les côtés et 192 px en haut et en bas). Éviter de poser du texte dans le bas de l'écran, là où les applications (Instagram, TikTok, Reels) affichent légende et boutons.
 4. **2 polices maximum** par vidéo (une pour les titres, une pour le texte). Toute police nommée doit être déclarée avec `@font-face` vers un fichier local.
 
 ## Règles de production
 
-5. **Avant tout rendu, toujours** : `npx hyperframes lint`, puis `npx hyperframes check`, puis `npx hyperframes snapshot` (et regarder les images). Ne rendre que si tout passe.
+5. **Avant tout rendu, toujours** : `npx hyperframes lint`, puis `npx hyperframes check`, puis `npx hyperframes snapshot` (et regarder les images). Ne rendre que si tout passe (ou si Robin a validé l'exception, notée dans `DESIGN.md`).
 6. Itérer avec `--quality draft`, premier vrai rendu en `--quality looks`, livraison finale en `--quality delivery`.
 7. Ne jamais rendre sans l'accord de Robin sur l'aperçu final.
 8. Les rendus vont dans `videos/<projet>/renders/`. Ne pas committer les médias sources lourds (photos/vidéos de clients) : ils restent sur Google Drive.

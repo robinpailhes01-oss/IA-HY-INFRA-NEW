@@ -33,14 +33,17 @@ v2 (correction de Robin : « uniquement des rushs de l'intérieur du bateau ») 
 
 - Ni logo Instagram ni écran de fin (correction de Robin sur le reel « Welcome ») : la vidéo s'arrête à 9,13 s,
   là où la référence passait à l'écran de fin ; la musique y est silencieuse.
-- Légende à 60 px (règle de lisibilité mobile ; ≈ 28 px dans la référence), Instrument Serif, interlettrage 0,06 em ;
-  encre lie-de-vin (#3D172B) tirée des plans sur une petite bande crème arrondie à 40 % d'opacité (dernier recours du
-  DESIGN §4, accepté par Robin : « le bloc de la C si besoin ») : sans elle, des mots tombent sur les pétales ou le bois
-  sombre (contraste vérifié mot par mot et image par image, pire cas 6,6:1).
+- Légende (v3, demande de Robin : « une écriture ultra élégante avec un tout petit effet d'ombre », sans la bande claire) :
+  Cormorant Garamond Light Italic 76 px, encre claire #FFF1E8 teintée par les plans, ombre très légère lie-de-vin
+  (0 1 3 px à 60 % + halo 10 px à 20 %) ; mise en page C du DESIGN.md. Le contrôle de contraste de check échoue sur les
+  lits blancs (il ne compte pas l'ombre) : exception validée par Robin le 08/10/2026 (« garde le texte en petit avec de
+  l'ombre par derrière »).
 - Aucun passage où se lit la marque « NEXT YACHT » (polo du rush N05, poupe du bateau dans N01 à 4,5–6,5 s, carte
   « Bienvenue sur le NEXT YACHT » dans N03, N16 et N01 à 2,4–4,3 s). Question posée à Robin.
 
 ## Notes
 
 - Rendu en mode capture d'écran (`--low-memory-mode`), comme « Welcome ».
+- Livré le 08/10/2026 après accord de Robin : `renders/reveil-a-bord-final.mp4` (qualité delivery, avec le son) et
+  `renders/reveil-a-bord-final-sans-son.mp4` (non committés).
 - Publier la version sans le son et ajouter le même son dans Instagram (droits).
