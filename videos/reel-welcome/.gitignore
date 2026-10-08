@@ -1,0 +1,5 @@
+# Médias lourds ou protégés : jamais dans le dépôt (voir assets/SOURCES.md)
+assets/bgm.mp3
+assets/rushes/
+renders/*.mp4
+snapshots/

@@ -1,0 +1,47 @@
+{
+ "size": 160,
+ "line_height": 1.1,
+ "block_h": 704,
+ "rows": [
+  {
+   "texte": "Welcome",
+   "italique": false,
+   "f0": 6,
+   "y": 0,
+   "hauteur_ligne": 176,
+   "largeur": 475
+  },
+  {
+   "texte": "to",
+   "italique": true,
+   "f0": 25,
+   "y": 176,
+   "hauteur_ligne": 176,
+   "largeur": 109
+  },
+  {
+   "texte": "Harmonie",
+   "italique": false,
+   "f0": 45,
+   "y": 352,
+   "hauteur_ligne": 176,
+   "largeur": 546
+  },
+  {
+   "texte": "Yacht",
+   "italique": false,
+   "f0": 61,
+   "y": 528,
+   "hauteur_ligne": 176,
+   "largeur": 299
+  }
+ ],
+ "f1": 82,
+ "top": 440,
+ "polarity": "foncé",
+ "treatment": "voile",
+ "text_hex": "#06081F",
+ "veil_hex": "#F5F8FA",
+ "veil_alpha": 0.05,
+ "contrast_word_min": 4.82
+}
