@@ -1,0 +1,306 @@
+{
+ "x0": 108,
+ "line_height": 1.06,
+ "texts": [
+  {
+   "id": "T1",
+   "f0": 0,
+   "f1": 118,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "À 15 min de Montpellier,",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 809
+    },
+    {
+     "type": "texte",
+     "texte": "l’eau change de couleur.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 844
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "voile",
+   "text_hex": "#002D3D",
+   "veil_hex": "#E6F9FF",
+   "veil_alpha": 0.15,
+   "hue": 221.9,
+   "contrast_word_min": 4.32,
+   "contrast_line_median": 5.24,
+   "contrast_line_p10": 4.72,
+   "zone_mean_hex": "#008DAE"
+  },
+  {
+   "id": "T2",
+   "f0": 206,
+   "f1": 295,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Le skipper à la barre,",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 704
+    },
+    {
+     "type": "texte",
+     "texte": "toi, au soleil.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 456
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#0C2B45",
+   "site_color": "Encre océan",
+   "ladder_step": 0,
+   "hue": 254.6,
+   "contrast_word_min": 3.68,
+   "contrast_line_median": 5.65,
+   "contrast_line_p10": 5.33,
+   "zone_mean_hex": "#79A6DF"
+  },
+  {
+   "id": "T3",
+   "f0": 473,
+   "f1": 561,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Plus besoin de parler,",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 721
+    },
+    {
+     "type": "texte",
+     "texte": "l’horizon suffit.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 544
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#0C2B45",
+   "site_color": "Encre océan",
+   "ladder_step": 0,
+   "hue": 249.3,
+   "contrast_word_min": 4.23,
+   "contrast_line_median": 4.91,
+   "contrast_line_p10": 4.87,
+   "zone_mean_hex": "#669DD3"
+  },
+  {
+   "id": "T4",
+   "f0": 651,
+   "f1": 740,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Puis la lumière",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 504
+    },
+    {
+     "type": "texte",
+     "texte": "tourne au miel.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 559
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#0C2B45",
+   "site_color": "Encre océan",
+   "ladder_step": 0,
+   "hue": 250.7,
+   "contrast_word_min": 5.22,
+   "contrast_line_median": 6.19,
+   "contrast_line_p10": 6.19,
+   "zone_mean_hex": "#96ABC3"
+  },
+  {
+   "id": "T5",
+   "f0": 917,
+   "f1": 1006,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Le bateau glisse",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 523
+    },
+    {
+     "type": "texte",
+     "texte": "sur une mer de cuivre.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 799
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#3B182F",
+   "site_color": null,
+   "ladder_step": 0,
+   "hue": 342.5,
+   "contrast_word_min": 5.5,
+   "contrast_line_median": 6.02,
+   "contrast_line_p10": 5.99,
+   "zone_mean_hex": "#B69CAB"
+  },
+  {
+   "id": "T6",
+   "f0": 1095,
+   "f1": 1184,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Chaque reflet s’étire,",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 687
+    },
+    {
+     "type": "texte",
+     "texte": "et toi avec.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 373
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#3D172B",
+   "site_color": null,
+   "ladder_step": 0,
+   "hue": 50.4,
+   "contrast_word_min": 5.0,
+   "contrast_line_median": 5.64,
+   "contrast_line_p10": 5.61,
+   "zone_mean_hex": "#E68245"
+  },
+  {
+   "id": "T7",
+   "f0": 1272,
+   "f1": 1362,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Si loin.",
+     "police": "serif",
+     "taille": 100,
+     "y": 0,
+     "hauteur_ligne": 106,
+     "largeur": 233
+    },
+    {
+     "type": "texte",
+     "texte": "Et si près de chez toi.",
+     "police": "serif-i",
+     "taille": 100,
+     "y": 106,
+     "hauteur_ligne": 106,
+     "largeur": 719
+    }
+   ],
+   "block_h": 212,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#3F1726",
+   "site_color": null,
+   "ladder_step": 0,
+   "hue": 359.1,
+   "contrast_word_min": 5.46,
+   "contrast_line_median": 6.01,
+   "contrast_line_p10": 5.83,
+   "zone_mean_hex": "#BB99A3"
+  },
+  {
+   "id": "SIG",
+   "f0": 1377,
+   "f1": 1502,
+   "rows": [
+    {
+     "type": "texte",
+     "texte": "Harmonie Yacht",
+     "police": "serif",
+     "taille": 96,
+     "y": 0,
+     "hauteur_ligne": 102,
+     "largeur": 523
+    },
+    {
+     "type": "filet",
+     "y": 132
+    },
+    {
+     "type": "texte",
+     "texte": "Port de Carnon",
+     "police": "sans",
+     "taille": 60,
+     "y": 164,
+     "hauteur_ligne": 64,
+     "largeur": 423
+    }
+   ],
+   "block_h": 228,
+   "top": 300,
+   "polarity": "foncé",
+   "treatment": "nu",
+   "text_hex": "#401720",
+   "site_color": null,
+   "ladder_step": 0,
+   "hue": 9.2,
+   "contrast_word_min": 4.22,
+   "contrast_line_median": 5.04,
+   "contrast_line_p10": 5.0,
+   "zone_mean_hex": "#BA8E94"
+  }
+ ]
+}

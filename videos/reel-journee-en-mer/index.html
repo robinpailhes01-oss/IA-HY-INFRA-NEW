@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <!-- Généré par tools/build_index.py depuis plan.json et layout.json : ne pas éditer à la main. -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+      @font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: block; }
+      @font-face { font-family: "Instrument Sans"; src: url("assets/fonts/instrument-sans-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0c2b45; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0c2b45; }
+      .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .bloc { position: absolute; left: 108px; right: 108px; height: 600px; }
+      .bloc .r { position: absolute; left: 0; white-space: nowrap; color: var(--c); font-weight: 400; letter-spacing: -0.005em; }
+      .voile { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; }
+      .bloc .filet { position: absolute; left: 0; width: 72px; height: 2px; background: var(--c); }
+      #T1 { top: 300px; --c: #002D3D; }
+      #T1-voile { height: 940px; background: linear-gradient(to bottom, rgba(230, 249, 255, 0.15) 0px, rgba(230, 249, 255, 0.15) 560px, rgba(230, 249, 255, 0.00) 940px); }
+      #T2 { top: 300px; --c: #0C2B45; }
+      #T3 { top: 300px; --c: #0C2B45; }
+      #T4 { top: 300px; --c: #0C2B45; }
+      #T5 { top: 300px; --c: #3B182F; }
+      #T6 { top: 300px; --c: #3D172B; }
+      #T7 { top: 300px; --c: #3F1726; }
+      #SIG { top: 300px; --c: #401720; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="50.066666" data-width="1080" data-height="1920">
+      <video id="plan01" class="clip shot" src="assets/rushes/plan01.mp4" muted playsinline data-start="0.000000" data-duration="3.949999" data-track-index="0"></video>
+      <video id="plan02" class="clip shot" src="assets/rushes/plan02.mp4" muted playsinline data-start="3.933333" data-duration="1.483333" data-track-index="0"></video>
+      <video id="plan03" class="clip shot" src="assets/rushes/plan03.mp4" muted playsinline data-start="5.400000" data-duration="1.483333" data-track-index="0"></video>
+      <video id="plan04" class="clip shot" src="assets/rushes/plan04.mp4" muted playsinline data-start="6.866666" data-duration="2.983333" data-track-index="0"></video>
+      <video id="plan05" class="clip shot" src="assets/rushes/plan05.mp4" muted playsinline data-start="9.833333" data-duration="3.016666" data-track-index="0"></video>
+      <video id="plan06" class="clip shot" src="assets/rushes/plan06.mp4" muted playsinline data-start="12.833333" data-duration="1.483333" data-track-index="0"></video>
+      <video id="plan07" class="clip shot" src="assets/rushes/plan07.mp4" muted playsinline data-start="14.300000" data-duration="1.483333" data-track-index="0"></video>
+      <video id="plan08" class="clip shot" src="assets/rushes/plan08.mp4" muted playsinline data-start="15.766666" data-duration="2.949999" data-track-index="0"></video>
+      <video id="plan09" class="clip shot" src="assets/rushes/plan09.mp4" muted playsinline data-start="18.700000" data-duration="1.516666" data-track-index="0"></video>
+      <video id="plan10" class="clip shot" src="assets/rushes/plan10.mp4" muted playsinline data-start="20.200000" data-duration="1.516666" data-track-index="0"></video>
+      <video id="plan11" class="clip shot" src="assets/rushes/plan11.mp4" muted playsinline data-start="21.700000" data-duration="2.983333" data-track-index="0"></video>
+      <video id="plan12" class="clip shot" src="assets/rushes/plan12.mp4" muted playsinline data-start="24.666666" data-duration="2.949999" data-track-index="0"></video>
+      <video id="plan13" class="clip shot" src="assets/rushes/plan13.mp4" muted playsinline data-start="27.600000" data-duration="1.516666" data-track-index="0"></video>
+      <video id="plan14" class="clip shot" src="assets/rushes/plan14.mp4" muted playsinline data-start="29.100000" data-duration="1.483333" data-track-index="0"></video>
+      <video id="plan15" class="clip shot" src="assets/rushes/plan15.mp4" muted playsinline data-start="30.566666" data-duration="2.983333" data-track-index="0"></video>
+      <video id="plan16" class="clip shot" src="assets/rushes/plan16.mp4" muted playsinline data-start="33.533333" data-duration="2.983333" data-track-index="0"></video>
+      <video id="plan17" class="clip shot" src="assets/rushes/plan17.mp4" muted playsinline data-start="36.500000" data-duration="2.983333" data-track-index="0"></video>
+      <video id="plan18" class="clip shot" src="assets/rushes/plan18.mp4" muted playsinline data-start="39.466666" data-duration="1.516666" data-track-index="0"></video>
+      <video id="plan19" class="clip shot" src="assets/rushes/plan19.mp4" muted playsinline data-start="40.966666" data-duration="1.450000" data-track-index="0"></video>
+      <video id="plan20" class="clip shot" src="assets/rushes/plan20.mp4" muted playsinline data-start="42.400000" data-duration="3.016666" data-track-index="0"></video>
+      <video id="plan21" class="clip shot" src="assets/rushes/plan21.mp4" muted playsinline data-start="45.400000" data-duration="4.666666" data-track-index="0"></video>
+      <div id="T1-voile" class="clip voile" data-start="0.000000" data-duration="3.916666" data-track-index="2"></div>
+      <div id="T1" class="clip bloc" data-start="0.000000" data-duration="3.916666" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">À 15 min de Montpellier,</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">l’eau change de couleur.</div></div>
+      <div id="T2" class="clip bloc" data-start="6.850000" data-duration="2.966666" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Le skipper à la barre,</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">toi, au soleil.</div></div>
+      <div id="T3" class="clip bloc" data-start="15.750000" data-duration="2.933333" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Plus besoin de parler,</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">l’horizon suffit.</div></div>
+      <div id="T4" class="clip bloc" data-start="21.683333" data-duration="2.966666" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Puis la lumière</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">tourne au miel.</div></div>
+      <div id="T5" class="clip bloc" data-start="30.550000" data-duration="2.966666" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Le bateau glisse</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">sur une mer de cuivre.</div></div>
+      <div id="T6" class="clip bloc" data-start="36.483333" data-duration="2.966666" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Chaque reflet s’étire,</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">et toi avec.</div></div>
+      <div id="T7" class="clip bloc" data-start="42.383333" data-duration="3.000000" data-track-index="3"><div class="r r1" style="top: 0px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 100px;">Si loin.</div><div class="r r2" style="top: 106px; height: 106px; line-height: 106px; font-family: 'Instrument Serif', serif; font-style: italic; font-size: 100px;">Et si près de chez toi.</div></div>
+      <div id="SIG" class="clip bloc" data-start="45.883333" data-duration="4.183333" data-track-index="3"><div class="r r1" style="top: 0px; height: 102px; line-height: 102px; font-family: 'Instrument Serif', serif; font-style: normal; font-size: 96px;">Harmonie Yacht</div><div class="filet" style="top: 132px"></div><div class="r r2" style="top: 164px; height: 64px; line-height: 64px; font-family: 'Instrument Sans', serif; font-style: normal; font-size: 60px;">Port de Carnon</div></div>
+      <audio id="music" src="assets/bgm.mp3" data-start="0" data-duration="50.066666" data-track-index="11" data-volume="1"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.to("#T1 .r, #T1 .filet, #T1-voile", { opacity: 0, duration: 0.4, ease: "power1.in" }, 3.433333);
+      tl.fromTo("#T2 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 6.866666);
+      tl.fromTo("#T2 .r2, #T2 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 7.116666);
+      tl.to("#T2 .r, #T2 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 9.333333);
+      tl.fromTo("#T3 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 15.766666);
+      tl.fromTo("#T3 .r2, #T3 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 16.016666);
+      tl.to("#T3 .r, #T3 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 18.200000);
+      tl.fromTo("#T4 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 21.700000);
+      tl.fromTo("#T4 .r2, #T4 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 21.950000);
+      tl.to("#T4 .r, #T4 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 24.166666);
+      tl.fromTo("#T5 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 30.566666);
+      tl.fromTo("#T5 .r2, #T5 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 30.816666);
+      tl.to("#T5 .r, #T5 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 33.033333);
+      tl.fromTo("#T6 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 36.500000);
+      tl.fromTo("#T6 .r2, #T6 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 36.750000);
+      tl.to("#T6 .r, #T6 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 38.966666);
+      tl.fromTo("#T7 .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 42.400000);
+      tl.fromTo("#T7 .r2, #T7 .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 42.650000);
+      tl.to("#T7 .r, #T7 .filet", { opacity: 0, duration: 0.4, ease: "power1.in" }, 44.900000);
+      tl.fromTo("#SIG .r1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 45.900000);
+      tl.fromTo("#SIG .r2, #SIG .filet", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 46.150000);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
