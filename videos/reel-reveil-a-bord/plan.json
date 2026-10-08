@@ -1,0 +1,126 @@
+{
+ "fps": 30,
+ "total_frames": 274,
+ "cuts": [
+  0,
+  50,
+  96,
+  132,
+  165,
+  186,
+  216,
+  236,
+  274
+ ],
+ "shots": [
+  {
+   "n": 1,
+   "f0": 0,
+   "f1": 50,
+   "rush": "N17",
+   "src_start": 0.3,
+   "src_dur": 0.8333,
+   "slow": 2,
+   "zoom": 1,
+   "ax": 0.5,
+   "ay": 0.5,
+   "desc": "chambre (grand plan) → la cabine principale, le lit aux pétales « LOVE »"
+  },
+  {
+   "n": 2,
+   "f0": 50,
+   "f1": 96,
+   "rush": "N09",
+   "src_start": 0.25,
+   "src_dur": 1.5333,
+   "slow": 1,
+   "zoom": 1,
+   "ax": 0.5,
+   "ay": 0.5,
+   "desc": "petit déjeuner → la table du carré, jus d’orange et viennoiseries"
+  },
+  {
+   "n": 3,
+   "f0": 96,
+   "f1": 132,
+   "rush": "N12",
+   "src_start": 0.2,
+   "src_dur": 0.6,
+   "slow": 2,
+   "zoom": 1,
+   "ax": 0.5,
+   "ay": 0.5,
+   "desc": "la terrasse → sortie du port de Carnon au coucher du soleil, les invitées de dos à table"
+  },
+  {
+   "n": 4,
+   "f0": 132,
+   "f1": 165,
+   "rush": "N22",
+   "src_start": 0.5,
+   "src_dur": 0.55,
+   "slow": 2,
+   "zoom": 1,
+   "ax": 0.5,
+   "ay": 0.5,
+   "desc": "vue depuis l’abri → sous le bimini, le port en fond"
+  },
+  {
+   "n": 5,
+   "f0": 165,
+   "f1": 186,
+   "rush": "N23",
+   "src_start": 0.4,
+   "src_dur": 0.35,
+   "slow": 2,
+   "zoom": 1,
+   "ax": 0.5,
+   "ay": 0.5,
+   "desc": "la femme qui sort → les deux invitées sur la plage avant, face à la mer, de dos"
+  },
+  {
+   "n": 6,
+   "f0": 186,
+   "f1": 216,
+   "rush": "N08",
+   "src_start": 0.6,
+   "src_dur": 1.0,
+   "slow": 1,
+   "zoom": 1.2,
+   "ax": 0.5,
+   "ay": 0.0,
+   "desc": "le lit et la fenêtre → le lit « LOVE », plan fixe (recadré : « LOVE » sous la légende)"
+  },
+  {
+   "n": 7,
+   "f0": 216,
+   "f1": 236,
+   "rush": "N19",
+   "src_start": 1.5,
+   "src_dur": 0.3333,
+   "slow": 2,
+   "zoom": 1,
+   "ax": 0.5,
+   "ay": 0.5,
+   "desc": "le détail (livre et café) → les pétales et le cœur sur le lit"
+  },
+  {
+   "n": 8,
+   "f0": 236,
+   "f1": 274,
+   "rush": "N01",
+   "src_start": 13.0,
+   "src_dur": 1.2667,
+   "slow": 1,
+   "zoom": 1.25,
+   "ax": 0.5,
+   "ay": 0.0,
+   "desc": "la lumière dorée → le yacht au coucher du soleil (recadré : bateau sous la légende)"
+  }
+ ],
+ "caption": {
+  "texte": "waking up here",
+  "f0": 0,
+  "f1": 274
+ }
+}

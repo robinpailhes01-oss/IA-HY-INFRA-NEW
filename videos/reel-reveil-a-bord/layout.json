@@ -1,0 +1,23 @@
+{
+ "size": 60,
+ "line_height": 1.5,
+ "block_h": 90,
+ "rows": [
+  {
+   "texte": "waking up here",
+   "italique": false,
+   "f0": 0,
+   "y": 0,
+   "hauteur_ligne": 90,
+   "largeur": 315
+  }
+ ],
+ "f1": 274,
+ "top": 912,
+ "polarity": "foncé",
+ "treatment": "voile",
+ "text_hex": "#230515",
+ "veil_hex": "#FFF1E8",
+ "veil_alpha": 0.05,
+ "contrast_word_min": 4.52
+}
