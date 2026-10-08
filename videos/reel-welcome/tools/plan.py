@@ -4,6 +4,8 @@ Usage (depuis le projet) : python3 -I tools/plan.py
 
 Référence (30 i/s) : titre mot par mot sur les 4 premiers plans (0 → 2,73 s), montage rapide de 20 plans
 (2,73 → 7,63 s, 4 à 13 images par plan), plan fixe (7,63 → 13,2 s) assombri à 9,17 s avec le logo Instagram et le compte.
+v2 (demande de Robin) : sans logos Instagram ni écran de fin ; la vidéo s'arrête à 9,17 s, là où commençait l'écran de fin
+(la musique est déjà silencieuse depuis 7,9 s, la fin tombe donc sans coupure audible).
 Les passages de rushes choisis sont ceux déjà vérifiés sans intrusion (voir les relectures des reels précédents) ;
 un rush qui revient change de passage ou de cadrage (plans 10, 11, 24 revus après le premier brouillon).
 """
@@ -11,8 +13,8 @@ import json
 
 FPS = 30
 # Coupes de la référence (détection de scène, en images à 30 i/s) ; 396 = fin (13,2 s)
-CUTS = [0, 25, 45, 61, 82, 87, 92, 97, 102, 111, 119, 131, 139, 147, 159, 167, 171, 176, 182, 189, 202, 208, 216, 223, 229, 396]
-DARK = 275          # 9,17 s : l'image s'assombrit, logo Instagram + compte
+END = 275           # 9,17 s : début de l'écran de fin de la référence, retiré à la demande de Robin
+CUTS = [0, 25, 45, 61, 82, 87, 92, 97, 102, 111, 119, 131, 139, 147, 159, 167, 171, 176, 182, 189, 202, 208, 216, 223, 229, END]
 # (rush, début source s, ralenti, zoom, ax, ay, rotation°, poussée, description)
 SHOTS = [
     ('06', 0.30, 1, 1, .5, .5, 0, 0, 'pieds au-dessus de l’eau turquoise — « Welcome »'),
@@ -39,10 +41,10 @@ SHOTS = [
     ('10', 3.50, 1, 1.3, 0.0, .62, 0, 0, 'plus près des deux personnes'),
     ('11', 6.00, 1, 1.4, 0.0, 1.0, 0, 0, 'détail de la rambarde'),
     ('09', 1.60, 1, 1.7, 1.0, 0.2, 0, 0, 'le soleil couchant (recadrage 4K, différent du plan 15)'),
-    ('11', 7.60, 2, 1.04, .5, .5, -1.1, .05, 'la proue au coucher de soleil, plan final (assombri à 9,17 s)'),
+    ('11', 7.60, 2, 1.04, .5, .5, -1.1, .02, 'la proue au coucher de soleil, plan final'),
 ]
 assert len(SHOTS) == len(CUTS) - 1
-plan = {'fps': FPS, 'total_frames': CUTS[-1], 'cuts': CUTS, 'dark_frame': DARK, 'shots': []}
+plan = {'fps': FPS, 'total_frames': CUTS[-1], 'cuts': CUTS, 'shots': []}
 for i, (rush, ss, slow, zoom, ax, ay, rot, push, desc) in enumerate(SHOTS):
     f0, f1 = CUTS[i], CUTS[i + 1]
     plan['shots'].append({'n': i + 1, 'f0': f0, 'f1': f1, 'rush': rush, 'src_start': ss, 'src_dur': round((f1 - f0) / FPS / slow, 4),
@@ -50,7 +52,6 @@ for i, (rush, ss, slow, zoom, ax, ay, rot, push, desc) in enumerate(SHOTS):
 # Titre : un mot par plan, comme la référence (« WELCOME » à 0,2 s puis chaque mot sur sa coupe), jusqu'à la coupe de 2,73 s
 plan['title'] = {'f1': CUTS[4], 'words': [{'texte': 'Welcome', 'f0': 6}, {'texte': 'to', 'f0': CUTS[1], 'italique': True},
                                           {'texte': 'Harmonie', 'f0': CUTS[2]}, {'texte': 'Yacht', 'f0': CUTS[3]}]}
-plan['end_card'] = {'f0': DARK, 'handle': '@harmonieyacht'}   # compte relevé sur harmonie-yacht.fr (lien Instagram du site)
 json.dump(plan, open('plan.json', 'w'), indent=1, ensure_ascii=False)
 for s in plan['shots']:
     print(f"{s['n']:2d} {s['f0'] / FPS:5.2f}–{s['f1'] / FPS:5.2f} ({s['f1'] - s['f0']:3d} img) rush {s['rush']} src {s['src_start']:.2f} ×{s['slow']} zoom {s['zoom']}  {s['desc']}")

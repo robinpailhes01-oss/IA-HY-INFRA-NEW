@@ -8,7 +8,6 @@
     <style>
       @font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
       @font-face { font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: block; }
-      @font-face { font-family: "Instrument Sans"; src: url("assets/fonts/instrument-sans-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0c2b45; }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0c2b45; }
@@ -18,21 +17,11 @@
       #title { position: absolute; left: 108px; right: 108px; top: 440px; height: 704px; }
       #title .w { position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; color: #06081F;
                   font-family: "Instrument Serif", serif; font-weight: 400; font-size: 160px; letter-spacing: -0.005em; }
-      #coin { position: absolute; left: 916px; top: 477px; width: 56px; height: 56px; }
-      #fin-compte .h { display: inline-block; }
-      .pop { position: absolute; inset: 0; transform-origin: 50% 50%; }
-      #coin .g { position: absolute; inset: 0; filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.25)); }
-      #coin .couleurs, #fin-logo .couleurs { opacity: 0; }
-      #fin-voile { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.75); }
-      #fin-logo { position: absolute; left: 465px; top: 839px; width: 150px; height: 150px; }
-      #fin-logo .g { position: absolute; inset: 0; }
-      #fin-compte { position: absolute; left: 108px; right: 108px; top: 1046px; height: 80px; line-height: 80px; text-align: center;
-                    color: #FFFFFF; font-family: "Instrument Sans", sans-serif; font-weight: 500; font-size: 60px; letter-spacing: 0.01em; }
       #title-voile { height: 1572px; background: linear-gradient(to bottom, rgba(245, 248, 250, 0.05) 0px, rgba(245, 248, 250, 0.05) 1192px, rgba(245, 248, 250, 0.00) 1572px); }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="13.200000" data-width="1080" data-height="1920">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="9.166666" data-width="1080" data-height="1920">
       <div id="v01" class="inner"><video id="plan01" class="clip shot" src="assets/rushes/plan01.mp4" muted playsinline data-start="0.000000" data-duration="0.850000" data-track-index="0"></video></div>
       <div id="v02" class="inner"><video id="plan02" class="clip shot" src="assets/rushes/plan02.mp4" muted playsinline data-start="0.833333" data-duration="0.683333" data-track-index="0"></video></div>
       <div id="v03" class="inner"><video id="plan03" class="clip shot" src="assets/rushes/plan03.mp4" muted playsinline data-start="1.500000" data-duration="0.550000" data-track-index="0"></video></div>
@@ -57,31 +46,19 @@
       <div id="v22" class="inner"><video id="plan22" class="clip shot" src="assets/rushes/plan22.mp4" muted playsinline data-start="6.933333" data-duration="0.283333" data-track-index="0"></video></div>
       <div id="v23" class="inner"><video id="plan23" class="clip shot" src="assets/rushes/plan23.mp4" muted playsinline data-start="7.200000" data-duration="0.250000" data-track-index="0"></video></div>
       <div id="v24" class="inner"><video id="plan24" class="clip shot" src="assets/rushes/plan24.mp4" muted playsinline data-start="7.433333" data-duration="0.216666" data-track-index="0"></video></div>
-      <div id="v25" class="inner"><video id="plan25" class="clip shot" src="assets/rushes/plan25.mp4" muted playsinline data-start="7.633333" data-duration="5.566666" data-track-index="0"></video></div>
+      <div id="v25" class="inner"><video id="plan25" class="clip shot" src="assets/rushes/plan25.mp4" muted playsinline data-start="7.633333" data-duration="1.533333" data-track-index="0"></video></div>
       <div id="title-voile" class="clip voile" data-start="0.183333" data-duration="2.533333" data-track-index="2"></div>
       <div id="title" class="clip" data-start="0.183333" data-duration="2.533333" data-track-index="3"><div class="w w1" style="top: 0px; height: 176px; line-height: 176px; font-style: normal;">Welcome</div><div class="w w2" style="top: 176px; height: 176px; line-height: 176px; font-style: italic;">to</div><div class="w w3" style="top: 352px; height: 176px; line-height: 176px; font-style: normal;">Harmonie</div><div class="w w4" style="top: 528px; height: 176px; line-height: 176px; font-style: normal;">Yacht</div></div>
-      <div id="coin" class="clip" data-start="0.183333" data-duration="8.966666" data-track-index="4"><div class="pop"><div class="g blanc"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#FFFFFF" stroke-width="1.9"><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="17.4" cy="6.6" r="0.55" fill="#FFFFFF" stroke-width="1.2"/></svg></div><div class="g couleurs"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="url(#ig-coin)" stroke-width="1.9"><defs><linearGradient id="ig-coin" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FEDA75"/><stop offset="0.25" stop-color="#FA7E1E"/><stop offset="0.5" stop-color="#D62976"/><stop offset="0.75" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="17.4" cy="6.6" r="0.55" fill="url(#ig-coin)" stroke-width="1.2"/></svg></div></div></div>
-      <div id="fin-voile" class="clip" data-start="9.149999" data-duration="4.050000" data-track-index="5"></div>
-      <div id="fin-logo" class="clip" data-start="9.149999" data-duration="4.050000" data-track-index="6"><div class="pop"><div class="g blanc"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="#FFFFFF" stroke-width="1.9"><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="17.4" cy="6.6" r="0.55" fill="#FFFFFF" stroke-width="1.2"/></svg></div><div class="g couleurs"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="url(#ig-fin)" stroke-width="1.9"><defs><linearGradient id="ig-fin" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FEDA75"/><stop offset="0.25" stop-color="#FA7E1E"/><stop offset="0.5" stop-color="#D62976"/><stop offset="0.75" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4"/><circle cx="12" cy="12" r="4.4"/><circle cx="17.4" cy="6.6" r="0.55" fill="url(#ig-fin)" stroke-width="1.2"/></svg></div></div></div>
-      <div id="fin-compte" class="clip" data-start="9.350000" data-duration="3.849999" data-track-index="7"><span class="h">@harmonieyacht</span></div>
-      <audio id="music" src="assets/bgm.mp3" data-start="0" data-duration="11.376000" data-track-index="11" data-volume="1"></audio>
+      <audio id="music" src="assets/bgm.mp3" data-start="0" data-duration="9.166666" data-track-index="11" data-volume="1"></audio>
     </div>
     <script>
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
-      tl.fromTo("#v25", { scale: 1 }, { scale: 1.050, duration: 5.5667, ease: "none" }, 7.633333);
+      tl.fromTo("#v25", { scale: 1 }, { scale: 1.020, duration: 1.5333, ease: "none" }, 7.633333);
       tl.fromTo("#title .w1", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 0.183333);
       tl.fromTo("#title .w2", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 0.816666);
       tl.fromTo("#title .w3", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 1.483333);
       tl.fromTo("#title .w4", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 2.016666);
-      tl.fromTo("#coin .pop", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.2667, ease: "back.out(2)" }, 0.183333);
-      tl.fromTo("#coin .couleurs", { opacity: 0 }, { opacity: 1, duration: 0.4000, ease: "power1.inOut", immediateRender: false }, 2.083333);
-      tl.to("#coin .couleurs", { opacity: 0, duration: 0.4000, ease: "power1.inOut" }, 4.283333);
-      tl.fromTo("#fin-logo .pop", { scale: 1 }, { scale: 1.08, duration: 0.2000, ease: "power2.out" }, 9.183333);
-      tl.to("#fin-logo .pop", { scale: 1, duration: 0.1667, ease: "power2.inOut" }, 9.383333);
-      tl.fromTo("#fin-compte .h", { opacity: 0 }, { opacity: 1, duration: 0.0667, ease: "none" }, 9.350000);
-      tl.fromTo("#fin-logo .couleurs", { opacity: 0 }, { opacity: 1, duration: 0.4000, ease: "power1.inOut" }, 9.583333);
-      tl.to("#fin-logo .couleurs", { opacity: 0, duration: 0.4000, ease: "power1.inOut" }, 11.683333);
       window.__timelines["main"] = tl;
       tl.seek(0);
     </script>

@@ -3,9 +3,7 @@ Usage (depuis le projet) : python3 -I tools/build_index.py layout.json index.htm
 
 Copie du reel de référence (Casa Santapietra), mesuré image par image :
 - titre mot par mot, un mot par plan (« Welcome » à 0,2 s puis chaque mot sur sa coupe), coupé net à 2,73 s ;
-- petit logo Instagram en haut à droite (apparaît avec « Welcome », disparaît à l'écran final) ;
-- écran final à 9,17 s : image assombrie d'un coup, logo Instagram centré qui grossit un instant (9,2 → 9,5 s),
-  compte sous le logo à 9,37 s, logo blanc qui passe aux couleurs d'Instagram (9,6 → 10 s) puis redevient blanc (11,7 → 12,1 s).
+- v2 (demande de Robin) : ni logos Instagram ni écran de fin ; la vidéo s'arrête sur le dernier plan.
 Temps en numéros d'image (30 i/s). Plans vidéo : chevauchement d'une demi-image (le suivant, plus bas dans le DOM, passe dessus).
 """
 import sys, json, math
@@ -15,9 +13,7 @@ plan = json.load(open('plan.json'))
 lay = json.load(open(LAYOUT))
 FPS, CUTS, TOTAL = plan['fps'], plan['cuts'], plan['total_frames']
 HALF = 0.5 / FPS
-AUDIO = 11.376                       # durée de la musique de la référence (elle s'arrête avant l'image)
-DARK = plan['end_card']['f0']
-HANDLE = plan['end_card']['handle']
+AUDIO = min(11.376, TOTAL / FPS)     # musique de la référence (11,376 s), coupée à la fin de l'image
 T = lay
 F_TITLE0, F_TITLE1 = T['rows'][0]['f0'], T['f1']
 
@@ -33,19 +29,6 @@ def s(f):           # instant d'un texte qui apparaît à l'image f (une demi-im
 def rgba(hex_, a):
     h = hex_.lstrip('#')
     return f'rgba({int(h[0:2], 16)}, {int(h[2:4], 16)}, {int(h[4:6], 16)}, {a:.2f})'
-
-
-def ig(id_):
-    return (f'<defs><linearGradient id="{id_}" x1="2" y1="22" x2="22" y2="2" gradientUnits="userSpaceOnUse">'
-            '<stop offset="0" stop-color="#FEDA75"/><stop offset="0.25" stop-color="#FA7E1E"/><stop offset="0.5" stop-color="#D62976"/>'
-            '<stop offset="0.75" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs>')
-
-
-def glyph(stroke, defs=''):
-    # logo Instagram (contour) : carré arrondi, objectif, point du flash
-    return (f'<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="{stroke}" stroke-width="1.9">{defs}'
-            f'<rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4"/><circle cx="12" cy="12" r="4.4"/>'
-            f'<circle cx="17.4" cy="6.6" r="0.55" fill="{stroke}" stroke-width="1.2"/></svg>')
 
 
 videos, tweens = [], []
@@ -78,32 +61,6 @@ for k, r in enumerate(T['rows']):
     # chaque mot apparaît sur sa coupe en 2 images, comme les mots écrits à la main de la référence
     tweens.append(f'      tl.fromTo("#title .w{k + 1}", {{ opacity: 0 }}, {{ opacity: 1, duration: {2 / FPS:.4f}, ease: "none" }}, {t(s(r["f0"]))});')
 
-# ---------- petit logo Instagram en haut à droite ----------
-c0, c1 = s(F_TITLE0), DARK / FPS - HALF
-blocks.append(f'      <div id="coin" class="clip" data-start="{t(c0)}" data-duration="{t(c1 - c0)}" data-track-index="4"><div class="pop">'
-              f'<div class="g blanc">{glyph("#FFFFFF")}</div><div class="g couleurs">{glyph("url(#ig-coin)", ig("ig-coin"))}</div></div></div>')
-tweens += [
-    f'      tl.fromTo("#coin .pop", {{ opacity: 0, scale: 0.7 }}, {{ opacity: 1, scale: 1, duration: {8 / FPS:.4f}, ease: "back.out(2)" }}, {t(c0)});',
-    # comme la référence : le petit logo passe aux couleurs d'Instagram de 2,1 à 4,7 s
-    f'      tl.fromTo("#coin .couleurs", {{ opacity: 0 }}, {{ opacity: 1, duration: {12 / FPS:.4f}, ease: "power1.inOut", immediateRender: false }}, {t(s(63))});',
-    f'      tl.to("#coin .couleurs", {{ opacity: 0, duration: {12 / FPS:.4f}, ease: "power1.inOut" }}, {t(s(129))});',
-]
-
-# ---------- écran final ----------
-e0, e1 = s(DARK), TOTAL / FPS
-blocks.append(f'      <div id="fin-voile" class="clip" data-start="{t(e0)}" data-duration="{t(e1 - e0)}" data-track-index="5"></div>')
-blocks.append(f'      <div id="fin-logo" class="clip" data-start="{t(e0)}" data-duration="{t(e1 - e0)}" data-track-index="6"><div class="pop">'
-              f'<div class="g blanc">{glyph("#FFFFFF")}</div>'
-              f'<div class="g couleurs">{glyph("url(#ig-fin)", ig("ig-fin"))}</div></div></div>')
-blocks.append(f'      <div id="fin-compte" class="clip" data-start="{t(s(DARK + 6))}" data-duration="{t(e1 - s(DARK + 6))}" data-track-index="7"><span class="h">{HANDLE}</span></div>')
-tweens += [
-    f'      tl.fromTo("#fin-logo .pop", {{ scale: 1 }}, {{ scale: 1.08, duration: {6 / FPS:.4f}, ease: "power2.out" }}, {t(s(DARK + 1))});',
-    f'      tl.to("#fin-logo .pop", {{ scale: 1, duration: {5 / FPS:.4f}, ease: "power2.inOut" }}, {t(s(DARK + 7))});',
-    f'      tl.fromTo("#fin-compte .h", {{ opacity: 0 }}, {{ opacity: 1, duration: {2 / FPS:.4f}, ease: "none" }}, {t(s(DARK + 6))});',
-    f'      tl.fromTo("#fin-logo .couleurs", {{ opacity: 0 }}, {{ opacity: 1, duration: {12 / FPS:.4f}, ease: "power1.inOut" }}, {t(s(DARK + 13))});',
-    f'      tl.to("#fin-logo .couleurs", {{ opacity: 0, duration: {12 / FPS:.4f}, ease: "power1.inOut" }}, {t(s(DARK + 76))});',
-]
-
 html = f'''<!doctype html>
 <html lang="en">
   <head>
@@ -114,7 +71,6 @@ html = f'''<!doctype html>
     <style>
       @font-face {{ font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }}
       @font-face {{ font-family: "Instrument Serif"; src: url("assets/fonts/instrument-serif-latin-400-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: block; }}
-      @font-face {{ font-family: "Instrument Sans"; src: url("assets/fonts/instrument-sans-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }}
       * {{ margin: 0; padding: 0; box-sizing: border-box; }}
       html, body {{ margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #0c2b45; }}
       #root {{ position: relative; width: 100%; height: 100%; overflow: hidden; background: #0c2b45; }}
@@ -124,16 +80,6 @@ html = f'''<!doctype html>
       #title {{ position: absolute; left: 108px; right: 108px; top: {T["top"]}px; height: {T["block_h"]}px; }}
       #title .w {{ position: absolute; left: 0; right: 0; text-align: center; white-space: nowrap; color: {T["text_hex"]};
                   font-family: "Instrument Serif", serif; font-weight: 400; font-size: {T["size"]}px; letter-spacing: -0.005em; }}
-      #coin {{ position: absolute; left: 916px; top: 477px; width: 56px; height: 56px; }}
-      #fin-compte .h {{ display: inline-block; }}
-      .pop {{ position: absolute; inset: 0; transform-origin: 50% 50%; }}
-      #coin .g {{ position: absolute; inset: 0; filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.25)); }}
-      #coin .couleurs, #fin-logo .couleurs {{ opacity: 0; }}
-      #fin-voile {{ position: absolute; inset: 0; background: rgba(0, 0, 0, 0.75); }}
-      #fin-logo {{ position: absolute; left: 465px; top: 839px; width: 150px; height: 150px; }}
-      #fin-logo .g {{ position: absolute; inset: 0; }}
-      #fin-compte {{ position: absolute; left: 108px; right: 108px; top: 1046px; height: 80px; line-height: 80px; text-align: center;
-                    color: #FFFFFF; font-family: "Instrument Sans", sans-serif; font-weight: 500; font-size: 60px; letter-spacing: 0.01em; }}
 {chr(10).join(extra_css)}
     </style>
   </head>
@@ -154,4 +100,4 @@ html = f'''<!doctype html>
 </html>
 '''
 open(OUT, 'w').write(html)
-print(f'{OUT} : {len(videos)} plans, titre {T["treatment"]} {T["text_hex"]}, écran final à {DARK / FPS:.3f} s, {TOTAL / FPS:.3f} s ({TOTAL} images)')
+print(f'{OUT} : {len(videos)} plans, titre {T["treatment"]} {T["text_hex"]}, {TOTAL / FPS:.3f} s ({TOTAL} images)')

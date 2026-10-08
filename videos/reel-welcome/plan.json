@@ -1,6 +1,6 @@
 {
  "fps": 30,
- "total_frames": 396,
+ "total_frames": 275,
  "cuts": [
   0,
   25,
@@ -27,9 +27,8 @@
   216,
   223,
   229,
-  396
+  275
  ],
- "dark_frame": 275,
  "shots": [
   {
    "n": 1,
@@ -394,17 +393,17 @@
   {
    "n": 25,
    "f0": 229,
-   "f1": 396,
+   "f1": 275,
    "rush": "11",
    "src_start": 7.6,
-   "src_dur": 2.7833,
+   "src_dur": 0.7667,
    "slow": 2,
    "zoom": 1.04,
    "ax": 0.5,
    "ay": 0.5,
    "rotate": -1.1,
-   "push": 0.05,
-   "desc": "la proue au coucher de soleil, plan final (assombri à 9,17 s)"
+   "push": 0.02,
+   "desc": "la proue au coucher de soleil, plan final"
   }
  ],
  "title": {
@@ -428,9 +427,5 @@
     "f0": 61
    }
   ]
- },
- "end_card": {
-  "f0": 275,
-  "handle": "@harmonieyacht"
  }
 }
