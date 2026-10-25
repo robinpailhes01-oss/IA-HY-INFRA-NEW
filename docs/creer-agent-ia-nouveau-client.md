@@ -1,114 +1,77 @@
-# Créer un agent IA client — brief d'exécution
+# Créer un agent IA client
 
-> **À CLAUDE CODE : lis ce fichier en entier avant d'agir.**
+> **À Claude Code.** Brief exécutable. Lis-le en entier, puis déroule les
+> 6 étapes dans l'ordre.
 >
-> Quelqu'un vient de te le donner dans un repo vide ou presque. Il veut un
-> agent IA commercial pour son établissement. **Tout ce qu'il va te donner,
-> c'est l'URL de son site et quelques phrases de contexte.** Le reste, tu
-> l'extrais, tu le demandes, puis tu le construis.
->
-> Ce fichier contient le schéma SQL, les outils et le prompt **réels** — pas
-> des descriptions à interpréter. Copie-les et adapte-les au métier. N'invente
-> pas une architecture différente « améliorée » : celle-ci vient de la
-> production, chaque garde-fou corrige un bug qui a réellement coûté des
-> clients.
->
-> Le raisonnement derrière chaque choix est dans
-> `blueprint-agent-ia-etablissement.md` — à lire si tu hésites, pas nécessaire
-> pour exécuter.
+> Les raisons derrière chaque choix sont dans
+> `blueprint-agent-ia-etablissement.md`. Tu n'as pas besoin de les lire pour
+> exécuter — seulement si tu es tenté de faire autrement.
+
+**Ce que l'utilisateur te donne :** une URL de site + 2-3 phrases de contexte.
+**Tout le reste, tu l'extrais, tu le demandes, puis tu le construis.**
+
+| Étape | Tu fais | Tu produis |
+|---|---|---|
+| 1 | Lire le site | Une fiche à faire valider |
+| 2 | Entretien ciblé | Les 8 réponses manquantes |
+| 3 | Base de données | Schéma appliqué + config remplie |
+| 4 | Agent client | Outils + prompt + garde-fous |
+| 5 | Agent manager | Pilotage pour le patron |
+| 6 | Vérifier | Tests joués avec le client |
+
+**Trois règles pendant toute la mission :**
+- Ne scaffolde rien avant la fin de l'étape 2.
+- N'invente jamais un fait métier. Inconnu = tu demandes.
+- Une question à la fois. Parle métier, pas technique.
 
 ---
 
-## Règles de conduite pendant toute la mission
+## 1. Lire le site
 
-1. **Ne scaffolde rien avant la fin de la Phase 2.** Un socle générique « à
-   personnaliser plus tard » n'est jamais personnalisé.
-2. **N'invente jamais un fait métier.** Un prix, un horaire, une inclusion que
-   tu n'as ni lu sur le site ni entendu du client n'existe pas. En cas de
-   doute : tu demandes.
-3. **Une question à la fois.** C'est un entretien, pas un formulaire. Le client
-   n'est pas technique : parle de son métier, pas de tables ni d'API.
-4. **Annonce ce que tu fais** à chaque phase, en une ligne.
+Lis : accueil, offres/tarifs, FAQ, à propos, contact, mentions légales.
 
----
+Extrais : nom · activité · ville · adresse · offres (intitulé, prix, durée,
+inclus, non inclus) · ton · horaires · canaux de contact · FAQ existante ·
+contraintes (accessibilité, enfants, animaux).
 
-## Phase 1 — Extraire du site (avant de poser la moindre question)
+**Sortie :** restitue ta lecture au client en une liste courte. Il corrige.
+C'est plus rapide et plus fiable que de lui faire tout dicter.
 
-Récupère le site fourni et lis-le vraiment : page d'accueil, offres/tarifs,
-FAQ, à propos, contact, mentions légales.
-
-**Ce que tu dois en sortir :**
-
-| Donnée | Où elle se trouve en général |
-|---|---|
-| Nom commercial, activité, ville | Accueil, mentions légales |
-| Les offres : intitulé, prix, durée, ce qui est inclus | Page tarifs/offres |
-| Le ton de la marque (tutoiement/vouvoiement, registre) | Accueil, à propos |
-| Horaires, saisonnalité | Contact, FAQ |
-| Canaux de contact (téléphone, WhatsApp, email, Instagram) | Pied de page, contact |
-| Questions fréquentes déjà formalisées | FAQ |
-| Contraintes et exclusions (accessibilité, âge, animaux) | FAQ, CGV |
-
-**Ce que le site ne dira jamais** — et qu'il faudra demander :
-l'ordre de qualification voulu, ce que l'agent n'a pas le droit de faire, les
-cas d'escalade, comment l'argent est encaissé, le vrai ton des échanges privés.
-
-**Restitue ta lecture au client avant de continuer.** Une liste courte : « voici
-les offres et les prix que j'ai relevés, voici le ton que je perçois ».
-Il corrigera — c'est plus rapide et plus fiable que de lui faire tout dicter.
-
-⚠️ Un site est souvent périmé. Un prix lu sur le site est une **proposition à
-faire valider**, jamais une vérité.
+⚠️ Un prix lu sur un site est **à valider**, jamais une vérité.
 
 ---
 
-## Phase 2 — L'entretien (uniquement ce que le site ne dit pas)
+## 2. Entretien
 
-Huit sujets. Groupe-les en 3 ou 4 messages, jamais tout d'un coup.
+Huit sujets, groupés en 3 messages. Pas de questionnaire d'un bloc.
 
-1. **Corrections** sur ce que tu as extrait (prix à jour, offres disparues).
-2. **Le vrai ton** : demande 3 à 5 conversations clients réelles
-   (capture d'écran ou copier-coller). **Calque dessus mot pour mot.** Le ton
-   d'un site est du marketing ; le ton d'une conversation privée est le vrai.
-3. **L'ordre de qualification** : « Un client écrit juste "bonjour, je voudrais
-   des infos". Que lui répondez-vous en premier ? Et après ? À quel moment
-   donnez-vous un prix ? » — c'est une décision métier, ne la prends pas.
-4. **Les cas d'escalade** : des cas concrets de son métier, pas des catégories.
-5. **Les interdits absolus** : encaisser ? annuler ? accorder une remise ?
-   confirmer une réservation ? Cette liste devient des restrictions dans le
-   schéma des outils, pas de simples phrases.
-6. **La disponibilité** : son activité a-t-elle une notion de créneaux/stock ?
-   Où vit l'agenda aujourd'hui ?
-7. **L'argent** : comment les clients paient-ils ? Acompte ou total ? En ligne,
-   au terminal, en espèces, par virement ? Quelle banque ?
-   *Ne saute jamais cette question : c'est celle qu'on oublie et qui coûte le
-   plus cher ensuite.*
-8. **Le pilotage** : comment veut-il suivre son activité ? Que veut-il pouvoir
-   demander en langage naturel ?
+1. **Corrections** sur ce que tu as extrait.
+2. **Le vrai ton** — réclame 3 à 5 vraies conversations clients. Le site, c'est
+   du marketing ; une conversation privée, c'est le vrai ton. Calque mot pour mot.
+3. **L'ordre de qualification** — « un client écrit juste *bonjour, je voudrais
+   des infos*. Vous répondez quoi en premier ? Puis ? À quel moment un prix ? »
+4. **Cas d'escalade** — concrets, tirés de son métier.
+5. **Interdits absolus** — encaisser ? annuler ? remiser ? confirmer ?
+6. **Disponibilité** — y a-t-il des créneaux/stock ? où vit l'agenda ?
+7. **L'argent** — acompte ou total ? en ligne, terminal, espèces, virement ?
+   *Ne saute jamais cette question.*
+8. **Pilotage** — que veut-il demander en langage naturel ?
 
 ---
 
-## Phase 3 — Le socle
+## 3. Base de données
 
-### 3.1 Schéma SQL
-
-À appliquer tel quel. Les colonnes propres au métier s'ajoutent, celles-ci ne
-se retirent pas.
+### 3.1 Schéma — à appliquer tel quel
 
 ```sql
--- Prospects : une INTENTION. Jamais une transaction.
+-- Prospect = une INTENTION. Jamais une transaction.
 create table leads (
   id uuid primary key default gen_random_uuid(),
-  first_name text,
-  last_name text,
-  phone text unique,
-  email text,
-  source_channel text,              -- whatsapp, instagram, site, bouche-à-oreille…
-  interested_offer text,
-  occasion text,
-  party_size integer,
-  desired_date date,
-  desired_time_slot text,
+  first_name text, last_name text,
+  phone text unique, email text,
+  source_channel text,
+  interested_offer text, occasion text, party_size integer,
+  desired_date date, desired_time_slot text,
   score integer check (score between 0 and 10),
   status text not null default 'new',
     -- new → contacted → qualified → quote_sent → booked | lost
@@ -122,49 +85,40 @@ create table leads (
 create index leads_status_idx on leads (status, created_at desc);
 create index leads_desired_date_idx on leads (desired_date);
 
--- Historique conversationnel, un fil par lead et par canal.
 create table conversations (
   id uuid primary key default gen_random_uuid(),
   lead_id uuid references leads (id) on delete cascade,
   channel text not null default 'whatsapp',
-  -- [{ from: 'client'|'ai'|'human', text: string, at: timestamptz }]
+  -- [{ from: 'client'|'ai'|'human', text, at }]
   messages jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index conversations_lead_idx on conversations (lead_id, created_at desc);
 
--- Clients confirmés — distincts des prospects.
 create table customers (
   id uuid primary key default gen_random_uuid(),
-  first_name text,
-  last_name text,
-  phone text,
-  email text,
+  first_name text, last_name text, phone text, email text,
   acquisition_channel text,
   created_at timestamptz not null default now()
 );
 
--- Transactions RÉELLES. Seule source de vérité commerciale.
+-- Transaction RÉELLE. Seule source de vérité commerciale.
 create table bookings (
   id uuid primary key default gen_random_uuid(),
   customer_id uuid references customers (id) on delete set null,
   lead_id uuid references leads (id) on delete set null,
-  date date,
-  start_time time,
-  end_time time,
-  offer_name text,
-  booking_type text,
-  party_size integer,
+  date date, start_time time, end_time time,
+  offer_name text, booking_type text, party_size integer,
   total_amount numeric not null default 0,
   deposit_amount numeric not null default 0,
   deposit_paid boolean not null default false,
   balance_due numeric not null default 0,
-  payment_method text,              -- online, terminal, cash, transfer
+  payment_method text,              -- online | terminal | cash | transfer
   status text not null default 'pending',
     -- pending | confirmed | completed | cancelled
   source_channel text,
-  external_payment_id text unique,  -- id du paiement en ligne : garantit l'idempotence
+  external_payment_id text unique,  -- idempotence des webhooks de paiement
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -172,31 +126,26 @@ create table bookings (
 create index bookings_date_idx on bookings (date);
 create index bookings_status_idx on bookings (status, date);
 
--- Comptabilité. Alimentée automatiquement, jamais à la main si évitable.
 create table revenues (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid references bookings (id) on delete set null,
   date date not null,               -- date de l'ÉVÉNEMENT, pas de la saisie
   amount numeric not null,
-  type text,
-  payment_kind text,                -- deposit | balance
-  payment_method text,
-  note text,
+  type text, payment_kind text,     -- deposit | balance
+  payment_method text, note text,
   created_at timestamptz not null default now()
 );
 create index revenues_date_idx on revenues (date desc);
 
 create table expenses (
   id uuid primary key default gen_random_uuid(),
-  date date not null,
-  category text not null,
-  amount numeric not null,
-  description text,
+  date date not null, category text not null,
+  amount numeric not null, description text,
   created_at timestamptz not null default now()
 );
 create index expenses_date_idx on expenses (date desc);
 
--- Configuration vivante de l'agent : modifiable SANS redéploiement.
+-- Config vivante : modifiable SANS redéploiement. Une seule ligne.
 create table agent_config (
   id uuid primary key default gen_random_uuid(),
   offers jsonb not null default '{}'::jsonb,
@@ -208,16 +157,14 @@ create table agent_config (
   updated_at timestamptz not null default now()
 );
 
--- Changements de config proposés par l'agent manager, en attente de validation.
+-- Changements proposés par l'agent manager, en attente de validation.
 create table agent_config_pending_changes (
   id uuid primary key default gen_random_uuid(),
   chat_id text not null,
-  column_name text not null,
-  key_name text,
-  old_value jsonb,
-  new_value jsonb,
+  column_name text not null, key_name text,
+  old_value jsonb, new_value jsonb,
   description text not null,
-  status text not null default 'pending',   -- pending | applied | cancelled
+  status text not null default 'pending',  -- pending | applied | cancelled
   created_at timestamptz not null default now()
 );
 
@@ -229,301 +176,243 @@ alter table revenues enable row level security;
 alter table expenses enable row level security;
 alter table agent_config enable row level security;
 alter table agent_config_pending_changes enable row level security;
--- Lecture pour le dashboard (utilisateurs authentifiés) ; l'écriture passe par
--- les fonctions serveur avec la clé service-role, jamais par un client.
+-- Lecture : utilisateurs authentifiés (dashboard).
+-- Écriture : fonctions serveur en service-role uniquement.
 ```
 
-**Ce qu'on ajoute selon le métier :** `blocked_dates` et une synchro d'agenda
-si l'activité a des créneaux · `products`/`stock` pour de la vente ·
-`events_public` pour des dates ouvertes à plusieurs clients.
+**À ajouter selon le métier :** `blocked_dates` + synchro agenda si créneaux ·
+`products`/`stock` si vente · `events_public` si dates collectives.
 
-### 3.2 Remplir `agent_config` depuis le site
-
-Une seule ligne dans cette table. Structure à respecter :
+### 3.2 Remplir `agent_config`
 
 ```jsonc
 {
   "offers": {
     "cle_offre": {
-      "name": "Nom exact affiché au client",
-      "price": 0,
-      "duration": "2h",
-      "included": ["..."],          // TOUT ce qui est compris
-      "not_included": ["..."],
-      "max_participants": 0,
-      "ideal_for": ["..."]
+      "name": "", "price": 0, "duration": "",
+      "included": [], "not_included": [],
+      "max_participants": 0, "ideal_for": []
     }
   },
   "faq": {
     "etablissement": {
       "name": "", "city": "", "address": "",
-      "how_to_find_us": "",         // instructions concrètes d'arrivée
-      "parking": "", "access_notes": ""
+      "how_to_find_us": "", "parking": "", "access_notes": ""
     },
-    "rules": {                      // les faits, pas les comportements
+    "rules": {
       "pets_allowed": null, "kids_welcome": null,
       "accessibility": "", "cancellation_policy": ""
     },
-    "partners": {},
-    "site_url": "", "instagram_url": ""
+    "partners": {}, "site_url": "", "instagram_url": ""
   },
   "business_hours": {},
   "pricing_policy": {
-    "discount_allowed": false,
-    "discount_exceptions": [],
+    "discount_allowed": false, "discount_exceptions": [],
     "negotiation_response": ""
   },
   "booking_process": {
-    "deposit_percent": 0,
-    "deposit_link": "",
-    "balance_when": "",
-    "balance_methods": []
+    "deposit_percent": 0, "deposit_link": "",
+    "balance_when": "", "balance_methods": []
   }
 }
 ```
 
-**Règles de remplissage, non négociables :**
-
-- Un champ inconnu vaut `null` ou `""` — **jamais une valeur plausible
-  inventée**. L'agent dira « je me renseigne », ce qui est toujours mieux
-  qu'une information fausse.
-- **Les faits vont en base. Les comportements vont dans le prompt.** Ne mets
-  jamais une règle de conduite dans `faq`.
-- Fais **valider chaque fait un par un** par le client avant la mise en ligne.
-  *Vécu : deux faits erronés (un parking inexistant, un nom d'enseigne
-  différent de celui affiché sur place) sont restés des mois et ont envoyé des
-  clients au mauvais endroit.*
+- Champ inconnu = `null` ou `""`. **Jamais une valeur plausible inventée.**
+- **Les faits en base, les comportements dans le prompt.** Jamais de règle de
+  conduite dans `faq`.
+- Fais valider **chaque fait un par un** avant la mise en ligne.
 
 ---
 
-## Phase 4 — L'agent client
+## 4. Agent client
 
-### 4.1 Les outils
-
-Le jeu de base. Adapter les noms au métier, garder les garde-fous.
+### 4.1 Outils
 
 ```jsonc
 [
   { "name": "create_lead",
-    "description": "Crée la fiche prospect si elle n'existe pas. Une seule fois, dès que tu as un prénom ou un téléphone.",
-    "input_schema": { "type": "object", "properties": {
-      "first_name": {"type":"string"}, "phone": {"type":"string"},
-      "interested_offer": {"type":"string"}, "occasion": {"type":"string"},
-      "party_size": {"type":"integer"} } } },
+    "description": "Crée la fiche prospect. Une seule fois, dès que tu as un prénom ou un téléphone.",
+    "input_schema": { "type":"object", "properties": {
+      "first_name":{"type":"string"}, "phone":{"type":"string"},
+      "interested_offer":{"type":"string"}, "occasion":{"type":"string"},
+      "party_size":{"type":"integer"} } } },
 
   { "name": "qualify_lead",
-    "description": "Enregistre une info qualifiante. À appeler IMMÉDIATEMENT après chaque nouvelle info reçue, AVANT de répondre au client.",
-    "input_schema": { "type": "object", "properties": {
-      "score": {"type":"integer","minimum":0,"maximum":10},
-      "interested_offer": {"type":"string"}, "occasion": {"type":"string"},
-      "party_size": {"type":"integer"}, "desired_date": {"type":"string"},
-      "desired_time_slot": {"type":"string"} } } },
+    "description": "Enregistre une info qualifiante. IMMÉDIATEMENT après l'avoir reçue, AVANT de répondre.",
+    "input_schema": { "type":"object", "properties": {
+      "score":{"type":"integer","minimum":0,"maximum":10},
+      "interested_offer":{"type":"string"}, "occasion":{"type":"string"},
+      "party_size":{"type":"integer"}, "desired_date":{"type":"string"},
+      "desired_time_slot":{"type":"string"} } } },
 
   { "name": "update_lead_status",
-    "description": "Fait avancer le pipeline. 'quote_sent' dès qu'un prix est communiqué, MÊME si le client dit qu'il réserve tout de suite.",
-    "input_schema": { "type": "object", "properties": {
+    "description": "Fait avancer le pipeline. 'quote_sent' dès qu'un prix est donné, MÊME si le client dit qu'il réserve tout de suite.",
+    "input_schema": { "type":"object", "properties": {
       "status": { "type":"string",
         "enum": ["contacted","qualified","quote_sent","followed_up","lost"] }
-    }, "required": ["status"] } },
-    // ⚠️ 'booked' VOLONTAIREMENT absent de l'énum. Voir garde-fou 2.
+    }, "required":["status"] } },
+    // 'booked' VOLONTAIREMENT absent. Ce n'est pas un oubli — voir garde-fou 2.
 
   { "name": "check_availability",
-    "description": "Vérifie le planning pour une date. Ne JAMAIS annoncer une disponibilité sans avoir appelé cet outil.",
-    "input_schema": { "type": "object",
-      "properties": { "date": {"type":"string"} }, "required": ["date"] } },
+    "description": "Vérifie le planning. Ne JAMAIS annoncer une disponibilité sans l'avoir appelé.",
+    "input_schema": { "type":"object",
+      "properties": {"date":{"type":"string"}}, "required":["date"] } },
 
   { "name": "send_booking_link",
     "description": "Renvoie le lien officiel de réservation. Ne l'invente jamais.",
-    "input_schema": { "type": "object", "properties": {
-      "offer": {"type":"string"}, "date": {"type":"string"} } } },
+    "input_schema": { "type":"object", "properties": {
+      "offer":{"type":"string"}, "date":{"type":"string"} } } },
 
   { "name": "escalate_to_human",
-    "description": "Passe la main. Fournis TOUJOURS un final_message, même bref — le client ne doit jamais rester sans réponse.",
-    "input_schema": { "type": "object", "properties": {
-      "reason": {"type":"string"},
-      "final_message": {"type":"string"} }, "required": ["reason"] } }
+    "description": "Passe la main. Fournis TOUJOURS un final_message, même bref.",
+    "input_schema": { "type":"object", "properties": {
+      "reason":{"type":"string"}, "final_message":{"type":"string"} },
+      "required":["reason"] } }
 ]
 ```
 
-### 4.2 Le prompt
+### 4.2 Prompt
 
-Onze sections à responsabilité unique. `{{...}}` = à remplir depuis les
-Phases 1-2. Les sections **4, 7 et 9 sont à reprendre quasi telles quelles** :
-elles encodent des bugs réels.
+`{{...}}` = à remplir depuis les étapes 1-2.
+Les sections **4, 7 et 9 se reprennent telles quelles** : elles corrigent des
+bugs réels.
 
 ```
-Tu es {{PRENOM_AGENT}}, {{ROLE}} de {{ETABLISSEMENT}}, {{ACTIVITE}} à {{VILLE}}.
+Tu es {{PRENOM}}, {{ROLE}} de {{ETABLISSEMENT}}, {{ACTIVITE}} à {{VILLE}}.
 Tu réponds sur {{CANAUX}}.
 
 # 1. IDENTITÉ & TON
 - {{TON}}. Messages très courts (1-3 phrases MAX), façon SMS pro.
-- Tu ne te présentes JAMAIS comme une IA ou un robot.
+- Tu ne te présentes JAMAIS comme une IA.
 - Pas de "Bonjour" si la conversation a déjà commencé.
 - {{FORMULES_INTERDITES}}
 
-# 2. FORMAT DES MESSAGES
-- UN SEUL message par réponse. Si tu as plusieurs choses à dire, choisis LA
-  plus importante pour ce moment de la conversation.
+# 2. FORMAT
+- UN SEUL message par réponse. Plusieurs choses à dire → choisis LA plus importante.
 - Pas de listes à puces, pas de markdown (il s'affiche brut sur WhatsApp).
-- Zéro emoji sur les messages factuels (prix, disponibilité, refus).
-- Pas d'avertissement non demandé : ça se dit à la confirmation, pas avant.
-- Si le client dit "je regarde", "un instant" : tu attends. Pas de relance.
+- Zéro emoji sur un message factuel (prix, dispo, refus).
+- Pas d'avertissement non demandé : ça se dit à la confirmation.
+- Client qui dit "je regarde" → tu attends. Pas de relance.
 
-# 3. EXEMPLES DE TON RÉEL
-{{5_A_10_VRAIES_PHRASES_DU_CLIENT}}
-⚠️ Et ce qu'il ne faut PAS faire :
-{{CONTRE_EXEMPLES}}
+# 3. TON RÉEL
+{{VRAIES_PHRASES_DU_CLIENT}}
+⚠️ À ne pas faire : {{CONTRE_EXEMPLES}}
 
-# 4. ANTI-RÉPÉTITION — la règle la plus violée en pratique
-Une information donnée une fois est acquise pour toute la conversation. Même
-reformulée, tu ne la redis JAMAIS. Ça vaut pour : la disponibilité, un prix,
-un lien, une question de qualification.
-Quand le client pose une NOUVELLE question, tu réponds à CETTE question
-uniquement — pas de rappel du contexte en préambule, il vient de le lire.
+# 4. ANTI-RÉPÉTITION — la règle la plus violée
+Une info donnée une fois est acquise pour toute la conversation. Même
+reformulée, tu ne la redis JAMAIS : dispo, prix, lien, question déjà posée.
+Nouvelle question du client → tu réponds à CETTE question uniquement. Pas de
+rappel du contexte en préambule, il vient de le lire.
   ❌ "Pour demain la journée est libre, le soir est pris. Nos offres sont sur
-     le site." (redit la dispo ET ne répond pas à la question posée)
-  ✅ "{{OFFRE}} c'est {{PRIX}} — {{INCLUSIONS}}. Les photos sont ici : {{SITE}}"
+     le site." → redit la dispo ET ne répond pas à la question
+  ✅ "{{OFFRE}} c'est {{PRIX}} — {{INCLUSIONS}}. Les photos : {{SITE}}"
 
 # 5. MÉMOIRE
-Tu relis TOUT l'historique avant de répondre. Tu ne redemandes jamais une
-information déjà donnée. Si le client répond partiellement, tu considères sa
-réponse comme acquise et tu enchaînes.
+Tu relis TOUT l'historique. Tu ne redemandes jamais une info déjà donnée.
+Réponse partielle → acquise, tu enchaînes.
 
-# 6. QUALIFICATION — l'ordre, toujours le même
-{{ORDRE_EXACT_DEFINI_EN_PHASE_2}}
-Une question à la fois. Si le client donne plusieurs infos d'un coup, saute
-les étapes correspondantes.
+# 6. QUALIFICATION
+{{ORDRE_EXACT}}
+Une question à la fois. Plusieurs infos d'un coup → saute les étapes.
 
 # 7. OFFRES & TARIFS
-- Annoncer un prix = TROIS éléments dans le même message : le prix, TOUT ce
-  qui est compris, et le lien du site (une seule fois par conversation). Un
-  prix nu paraît cher.
-- ⚠️ Si le client demande explicitement les prix ou les prestations, le lien
-  du site SEUL n'est JAMAIS une réponse suffisante : c'est un signal d'achat.
-  Donne au moins une formule concrète avec son prix.
-- ⚠️ N'invente JAMAIS un prix. Uniquement ceux de la grille ci-dessous.
-  Demande hors grille → escalade, pas d'improvisation.
+- Annoncer un prix = 3 éléments : le prix, TOUT ce qui est compris, le lien
+  (une seule fois par conversation). Un prix nu paraît cher.
+- ⚠️ Demande explicite de prix ou de prestations → le lien SEUL n'est JAMAIS
+  suffisant. C'est un signal d'achat : donne une formule concrète avec son prix.
+- ⚠️ N'invente JAMAIS un prix. Hors grille → escalade.
 - {{POLITIQUE_REMISE}}
 
 # 8. DISPONIBILITÉ
-{{REGLES_INTERPRETATION}}
-Ne jamais affirmer une disponibilité sans avoir appelé check_availability.
+{{REGLES}}
+Jamais d'affirmation sans check_availability.
 
 # 9. ESCALADE
-Cas qui déclenchent escalate_to_human : {{CAS_ESCALADE}}
-Fournis TOUJOURS un final_message ("Je regarde ça avec l'équipe et je reviens
-vers vous rapidement"). Un client sans réponse est un client perdu.
-⚠️ N'escalade PAS une question factuelle dont la base répond déjà, même par la
+Déclencheurs : {{CAS_ESCALADE}}
+final_message TOUJOURS rempli ("Je regarde ça avec l'équipe et je reviens vers
+vous rapidement"). Un client sans réponse est un client perdu.
+⚠️ N'escalade PAS une question factuelle dont la base a déjà la réponse, même
 négative. L'escalade est pour ce qui a besoin d'un humain.
 
-# 10. CE QUE TU NE FAIS JAMAIS
-{{INTERDITS_PHASE_2}}
+# 10. JAMAIS
+{{INTERDITS}}
 
 # 11. OUTILS (invisible pour le client)
-⚠️ RÈGLE ABSOLUE : après CHAQUE appel d'outil (sauf escalate_to_human), tu
-DOIS écrire un message au client. Les outils sont silencieux côté serveur : si
-tu sors sans texte, le client reçoit le silence et la conversation meurt.
+⚠️ Après CHAQUE outil (sauf escalate_to_human), tu DOIS écrire au client. Les
+outils sont silencieux : sans texte, le client reçoit le silence.
 
-# Base de connaissances (faits — source de vérité)
-{{agent_config INJECTÉ ICI}}
+# Base de connaissances (faits)
+{{agent_config}}
 ```
 
-### 4.3 Garde-fous serveur — obligatoires
+### 4.3 Garde-fous serveur — du code, pas des consignes
 
-Un prompt n'est pas un contrat. Ces cinq contrôles sont dans le code, pas dans
-le prompt. **Implémente-les dès le départ**, pas « quand le bug arrivera ».
+Un prompt n'est pas un contrat. Les cinq, dès le départ :
 
-1. **Confirmation d'écriture bloquée sans preuve.** Si la réponse annonce « c'est
-   enregistré » et qu'aucun outil d'écriture n'a renvoyé un succès dans CE tour,
-   remplace le message. *Vécu : 12 confirmations annoncées, 3 lignes réellement
-   en base.*
-2. **Statut critique refusé.** `booked`/`payé`/`confirmé` est absent de l'énum
-   de l'outil **et** refusé côté serveur si le modèle l'envoie quand même. Seul
-   un paiement vérifié ou un humain peut le poser.
-3. **Jamais de silence.** Si le modèle n'a produit aucun texte, relance un tour
-   en interdisant les outils (`tool_choice: none`) pour forcer une réponse.
-4. **Escalade sans message.** Si `final_message` est vide, le serveur envoie un
-   texte d'attente par défaut.
-5. **Filtre anti-méta.** Les notes internes du modèle (« réponse déjà envoyée »,
-   « aucune action nécessaire ») ne partent jamais au client.
+1. **Confirmation bloquée sans preuve** — la réponse annonce « c'est
+   enregistré » et aucun outil d'écriture n'a réussi dans CE tour → remplace le
+   message. *Vécu : 12 confirmations annoncées, 3 lignes réellement en base.*
+2. **Statut critique refusé** — `booked` absent de l'énum **et** refusé côté
+   serveur. Seul un paiement vérifié ou un humain le pose.
+3. **Jamais de silence** — aucun texte produit → relance un tour avec
+   `tool_choice: none`.
+4. **Escalade sans message** → texte d'attente par défaut envoyé par le serveur.
+5. **Filtre anti-méta** — les notes internes du modèle ne partent jamais au
+   client.
 
-**Et côté canal :** regrouper les messages d'un même contact sur une fenêtre de
-silence de quelques secondes avant d'appeler le modèle — sinon l'agent répond à
-« Vers le 15 » avant d'avoir lu « septembre ». Mettre l'agent en pause sur une
-conversation dès que l'humain y répond.
+**Côté canal :** regrouper les messages d'un même contact sur quelques secondes
+de silence avant d'appeler le modèle (sinon l'agent répond à « vers le 15 »
+avant d'avoir lu « septembre ») · mettre l'agent en pause dès que l'humain
+répond.
 
 ---
 
-## Phase 5 — L'agent manager
+## 5. Agent manager
 
-Un second agent, pour le patron. Même cerveau, canaux différents (Telegram,
-vocal) — **un seul fichier de règles, jamais dupliqué par canal**.
+Pour le patron. Même cerveau, plusieurs canaux, **un seul fichier de règles**.
 
-- **Lecture** sur toute la base : chiffres, prospects, réservations à venir.
-- **Écriture** limitée à la liste de la Phase 2.
-- **Confirmation en deux temps** pour tout changement de configuration :
-  proposer, décrire ancienne → nouvelle valeur, appliquer seulement après un
-  « oui » explicite dans un message séparé.
-- **Proactif** : un point hebdomadaire envoyé automatiquement. Un tableau de
-  bord qu'il faut penser à ouvrir n'est pas consulté.
+- **Lecture** sur toute la base.
+- **Écriture** limitée à la liste de l'étape 2.
+- **Confirmation en deux temps** pour toute modification de config : proposer,
+  décrire ancienne → nouvelle valeur, appliquer après un « oui » explicite.
+- **Proactif** : point hebdomadaire envoyé tout seul.
 
----
-
-## Phase 6 — L'argent
-
-À faire dès le socle si le client encaisse autrement qu'en ligne.
-
-**Les trois notions à ne jamais confondre**, dans le code comme dans les
-réponses de l'agent :
-*trésorerie* (ce qui est réellement disponible) ≠ *chiffre d'affaires* (encaissé
-sur une période) ≠ *marge nette* (un résultat comptable, pas de l'argent
-disponible).
-
-**La règle anti-double-comptage :** un paiement client est du chiffre
-d'affaires ; un virement du prestataire de paiement vers la banque, ou un dépôt
-d'espèces, est un **transfert** — jamais du CA. Sans cette règle, chaque client
-est compté deux fois.
-
-**Dater par l'événement, pas par la saisie.** Un solde oublié puis régularisé
-compte pour le jour de la prestation, pas pour le jour du clic.
-
-**Définir chaque indicateur une seule fois**, par écrit, et l'appliquer partout
-— dashboard, agent, rapports. Le même intitulé calculé différemment selon
-l'écran détruit la confiance plus sûrement qu'un chiffre absent.
+**Si le client encaisse autrement qu'en ligne :**
+- Ne jamais confondre *trésorerie* (disponible) · *chiffre d'affaires*
+  (encaissé) · *marge nette* (comptable, ≠ disponible).
+- Un virement du prestataire de paiement vers la banque, ou un dépôt
+  d'espèces, est un **transfert** — jamais du CA. Sinon chaque client compte
+  double.
+- Dater par l'événement, pas par la saisie.
+- Chaque indicateur défini **une seule fois**, appliqué partout.
 
 ---
 
-## Phase 7 — Vérifier avant de livrer
+## 6. Vérifier avant de livrer
 
-Ne considère rien comme fini sans ces quatre étapes.
+- [ ] Base de connaissances validée **fait par fait**
+- [ ] 5 à 10 messages types joués avec le client : vague · précis · négociation
+      · cas limite · demande de prix d'emblée
+- [ ] Le patron confirme que **le ton est le sien** (sinon → étape 2.2)
+- [ ] Les 5 garde-fous **testés**, pas seulement écrits
+- [ ] Secrets réellement posés · tâches planifiées journalisées · escalade
+      testée de bout en bout
 
-- [ ] **Base de connaissances validée fait par fait** par le client.
-- [ ] **5 à 10 messages types joués** avec lui : un client vague, un précis, un
-      qui négocie, un cas limite, un qui demande les prix d'entrée de jeu.
-- [ ] **Le patron confirme que le ton est le sien.** S'il dit « c'est pas comme
-      ça que je parle », retourne en Phase 2 point 2.
-- [ ] **Les cinq garde-fous testés**, pas seulement écrits.
-
-Puis : tous les secrets réellement posés et vérifiés · tâches planifiées
-actives et journalisées · escalade testée de bout en bout.
-
-⚠️ **Teste le canal avec un numéro qui masque son identité.** Certains contacts
-n'exposent pas leur vrai numéro à l'API : le patron le voit sur son téléphone,
-le système non. Ça casse les relances et le rapprochement paiement ↔ prospect.
-Mieux vaut le découvrir le premier jour.
+⚠️ **Teste avec un numéro qui masque son identité.** Certains contacts
+n'exposent pas leur vrai numéro à l'API : le patron le voit, le système non.
+Ça casse les relances et le rapprochement paiement ↔ prospect.
 
 ---
 
-## Annexe — adapter au métier
+## Adapter au métier
 
 | Métier | Ce qui change |
 |---|---|
-| Hôtellerie, locations | `bookings` = séjour avec nuitées ; disponibilité par nuit |
-| Restauration | Pas d'acompte ; disponibilité par service et par couverts |
-| Bien-être, santé | Créneaux courts et répétés ; données sensibles, pas d'historique médical dans le prompt |
-| Artisanat, devis | Pas de disponibilité ; `quote_sent` devient l'étape centrale |
-| Événementiel | Devis sur mesure → escalade devient la norme, pas l'exception |
+| Hôtellerie | `bookings` = séjour ; dispo par nuit |
+| Restauration | Pas d'acompte ; dispo par service et couverts |
+| Bien-être, santé | Créneaux courts ; aucune donnée sensible dans le prompt |
+| Artisanat, devis | Pas de dispo ; `quote_sent` devient l'étape centrale |
+| Événementiel | Sur-mesure → l'escalade devient la norme |
 
-Dans tous les cas, ce qui ne change pas : la séparation intention/transaction,
-les cinq garde-fous serveur, la configuration en base, et la règle
-anti-double-comptage sur l'argent.
+Ne change jamais : séparation intention/transaction · les 5 garde-fous ·
+la config en base · la règle anti-double-comptage.
