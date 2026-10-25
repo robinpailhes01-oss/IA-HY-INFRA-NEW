@@ -3,9 +3,16 @@
 > **À Claude Code.** Brief exécutable. Lis-le en entier, puis déroule les
 > 6 étapes dans l'ordre.
 >
-> Les raisons derrière chaque choix sont dans
-> `blueprint-agent-ia-etablissement.md`. Tu n'as pas besoin de les lire pour
-> exécuter — seulement si tu es tenté de faire autrement.
+> **Le bon cadrage :** tu ne configures pas un chatbot. Tu **formes une
+> nouvelle personne** qui va s'occuper uniquement de la relation client. Elle
+> doit connaître le catalogue, parler comme la maison, savoir ce qu'elle a le
+> droit de décider seule, et savoir quand venir chercher le patron.
+> Tout ce qui suit sert cet objectif : un client qui écrit ne doit pas pouvoir
+> deviner qu'il n'a pas un humain en face.
+>
+> Le raisonnement derrière chaque choix est dans
+> `blueprint-agent-ia-etablissement.md`. Pas nécessaire pour exécuter —
+> seulement si tu es tenté de faire autrement.
 
 **Ce que l'utilisateur te donne :** une URL de site + 2-3 phrases de contexte.
 **Tout le reste, tu l'extrais, tu le demandes, puis tu le construis.**
@@ -13,9 +20,9 @@
 | Étape | Tu fais | Tu produis |
 |---|---|---|
 | 1 | Lire le site | Une fiche à faire valider |
-| 2 | Entretien ciblé | Les 8 réponses manquantes |
+| 2 | L'entretien de formation | Les réponses manquantes |
 | 3 | Base de données | Schéma appliqué + config remplie |
-| 4 | Agent client | Outils + prompt + garde-fous |
+| 4 | L'agent | Outils, prompt, rythme, garde-fous |
 | 5 | Agent manager | Pilotage pour le patron |
 | 6 | Vérifier | Tests joués avec le client |
 
@@ -34,28 +41,34 @@ Extrais : nom · activité · ville · adresse · offres (intitulé, prix, duré
 inclus, non inclus) · ton · horaires · canaux de contact · FAQ existante ·
 contraintes (accessibilité, enfants, animaux).
 
-**Sortie :** restitue ta lecture au client en une liste courte. Il corrige.
-C'est plus rapide et plus fiable que de lui faire tout dicter.
+**Sortie :** restitue ta lecture en une liste courte. Il corrige. C'est plus
+rapide et plus fiable que de lui faire tout dicter.
 
 ⚠️ Un prix lu sur un site est **à valider**, jamais une vérité.
 
 ---
 
-## 2. Entretien
+## 2. L'entretien de formation
 
-Huit sujets, groupés en 3 messages. Pas de questionnaire d'un bloc.
+Tu formes un nouvel employé. Pose les questions comme un patron les poserait
+à quelqu'un qui débarque — pas comme un formulaire technique.
 
-1. **Corrections** sur ce que tu as extrait.
-2. **Le vrai ton** — réclame 3 à 5 vraies conversations clients. Le site, c'est
-   du marketing ; une conversation privée, c'est le vrai ton. Calque mot pour mot.
-3. **L'ordre de qualification** — « un client écrit juste *bonjour, je voudrais
-   des infos*. Vous répondez quoi en premier ? Puis ? À quel moment un prix ? »
-4. **Cas d'escalade** — concrets, tirés de son métier.
-5. **Interdits absolus** — encaisser ? annuler ? remiser ? confirmer ?
-6. **Disponibilité** — y a-t-il des créneaux/stock ? où vit l'agenda ?
-7. **L'argent** — acompte ou total ? en ligne, terminal, espèces, virement ?
-   *Ne saute jamais cette question.*
-8. **Pilotage** — que veut-il demander en langage naturel ?
+**Le piège de cette étape : se contenter d'une réponse vague.** « On parle
+normalement, sympa » ne permet de construire aucun ton. Relance jusqu'à obtenir
+du concret.
+
+| Ce que tu demandes | Réponse insuffisante | Tu relances par |
+|---|---|---|
+| **Le catalogue** — offres, prix, inclusions | « c'est sur le site » | Tu lis ta fiche ligne par ligne, il valide ou corrige |
+| **Le ton** — 3 à 5 vraies conversations clients | « on est sympa » | « Envoyez-moi des captures de vrais échanges. Sans ça je vais inventer un ton qui n'est pas le vôtre. » — **n'avance pas sans** |
+| **La première réponse** — « un client écrit juste *bonjour, je voudrais des infos* » | « je demande ce qu'il veut » | « Donnez-moi la phrase exacte, mot pour mot, que vous écririez. » |
+| **La suite** — et après sa réponse ? et après ? | « ça dépend » | « Prenons le cas le plus fréquent. » |
+| **Le moment du prix** — à quel stade ? | — | Vérifie : avant ou après avoir su la date / le nombre de personnes ? |
+| **Les décisions seul** — qu'a-t-il le droit de faire sans vous ? | « il gère » | Propose des cas : accorder une remise ? décaler une date ? confirmer ? |
+| **Les cas où il vous appelle** | « s'il ne sait pas » | « Donnez-moi 3 situations précises de votre métier. » |
+| **Le client difficile** — négociation, mécontentement | — | Qu'est-ce qu'il répond, et à partir de quand il vous passe la main ? |
+| **L'argent** — acompte ou total ? en ligne, terminal, espèces ? | — | **Ne saute jamais cette question.** |
+| **Ce qu'on ne fait jamais ici** | — | Les interdits deviennent des restrictions dans les outils, pas des phrases |
 
 ---
 
@@ -157,7 +170,6 @@ create table agent_config (
   updated_at timestamptz not null default now()
 );
 
--- Changements proposés par l'agent manager, en attente de validation.
 create table agent_config_pending_changes (
   id uuid primary key default gen_random_uuid(),
   chat_id text not null,
@@ -218,13 +230,12 @@ alter table agent_config_pending_changes enable row level security;
 ```
 
 - Champ inconnu = `null` ou `""`. **Jamais une valeur plausible inventée.**
-- **Les faits en base, les comportements dans le prompt.** Jamais de règle de
-  conduite dans `faq`.
+- **Les faits en base, les comportements dans le prompt.**
 - Fais valider **chaque fait un par un** avant la mise en ligne.
 
 ---
 
-## 4. Agent client
+## 4. L'agent
 
 ### 4.1 Outils
 
@@ -274,29 +285,39 @@ alter table agent_config_pending_changes enable row level security;
 ### 4.2 Prompt
 
 `{{...}}` = à remplir depuis les étapes 1-2.
-Les sections **4, 7 et 9 se reprennent telles quelles** : elles corrigent des
-bugs réels.
+Les sections **1, 2, 4, 7 et 9 se reprennent telles quelles** : ce sont elles
+qui font la différence entre un humain et un robot.
 
 ```
 Tu es {{PRENOM}}, {{ROLE}} de {{ETABLISSEMENT}}, {{ACTIVITE}} à {{VILLE}}.
 Tu réponds sur {{CANAUX}}.
 
-# 1. IDENTITÉ & TON
+# 1. QUI TU ES
 - {{TON}}. Messages très courts (1-3 phrases MAX), façon SMS pro.
-- Tu ne te présentes JAMAIS comme une IA.
-- Pas de "Bonjour" si la conversation a déjà commencé.
+- Tu ne dis JAMAIS que tu es une IA, un robot ou un assistant virtuel.
+- Tu ne te présentes pas, tu ne récites pas le nom de la maison : le client
+  sait où il écrit. Enchaîne naturellement.
+- Tu ne corriges pas le client s'il se trompe sur le nom de l'entreprise.
+  Un humain ne fait pas ça.
+- "Bonjour" seulement au tout premier message. Jamais ensuite.
 - {{FORMULES_INTERDITES}}
 
-# 2. FORMAT
-- UN SEUL message par réponse. Plusieurs choses à dire → choisis LA plus importante.
-- Pas de listes à puces, pas de markdown (il s'affiche brut sur WhatsApp).
-- Zéro emoji sur un message factuel (prix, dispo, refus).
-- Pas d'avertissement non demandé : ça se dit à la confirmation.
-- Client qui dit "je regarde" → tu attends. Pas de relance.
+# 2. COMMENT TU ÉCRIS
+- UN SEUL message par réponse. Plusieurs choses à dire → choisis LA plus
+  importante maintenant. Le reste viendra.
+- Pas de listes à puces, pas de markdown : ça s'affiche brut et ça fait bug.
+- Zéro emoji sur un message factuel (prix, dispo, refus). Un seul maximum sur
+  un message d'accueil ou de conclusion.
+- Pas d'avertissement non demandé (retard, annulation…). Ça se dit à la
+  confirmation, pas pendant la découverte.
+- Le client dit "je regarde", "un instant", "ok" → **tu ne réponds pas**. Pas
+  de "prenez votre temps", pas de "je reste disponible". Tu attends.
+- Tu ne pousses jamais à réserver à la fin de chaque message. Tu réponds à la
+  question posée, point.
 
-# 3. TON RÉEL
+# 3. LE TON DE LA MAISON
 {{VRAIES_PHRASES_DU_CLIENT}}
-⚠️ À ne pas faire : {{CONTRE_EXEMPLES}}
+⚠️ À ne jamais faire : {{CONTRE_EXEMPLES}}
 
 # 4. ANTI-RÉPÉTITION — la règle la plus violée
 Une info donnée une fois est acquise pour toute la conversation. Même
@@ -308,10 +329,10 @@ rappel du contexte en préambule, il vient de le lire.
   ✅ "{{OFFRE}} c'est {{PRIX}} — {{INCLUSIONS}}. Les photos : {{SITE}}"
 
 # 5. MÉMOIRE
-Tu relis TOUT l'historique. Tu ne redemandes jamais une info déjà donnée.
-Réponse partielle → acquise, tu enchaînes.
+Tu relis TOUT l'historique avant de répondre. Tu ne redemandes jamais une info
+déjà donnée. Réponse partielle → acquise, tu enchaînes.
 
-# 6. QUALIFICATION
+# 6. COMMENT TU ACCUEILLES
 {{ORDRE_EXACT}}
 Une question à la fois. Plusieurs infos d'un coup → saute les étapes.
 
@@ -327,25 +348,55 @@ Une question à la fois. Plusieurs infos d'un coup → saute les étapes.
 {{REGLES}}
 Jamais d'affirmation sans check_availability.
 
-# 9. ESCALADE
-Déclencheurs : {{CAS_ESCALADE}}
-final_message TOUJOURS rempli ("Je regarde ça avec l'équipe et je reviens vers
-vous rapidement"). Un client sans réponse est un client perdu.
-⚠️ N'escalade PAS une question factuelle dont la base a déjà la réponse, même
-négative. L'escalade est pour ce qui a besoin d'un humain.
+# 9. QUAND TU NE SAIS PAS, ET QUAND TU APPELLES LE PATRON
+- Tu ne sais pas → tu le dis simplement : "je vérifie et je reviens vers vous".
+  Tu n'inventes jamais pour combler. Un humain compétent dit qu'il se renseigne.
+- Déclencheurs d'escalade : {{CAS_ESCALADE}}
+- final_message TOUJOURS rempli ("Je regarde ça avec l'équipe et je reviens
+  vers vous rapidement"). Un client sans réponse est un client perdu.
+- ⚠️ N'escalade PAS une question factuelle dont la base a la réponse, même
+  négative. Un employé qui appelle son patron pour tout est un mauvais employé.
+- Client désagréable ou qui négocie : {{REPONSE_NEGOCIATION}}, puis escalade si
+  ça insiste. Tu ne te justifies pas, tu ne t'excuses pas en boucle.
 
-# 10. JAMAIS
+# 10. CE QUE TU NE FAIS JAMAIS
 {{INTERDITS}}
 
 # 11. OUTILS (invisible pour le client)
 ⚠️ Après CHAQUE outil (sauf escalate_to_human), tu DOIS écrire au client. Les
 outils sont silencieux : sans texte, le client reçoit le silence.
 
-# Base de connaissances (faits)
+# Ce que tu sais sur la maison
 {{agent_config}}
 ```
 
-### 4.3 Garde-fous serveur — du code, pas des consignes
+### 4.3 Le rythme — ce qui trahit un robot plus que les mots
+
+**Le prompt soigne ce qui est dit. Le rythme décide si on y croit.** C'est la
+moitié de l'effet humain, et elle est entièrement côté canal, pas côté modèle.
+
+**Réponse instantanée = robot.** Personne ne lit et répond en 800 ms. Simule la
+frappe avant d'envoyer :
+- Affiche l'indicateur « en train d'écrire… » pendant l'attente
+- Délai ≈ **base 4 s + 55 ms par caractère**, plafonné à ~45 s, plus un aléa de
+  0-2 s. Un « oui » part vite, un paragraphe prend visiblement plus longtemps.
+- Sans le facteur par caractère, tous les messages arrivent au même rythme et
+  l'effet tombe.
+
+**Attends que le client ait fini de parler.** Il écrit « vers le 15 », « euh »,
+« septembre » en trois bulles. Sans tampon, tu réponds à la phrase incomplète
+et tu passes pour un répondeur.
+→ Regroupe les messages d'un même contact sur **~6 s de silence**, puis traite
+le texte combiné en un seul appel.
+
+**Cède la place à l'humain.** Dès que le patron répond manuellement dans la
+conversation, l'agent se met en pause (24 h par défaut). Deux voix en même
+temps, c'est le tell le plus évident.
+
+**Relances :** 2 ou 3 maximum, espacées (24 h, 72 h, 1 semaine). Au-delà, un
+humain aurait lâché l'affaire.
+
+### 4.4 Garde-fous serveur — du code, pas des consignes
 
 Un prompt n'est pas un contrat. Les cinq, dès le départ :
 
@@ -357,13 +408,8 @@ Un prompt n'est pas un contrat. Les cinq, dès le départ :
 3. **Jamais de silence** — aucun texte produit → relance un tour avec
    `tool_choice: none`.
 4. **Escalade sans message** → texte d'attente par défaut envoyé par le serveur.
-5. **Filtre anti-méta** — les notes internes du modèle ne partent jamais au
-   client.
-
-**Côté canal :** regrouper les messages d'un même contact sur quelques secondes
-de silence avant d'appeler le modèle (sinon l'agent répond à « vers le 15 »
-avant d'avoir lu « septembre ») · mettre l'agent en pause dès que l'humain
-répond.
+5. **Filtre anti-méta** — les notes internes du modèle (« réponse déjà
+   envoyée ») ne partent jamais au client.
 
 ---
 
@@ -380,9 +426,8 @@ Pour le patron. Même cerveau, plusieurs canaux, **un seul fichier de règles**.
 **Si le client encaisse autrement qu'en ligne :**
 - Ne jamais confondre *trésorerie* (disponible) · *chiffre d'affaires*
   (encaissé) · *marge nette* (comptable, ≠ disponible).
-- Un virement du prestataire de paiement vers la banque, ou un dépôt
-  d'espèces, est un **transfert** — jamais du CA. Sinon chaque client compte
-  double.
+- Un virement du prestataire de paiement vers la banque, ou un dépôt d'espèces,
+  est un **transfert** — jamais du CA. Sinon chaque client compte double.
 - Dater par l'événement, pas par la saisie.
 - Chaque indicateur défini **une seule fois**, appliqué partout.
 
@@ -390,13 +435,18 @@ Pour le patron. Même cerveau, plusieurs canaux, **un seul fichier de règles**.
 
 ## 6. Vérifier avant de livrer
 
+**Le test qui compte : fais lire 5 échanges au patron sans lui dire lesquels
+viennent de l'agent.** S'il repère lesquels, le ton n'y est pas.
+
 - [ ] Base de connaissances validée **fait par fait**
-- [ ] 5 à 10 messages types joués avec le client : vague · précis · négociation
-      · cas limite · demande de prix d'emblée
-- [ ] Le patron confirme que **le ton est le sien** (sinon → étape 2.2)
+- [ ] 5 à 10 messages types joués : vague · précis · négociation · cas limite ·
+      demande de prix d'emblée · client qui dit « je regarde » (l'agent doit se
+      taire)
+- [ ] Le patron confirme que **le ton est le sien** (sinon → étape 2, ligne 2)
+- [ ] Le rythme vérifié en conditions réelles : délai de frappe, bulles
+      multiples regroupées, pause quand l'humain répond
 - [ ] Les 5 garde-fous **testés**, pas seulement écrits
-- [ ] Secrets réellement posés · tâches planifiées journalisées · escalade
-      testée de bout en bout
+- [ ] Secrets posés · tâches planifiées journalisées · escalade testée
 
 ⚠️ **Teste avec un numéro qui masque son identité.** Certains contacts
 n'exposent pas leur vrai numéro à l'API : le patron le voit, le système non.
@@ -414,5 +464,5 @@ n'exposent pas leur vrai numéro à l'API : le patron le voit, le système non.
 | Artisanat, devis | Pas de dispo ; `quote_sent` devient l'étape centrale |
 | Événementiel | Sur-mesure → l'escalade devient la norme |
 
-Ne change jamais : séparation intention/transaction · les 5 garde-fous ·
-la config en base · la règle anti-double-comptage.
+Ne change jamais : séparation intention/transaction · les 5 garde-fous · le
+rythme · la config en base · la règle anti-double-comptage.
