@@ -1,5 +1,11 @@
 # Brief de démarrage — Agent IA WhatsApp + Tableau de bord
 
+> ⚠️ **REMPLACÉ PAR `creer-agent-ia-nouveau-client.md`.**
+> Ce fichier décrivait l'architecture en prose, à interpréter. Le nouveau
+> brief contient le schéma SQL, les outils et le prompt réels, directement
+> exécutables, plus ce qu'on a appris en production depuis.
+> Conservé pour l'historique — ne pas l'utiliser pour démarrer un projet.
+
 > **Ce fichier s'adresse à Claude Code.** Un chef d'entreprise vient de te
 > le donner en tout début de session, dans un repo vide ou presque, parce
 > qu'il veut son propre agent IA WhatsApp + tableau de bord, sur le modèle
