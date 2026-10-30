@@ -1,6 +1,6 @@
 import express from 'express';
 import qrcode from 'qrcode';
-import { connectToWhatsApp, getQR, isConnected, getSock } from './lib/whatsapp.js';
+import { connectToWhatsApp, getQR, isConnected, getSock, getStatus, startWatchdog } from './lib/whatsapp.js';
 import { supabase, pauseConversation, resumeConversation, saveMessage, upsertConversation } from './lib/supabase.js';
 
 const app = express();
@@ -8,9 +8,23 @@ app.use(express.json());
 
 const PORT = process.env.PORT ?? 3001;
 
-// Health check
+// Deux sondes, volontairement distinctes.
+//
+// /health répond toujours 200 tant que le processus vit. C'est ce que Railway
+// interroge : s'il renvoyait 503 pendant l'appairage, Railway redémarrerait le
+// conteneur avant que le QR ait pu être scanné — une boucle dont on ne sort pas.
+// Le corps, lui, dit la vérité : « up » et « Léa entend » ne sont pas la même
+// chose, et c'est précisément cette confusion qui laissait l'agent sourd sans
+// que rien ne l'indique.
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, connected: isConnected() });
+  res.json({ ok: true, uptimeSeconds: Math.round(process.uptime()), ...getStatus() });
+});
+
+// /ready dit si Léa peut réellement répondre. 503 quand ce n'est pas le cas —
+// c'est cette sonde-là qu'il faut brancher sur une alerte.
+app.get('/ready', (_req, res) => {
+  const status = getStatus();
+  res.status(status.connected ? 200 : 503).json(status);
 });
 
 // QR code as base64 PNG (poll this from the Next.js dashboard)
@@ -91,7 +105,19 @@ app.post('/send', async (req, res) => {
   }
 });
 
+// Un rejet non capturé ne doit pas laisser le processus dans un état où
+// Express répond encore mais où plus rien ne tourne derrière.
+process.on('unhandledRejection', (reason) => {
+  console.error('[baileys] promesse rejetée non capturée:', reason);
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Baileys service on port ${PORT}`);
-  connectToWhatsApp().catch(console.error);
+  startWatchdog();
+  // Le .catch ne se contente plus de logger : sans nouvelle tentative, un
+  // échec au tout premier démarrage (Supabase indisponible au boot, par
+  // exemple) laissait le service en vie et définitivement déconnecté.
+  connectToWhatsApp().catch((err) => {
+    console.error('[baileys] connexion initiale échouée, le watchdog reprendra la main:', err);
+  });
 });

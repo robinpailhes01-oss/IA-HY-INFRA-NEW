@@ -35,6 +35,108 @@ let qrCode: string | null = null;
 let connected = false;
 let sock: ReturnType<typeof makeWASocket> | null = null;
 
+// ─── État de la reconnexion ───────────────────────────────────────────────
+// Exposé par /health : sans ça, un service « up » et une Léa sourde se
+// ressemblent exactement vus de l'extérieur.
+let lastConnectedAt: number | null = null;
+let lastDisconnectAt: number | null = null;
+let lastDisconnectCode: number | null = null;
+let reconnectAttempts = 0;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let connecting = false;
+
+const RECONNECT_BASE_MS = 5_000;
+const RECONNECT_MAX_MS = 5 * 60_000;
+const startedAt = Date.now();
+
+export const getStatus = () => ({
+  connected,
+  waitingForQr: qrCode !== null,
+  lastConnectedAt: lastConnectedAt ? new Date(lastConnectedAt).toISOString() : null,
+  lastDisconnectAt: lastDisconnectAt ? new Date(lastDisconnectAt).toISOString() : null,
+  lastDisconnectCode,
+  reconnectAttempts,
+  reconnectScheduled: reconnectTimer !== null,
+  offlineSeconds:
+    connected || !lastDisconnectAt ? 0 : Math.round((Date.now() - lastDisconnectAt) / 1000),
+});
+
+// Reconnexion avec recul exponentiel.
+//
+// Le point critique est le `.catch` : `connectToWhatsApp()` attend
+// `useSupabaseAuthState()` puis `fetchLatestBaileysVersion()`, deux appels
+// réseau. Si l'un échoue — coupure Supabase, DNS, CDN Baileys indisponible —
+// la promesse était rejetée sans être capturée et PLUS AUCUNE tentative
+// n'était programmée. Le service restait en vie, /health répondait 200, et
+// Léa ne revenait jamais jusqu'au prochain déploiement. C'est le scénario
+// « l'agent ne s'est pas reconnecté » le plus probable.
+//
+// Le recul évite l'autre travers : marteler WhatsApp toutes les 5 s quand
+// c'est lui qui nous limite (codes 428/440), ce qui fait remonter le numéro
+// dans leurs radars.
+function scheduleReconnect(why: string): void {
+  if (reconnectTimer) return;
+
+  reconnectAttempts += 1;
+  const backoff = Math.min(RECONNECT_BASE_MS * 2 ** (reconnectAttempts - 1), RECONNECT_MAX_MS);
+  const delay = backoff + Math.floor(Math.random() * 3_000);
+  console.log(`🔁 Reconnexion #${reconnectAttempts} dans ${Math.round(delay / 1000)}s — ${why}`);
+
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectToWhatsApp().catch((err) => {
+      console.error('[whatsapp] tentative de reconnexion échouée:', err);
+      scheduleReconnect('la tentative précédente a échoué');
+    });
+  }, delay);
+}
+
+// Filet de sécurité. Un socket peut rester « à moitié ouvert » : plus rien
+// n'arrive, mais Baileys n'émet jamais de 'close', donc aucune reconnexion
+// n'est déclenchée et personne ne s'en aperçoit. Si on est hors ligne depuis
+// plus de deux minutes sans tentative programmée, on force.
+const WATCHDOG_TICK_MS = 60_000;
+const MAX_OFFLINE_MS = 2 * 60_000;
+
+export function startWatchdog(): void {
+  const timer = setInterval(() => {
+    if (connected || connecting || reconnectTimer) return;
+    // Un QR affiché n'est pas une panne : c'est Robin qui n'a pas encore
+    // scanné. Relancer ici effacerait le QR sous ses yeux.
+    if (qrCode) return;
+    const since = lastDisconnectAt ?? startedAt;
+    if (Date.now() - since < MAX_OFFLINE_MS) return;
+    console.log('🐕 Hors ligne sans reconnexion programmée → relance forcée');
+    scheduleReconnect('watchdog');
+  }, WATCHDOG_TICK_MS);
+  timer.unref();
+}
+
+// Le socket précédent doit être détaché AVANT d'en créer un nouveau.
+// Sans ça, ses écouteurs restent branchés : un « close » tardif du socket mort
+// relance connectToWhatsApp() une seconde fois, et on se retrouve avec deux
+// sockets vivants qui traitent chacun `messages.upsert` — Léa répond deux fois
+// au même message, et le nombre de sockets double à chaque cycle.
+function teardown(previous: ReturnType<typeof makeWASocket> | null): void {
+  if (!previous) return;
+  try {
+    previous.ev.removeAllListeners('connection.update');
+    previous.ev.removeAllListeners('messages.upsert');
+    previous.ev.removeAllListeners('creds.update');
+    previous.ev.removeAllListeners('contacts.upsert');
+    previous.ev.removeAllListeners('contacts.update');
+    previous.ev.removeAllListeners('chats.phoneNumberShare');
+    previous.ev.removeAllListeners('messaging-history.set');
+  } catch (e) {
+    console.error('[whatsapp] retrait des écouteurs:', e);
+  }
+  try {
+    previous.end(undefined);
+  } catch {
+    /* le socket était déjà mort — c'est le cas normal ici */
+  }
+}
+
 // Un client envoie souvent sa réponse en plusieurs bulles WhatsApp rapprochées
 // ("Vers le 15" / "aemp" / "Septembre"). Sans tampon, chaque bulle déclenche son
 // propre appel à Léa en parallèle : le premier appel répond à une phrase encore
@@ -103,9 +205,33 @@ export const isConnected = () => connected;
 export const getSock = () => sock;
 
 export async function connectToWhatsApp(): Promise<void> {
-  const { state, saveCreds } = await useSupabaseAuthState();
-  const { version } = await fetchLatestBaileysVersion();
+  // Deux appels simultanés créeraient deux sockets concurrents. Ça arrive dès
+  // que le watchdog et un « close » tombent en même temps.
+  if (connecting) {
+    console.log('⏭️  Connexion déjà en cours — appel ignoré');
+    return;
+  }
+  connecting = true;
 
+  teardown(sock);
+  sock = null;
+
+  try {
+    const { state, saveCreds } = await useSupabaseAuthState();
+    const { version } = await fetchLatestBaileysVersion();
+    await openSocket(state, saveCreds, version);
+  } finally {
+    connecting = false;
+  }
+}
+
+type AuthState = Awaited<ReturnType<typeof useSupabaseAuthState>>;
+
+async function openSocket(
+  state: AuthState['state'],
+  saveCreds: AuthState['saveCreds'],
+  version: Awaited<ReturnType<typeof fetchLatestBaileysVersion>>['version'],
+): Promise<void> {
   sock = makeWASocket({
     version,
     logger,
@@ -126,7 +252,9 @@ export async function connectToWhatsApp(): Promise<void> {
     if (connection === 'close') {
       connected = false;
       qrCode = null;
-      const code = (lastDisconnect?.error as Boom)?.output?.statusCode;
+      lastDisconnectAt = Date.now();
+      const code = (lastDisconnect?.error as Boom)?.output?.statusCode ?? null;
+      lastDisconnectCode = code;
       const loggedOut = code === DisconnectReason.loggedOut;
       console.log(`🔌 Connexion fermée (code ${code}) — loggedOut: ${loggedOut}`);
       if (loggedOut) {
@@ -135,14 +263,18 @@ export async function connectToWhatsApp(): Promise<void> {
         console.log('🧹 Session WhatsApp invalidée → nettoyage auth Supabase + nouveau QR');
         clearSupabaseAuthState()
           .catch((e) => console.error('[whatsapp] clearAuthState:', e))
-          .finally(() => setTimeout(() => connectToWhatsApp(), 2_000));
+          .finally(() => scheduleReconnect('session invalidée, nouveau QR à scanner'));
       } else {
-        setTimeout(() => connectToWhatsApp(), 5_000);
+        scheduleReconnect(`fermeture code ${code}`);
       }
     }
     if (connection === 'open') {
       connected = true;
       qrCode = null;
+      lastConnectedAt = Date.now();
+      // Le compteur ne redescend qu'ici : sinon le recul repart de zéro à
+      // chaque tentative et on retombe sur un martèlement toutes les 5 s.
+      reconnectAttempts = 0;
       console.log('✅ WhatsApp connecté !');
     }
   });
