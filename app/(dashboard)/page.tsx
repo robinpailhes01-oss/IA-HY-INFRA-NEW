@@ -381,14 +381,25 @@ export default async function OverviewPage() {
 
       <header className="rise flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display-lg text-foreground">Vue d&apos;ensemble</h1>
-          <p className="mt-1.5 text-[14.5px] text-muted-foreground">
+          <h1 className="t-page text-foreground">Vue d&apos;ensemble</h1>
+          <p className="t-body mt-1.5 text-muted-foreground">
             {goal
               ? `Saison en cours · ${formatDateLong(periodStart)} – ${formatDateLong(periodEnd)}`
               : "Tableau de bord Harmonie Yacht"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        {/* Deux corrections mobiles, toutes deux portées ici plutôt que dans les
+            trois composants de dialogue — qui servent aussi ailleurs.
+            1. `flex-wrap` + `w-full` : les boutons portent `shrink-0
+               whitespace-nowrap`, donc sans retour à la ligne autorisé ils
+               débordaient de l'écran au lieu de passer en dessous.
+            2. `h-11` : `size="sm"` fait 28 px de haut. C'est confortable à la
+               souris, c'est trop petit pour un pouce — or ce sont les trois
+               actions principales de la page. 44 px est le minimum tactile.
+            3. Le premier bouton prend toute la largeur sur mobile : une action
+               principale sans ambiguïté, et les deux secondaires tiennent
+               côte à côte en dessous au lieu de laisser « Revenu » seul. */}
+        <div className="flex w-full flex-wrap items-center gap-2 [&_button]:h-11 [&_button]:px-4 [&>button:first-child]:w-full sm:w-auto sm:[&_button]:h-8 sm:[&_button]:px-3 sm:[&>button:first-child]:w-auto">
           <AddBookingDialog />
           <AddExpenseDialog />
           <AddRevenueDialog />
@@ -416,13 +427,16 @@ export default async function OverviewPage() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
         <Card className="rise lg:col-span-2">
           <CardContent className="pt-1">
-            <p className="text-[14.5px] font-medium text-muted-foreground">
-              Chiffre d&apos;affaires {year}
-            </p>
-            <p className="display-xl numeric mt-2.5 text-foreground">{formatEur(caYtd)}</p>
-            <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-[12.5px] text-muted-foreground">
-              <span>Ce mois <span className="font-semibold text-foreground">{formatEur(caMonth)}</span></span>
-              <span>Reste à encaisser <span className="font-semibold text-foreground">{formatEur(outstanding)}</span></span>
+            <p className="t-label text-muted-foreground">Chiffre d&apos;affaires {year}</p>
+            <p className="n-hero mt-2.5 text-foreground">{formatEur(caYtd)}</p>
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px] text-muted-foreground">
+              <span>
+                Ce mois <span className="n-inline text-foreground">{formatEur(caMonth)}</span>
+              </span>
+              <span>
+                Reste à encaisser{" "}
+                <span className="n-inline text-foreground">{formatEur(outstanding)}</span>
+              </span>
             </div>
             <CapsuleChart data={chartData} className="mt-8 mb-6" />
           </CardContent>
@@ -441,13 +455,13 @@ export default async function OverviewPage() {
                     <p className="truncate text-[14px] font-semibold tracking-[-0.015em] text-[#06121F]">
                       {b.offerName ?? "Sortie"}
                     </p>
-                    <p className="font-mono text-[11.5px] text-[#64798F]">
+                    <p className="t-caption mt-0.5 text-[#64798F]">
                       {formatDateLong(b.date)}
                       {b.startTime ? ` · ${b.startTime.slice(0, 5)}` : ""}
                       {b.customerName ? ` · ${b.customerName}` : ""}
                     </p>
                     {b.amount ? (
-                      <p className="numeric mt-1 text-[15.5px] font-semibold text-[#8A6D1F]">
+                      <p className="n-inline mt-1 text-[15.5px] text-[#8A6D1F]">
                         {formatEur(b.amount)}
                       </p>
                     ) : null}

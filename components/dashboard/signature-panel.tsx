@@ -19,7 +19,7 @@ export function SignaturePanel({
   return (
     <section className={cn("vitre-signature rounded-[22px] p-6", className)}>
       <div className="relative mb-5 flex items-baseline justify-between gap-3">
-        <h2 className="display-md text-[#06121F]">{title}</h2>
+        <h2 className="t-panel text-[#06121F]">{title}</h2>
         {action}
       </div>
       <div className="relative">{children}</div>

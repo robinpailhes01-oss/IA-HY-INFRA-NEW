@@ -43,10 +43,10 @@ export function KpiCard({
   primary = false,
 }: KpiCardProps) {
   return (
-    <MotionCard index={index}>
+    <MotionCard index={index} className="h-full">
       <div
         className={cn(
-          "group/kpi relative overflow-hidden rounded-[22px] border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] p-5 backdrop-blur-[44px] backdrop-saturate-[1.85]",
+          "group/kpi relative flex h-full flex-col overflow-hidden rounded-[20px] border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] p-4 backdrop-blur-[44px] backdrop-saturate-[1.85] sm:rounded-[22px] sm:p-5",
           "shadow-[0_0.5px_0_var(--highlight)_inset,0_1px_2px_rgba(0,0,0,0.3),0_26px_56px_-30px_rgba(0,0,0,0.75)]",
         )}
       >
@@ -59,46 +59,56 @@ export function KpiCard({
           />
         )}
 
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
-            <AnimatedNumber
-              value={value}
-              format={format}
-              className={cn(
-                "numeric mt-2 block font-bold text-foreground",
-                primary ? "text-[2.4rem] leading-none" : "text-[2rem] leading-none",
-              )}
-            />
-            {delta ? (
-              <span
-                className={cn(
-                  "mt-2 inline-flex items-center gap-0.5 font-mono text-[12.5px] font-medium",
-                  delta.positive ? "text-success" : "text-danger",
-                )}
-              >
-                {delta.positive ? (
-                  <ArrowUpRight className="size-3.5" />
-                ) : (
-                  <ArrowDownRight className="size-3.5" />
-                )}
-                {delta.value}
-                {hint ? <span className="ml-1 font-sans text-muted-foreground">{hint}</span> : null}
-              </span>
-            ) : hint ? (
-              <p className="mt-2 font-mono text-[12px] text-muted-foreground">{hint}</p>
-            ) : null}
-          </div>
-
+        {/* Le libellé et l'icône partagent la première ligne, le chiffre
+            récupère ensuite TOUTE la largeur de la carte. Sur un iPhone, où
+            deux cartes se partagent 390 px, c'est la différence entre un
+            chiffre lisible et un chiffre coupé en deux.
+            La hauteur minimale de deux lignes aligne les quatre chiffres entre
+            eux ; au-delà de `lg` les libellés tiennent sur une ligne et la
+            réserve n'a plus lieu d'être. */}
+        <div className="relative flex items-start justify-between gap-2">
+          <p className="t-label min-h-[2.5em] text-balance text-muted-foreground lg:min-h-0">
+            {label}
+          </p>
           <span
             className={cn(
-              "grid size-10 shrink-0 place-items-center rounded-[13px] transition-transform duration-[400ms] [transition-timing-function:var(--ease-ios)] group-hover/kpi:scale-105",
+              "grid size-8 shrink-0 place-items-center rounded-[10px] transition-transform duration-[400ms] [transition-timing-function:var(--ease-ios)] group-hover/kpi:scale-105 sm:size-9 sm:rounded-xl",
               CHIP[accent],
             )}
           >
-            <Icon className="size-[18px] stroke-[1.7]" />
+            <Icon className="size-4 stroke-[1.7] sm:size-[17px]" />
           </span>
         </div>
+
+        <AnimatedNumber
+          value={value}
+          format={format}
+          className={cn(
+            "relative mt-2.5 block text-foreground",
+            primary ? "n-kpi-lead" : "n-kpi",
+          )}
+        />
+
+        {/* Collé au bas de la carte : les précisions s'alignent entre elles
+            même quand les libellés n'ont pas le même nombre de lignes. */}
+        {delta ? (
+          <span
+            className={cn(
+              "relative mt-auto inline-flex items-baseline gap-0.5 pt-2 text-[12px] font-medium",
+              delta.positive ? "text-success" : "text-danger",
+            )}
+          >
+            {delta.positive ? (
+              <ArrowUpRight className="size-3.5 self-center" />
+            ) : (
+              <ArrowDownRight className="size-3.5 self-center" />
+            )}
+            {delta.value}
+            {hint ? <span className="ml-1 font-normal text-muted-foreground">{hint}</span> : null}
+          </span>
+        ) : hint ? (
+          <p className="t-caption relative mt-auto pt-2 text-muted-foreground">{hint}</p>
+        ) : null}
       </div>
     </MotionCard>
   );
