@@ -41,7 +41,7 @@ export function Header({
   const displayName = firstName ?? email.split("@")[0];
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border/60 bg-card/70 px-4 backdrop-blur-xl supports-[backdrop-filter]:bg-card/60 md:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between px-4 sm:px-7">
       <div className="flex items-center gap-2">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
@@ -58,7 +58,7 @@ export function Header({
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-60 max-w-[80vw] border-r border-sidebar-border bg-sidebar p-0 text-sidebar-foreground"
+            className="w-[15rem] max-w-[80vw] border-r border-[var(--hairline)] bg-[#0A1829] p-0 pt-6"
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <SidebarNav onNavigate={() => setMobileOpen(false)} />
@@ -69,19 +69,21 @@ export function Header({
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
+            <button
+              type="button"
               aria-label="Menu utilisateur"
+              className="flex items-center gap-2.5 rounded-full border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] py-1.5 pl-1.5 pr-4 transition-colors duration-200 [transition-timing-function:var(--ease-ios)] hover:bg-[var(--surface-hover)]"
             />
           }
         >
-          <Avatar>
-            <AvatarFallback className="bg-primary text-primary-foreground">
+          <Avatar className="size-7">
+            <AvatarFallback className="bg-[linear-gradient(145deg,#17395C,#0A1F35)] text-[10.5px] font-semibold text-white">
               {initials}
             </AvatarFallback>
           </Avatar>
+          <span className="hidden text-[13.5px] font-semibold tracking-[-0.015em] text-foreground sm:inline">
+            {displayName}
+          </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>

@@ -340,7 +340,7 @@ export default async function OverviewPage() {
   ).length;
 
   return (
-    <div className="glass-ambient -m-4 space-y-6 p-4 sm:-m-6 sm:p-6">
+    <div className="space-y-6">
       {awaitingReplyCount > 0 && (
         <Link
           href="/leads?view=priority&bucket=unanswered"

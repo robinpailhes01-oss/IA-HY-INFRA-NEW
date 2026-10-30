@@ -1,16 +1,18 @@
+"use client";
+
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { AnimatedNumber } from "@/components/dashboard/animated-number";
 import { cn } from "@/lib/utils";
 
 type Accent = "gold" | "primary" | "success" | "info";
 
 const CHIP: Record<Accent, string> = {
-  gold: "bg-gold/10 text-gold",
-  primary: "bg-primary/10 text-primary",
-  success: "bg-success/10 text-success",
-  info: "bg-info/10 text-info",
+  gold: "bg-gold/12 text-gold",
+  primary: "bg-info/12 text-info",
+  success: "bg-success/12 text-success",
+  info: "bg-info/12 text-info",
 };
 
 type KpiCardProps = {
@@ -22,6 +24,8 @@ type KpiCardProps = {
   delta?: { value: string; positive: boolean };
   hint?: string;
   index?: number;
+  /** Un seul par écran : la carte prend plus de présence que ses voisines. */
+  primary?: boolean;
 };
 
 export function KpiCard({
@@ -33,24 +37,47 @@ export function KpiCard({
   delta,
   hint,
   index = 0,
+  primary = false,
 }: KpiCardProps) {
+  const still = useReducedMotion();
+
   return (
-    <Card
-      style={{ animationDelay: `${index * 70}ms` }}
-      className="enter-up hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(16,24,40,0.04),0_18px_40px_-24px_rgba(16,24,40,0.22)]"
+    <motion.div
+      initial={still ? false : { opacity: 0, y: 14, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: index * 0.06, duration: 0.62, ease: [0.32, 0.72, 0, 1] }}
+      // Le soulèvement au survol est un ressort, pas une transition linéaire :
+      // c'est ce qui donne la sensation d'un objet physique.
+      whileHover={still ? undefined : { y: -4, transition: { type: "spring", stiffness: 420, damping: 28 } }}
+      className={cn(
+        "group/kpi relative overflow-hidden rounded-[22px] border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] p-5 backdrop-blur-[44px] backdrop-saturate-[1.85]",
+        "shadow-[0_0.5px_0_var(--highlight)_inset,0_1px_2px_rgba(0,0,0,0.3),0_26px_56px_-30px_rgba(0,0,0,0.75)]",
+      )}
     >
-      <CardContent className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <span className="text-[13px] font-medium text-muted-foreground">{label}</span>
+      {/* Halo doré au survol — visible seulement sur la carte principale, pour
+          qu'il reste un signal et ne devienne pas une décoration. */}
+      {primary && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-20 size-44 rounded-full bg-[radial-gradient(circle,rgba(201,168,76,0.22),transparent_68%)] opacity-70 transition-opacity duration-500 group-hover/kpi:opacity-100"
+        />
+      )}
+
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
           <AnimatedNumber
             value={value}
             format={format}
-            className="text-[1.6rem] leading-none font-semibold tracking-tight text-foreground"
+            className={cn(
+              "numeric mt-2 block font-bold text-foreground",
+              primary ? "text-[2.4rem] leading-none" : "text-[2rem] leading-none",
+            )}
           />
           {delta ? (
             <span
               className={cn(
-                "inline-flex items-center gap-0.5 text-xs font-medium",
+                "mt-2 inline-flex items-center gap-0.5 font-mono text-[12.5px] font-medium",
                 delta.positive ? "text-success" : "text-danger",
               )}
             >
@@ -60,23 +87,22 @@ export function KpiCard({
                 <ArrowDownRight className="size-3.5" />
               )}
               {delta.value}
-              {hint ? (
-                <span className="ml-1 font-normal text-muted-foreground">{hint}</span>
-              ) : null}
+              {hint ? <span className="ml-1 font-sans text-muted-foreground">{hint}</span> : null}
             </span>
           ) : hint ? (
-            <span className="text-xs text-muted-foreground">{hint}</span>
+            <p className="mt-2 font-mono text-[12px] text-muted-foreground">{hint}</p>
           ) : null}
         </div>
+
         <span
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover/card:scale-105",
+            "grid size-10 shrink-0 place-items-center rounded-[13px] transition-transform duration-[400ms] [transition-timing-function:var(--ease-ios)] group-hover/kpi:scale-105",
             CHIP[accent],
           )}
         >
-          <Icon className="size-[18px]" />
+          <Icon className="size-[18px] stroke-[1.7]" />
         </span>
-      </CardContent>
-    </Card>
+      </div>
+    </motion.div>
   );
 }

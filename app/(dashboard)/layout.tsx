@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/header";
-import { Sidebar } from "@/components/sidebar";
+import { SidebarNav } from "@/components/sidebar-nav";
 
 export default async function DashboardLayout({
   children,
@@ -24,14 +24,22 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .maybeSingle();
 
+  // La coque : une grande plaque de verre posée sur le fond, qui contient la
+  // navigation ET le contenu. C'est ce qui distingue une application d'une
+  // page web — le menu n'est plus une barre collée au bord, il fait partie
+  // du même objet. Le fond reste visible tout autour pour que le verre ait
+  // quelque chose à réfracter.
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="flex min-h-screen flex-col md:pl-60">
-        <Header email={user.email ?? ""} firstName={profile?.first_name ?? null} />
-        <main className="flex-1 bg-gradient-to-b from-background to-[#eaeff6] p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
+    <div className="app-ambient app-grain min-h-screen p-3 sm:p-5 lg:p-6">
+      <div className="vitre relative z-10 flex min-h-[calc(100vh-1.5rem)] rounded-[2rem] sm:min-h-[calc(100vh-2.5rem)] lg:min-h-[calc(100vh-3rem)] lg:rounded-[2.25rem]">
+        <aside className="hidden w-[15rem] shrink-0 border-r border-[var(--hairline)] py-6 md:block">
+          <SidebarNav />
+        </aside>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Header email={user.email ?? ""} firstName={profile?.first_name ?? null} />
+          <main className="flex-1 px-4 pb-8 pt-2 sm:px-7 sm:pb-10">{children}</main>
+        </div>
       </div>
     </div>
   );

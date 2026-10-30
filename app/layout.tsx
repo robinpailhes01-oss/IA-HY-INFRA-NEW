@@ -3,8 +3,12 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
+// Inter n'est plus la police d'affichage mais le REPLI. Sur Mac et iPhone,
+// --font-display résout vers la vraie SF Pro via la pile système (voir
+// globals.css) : on obtient la police d'Apple, pas une imitation. Inter prend
+// le relais sur Windows, Android et Linux.
 const inter = Inter({
-  variable: "--font-sans",
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -25,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1b3a5c",
+  themeColor: "#06121F",
 };
 
 export default function RootLayout({
@@ -36,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`dark ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

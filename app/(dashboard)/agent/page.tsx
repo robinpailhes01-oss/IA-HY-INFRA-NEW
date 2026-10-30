@@ -200,7 +200,7 @@ export default function AgentPage() {
   const pausedCount = conversations.filter((c) => c.is_paused).length;
 
   return (
-    <div className="glass-ambient -m-4 flex h-[calc(100vh-2rem)] flex-col gap-4 p-4 sm:-m-6 sm:p-6">
+    <div className="flex h-[calc(100vh-9rem)] flex-col gap-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Agent Léa</h1>
@@ -221,7 +221,7 @@ export default function AgentPage() {
         <div className="flex min-h-0 flex-1 gap-4">
           {/* ── Conversations ─────────────────────────────────────────── */}
           <aside
-            className={`glass w-full shrink-0 flex-col rounded-2xl lg:flex lg:w-72 ${
+            className={`vitre w-full shrink-0 flex-col rounded-2xl lg:flex lg:w-72 ${
               selectedPhone ? 'hidden lg:flex' : 'flex'
             }`}
           >
@@ -285,7 +285,7 @@ export default function AgentPage() {
 
           {/* ── Fil de messages ───────────────────────────────────────── */}
           <main
-            className={`glass min-w-0 flex-1 flex-col rounded-2xl ${
+            className={`vitre min-w-0 flex-1 flex-col rounded-2xl ${
               cardOnTop ? 'hidden xl:flex' : selectedPhone ? 'flex' : 'hidden lg:flex'
             }`}
           >
@@ -420,7 +420,7 @@ function ClientPanel({
   const shell = `${visible ? 'flex' : 'hidden'} w-full shrink-0 rounded-2xl xl:flex xl:w-80`;
   if (!client) {
     return (
-      <aside className={`glass items-center justify-center ${shell}`}>
+      <aside className={`vitre items-center justify-center ${shell}`}>
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       </aside>
     );
@@ -437,7 +437,7 @@ function ClientPanel({
   if (l?.sourceChannel) facts.push(['Source', l.sourceChannel]);
 
   return (
-    <aside className={`glass flex-col overflow-y-auto ${shell}`}>
+    <aside className={`vitre flex-col overflow-y-auto ${shell}`}>
       <div className="flex items-center gap-3 border-b border-white/40 p-4 dark:border-white/5">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
           {initials(client.name, client.phone)}
@@ -592,7 +592,7 @@ function ScoreMeter({ score }: { score: number }) {
 
 function StatChip({ label, value, muted }: { label: string; value: number; muted?: boolean }) {
   return (
-    <span className="glass flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5">
+    <span className="vitre flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5">
       <span
         className={`text-sm font-semibold tabular-nums ${muted ? 'text-muted-foreground' : 'text-foreground'}`}
       >
@@ -612,7 +612,7 @@ function ConnectionBadge({ state }: { state: QRState }) {
   };
   const { label, dot, text } = map[state.status];
   return (
-    <span className="glass flex items-center gap-2 rounded-full px-3 py-1.5">
+    <span className="vitre flex items-center gap-2 rounded-full px-3 py-1.5">
       <span className={`size-2 rounded-full ${dot}`} />
       <span className={`text-xs font-medium ${text}`}>{label}</span>
     </span>
@@ -621,7 +621,7 @@ function ConnectionBadge({ state }: { state: QRState }) {
 
 function QRPanel({ state }: { state: QRState }) {
   return (
-    <div className="glass flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl p-8 text-center">
+    <div className="vitre flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl p-8 text-center">
       <p className="text-lg font-semibold text-foreground">Connecter Léa à WhatsApp</p>
       {state.status === 'pending' && state.qr ? (
         <>
