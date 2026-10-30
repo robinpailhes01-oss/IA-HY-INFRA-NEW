@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono, Instrument_Sans, Instrument_Serif } from "next/font/google";
+import { Bricolage_Grotesque, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -16,20 +16,22 @@ import "./globals.css";
 // elle-même est invalide et fait tomber toute l'application sur la police par
 // défaut du navigateur.
 
-// La fonte de travail. Étroite : sur une carte KPI de 150 px, un libellé y
-// tient en deux lignes là où Inter en demandait trois.
-const instrumentSans = Instrument_Sans({
-  variable: "--font-instrument-sans",
+// LES TITRES. Bricolage Grotesque remplace la serif éditoriale : même ambition
+// de caractère, mais dans un registre contemporain qui tient à toutes les
+// tailles. Ses terminaisons coupées en biais et son axe optique variable lui
+// donnent une personnalité qu'aucune grotesque neutre n'a — c'est ce qui
+// empêche l'interface de ressembler à un gabarit.
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
   display: "swap",
 });
 
-// L'accent éditorial, deux emplois par écran : titre de page et titre du
-// panneau signature. Un seul poids, donc un chargement négligeable.
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
+// LE TEXTE. Plus Jakarta Sans : géométrique mais chaleureuse, excellente à
+// 11 px en capitales espacées — exactement l'emploi principal ici.
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
-  weight: "400",
   display: "swap",
 });
 
@@ -73,7 +75,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`dark ${instrumentSans.variable} ${instrumentSerif.variable} ${geistMono.variable} h-full antialiased`}
+      className={`dark ${jakarta.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

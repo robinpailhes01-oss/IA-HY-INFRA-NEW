@@ -12,11 +12,11 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        // Surface franche : un filet d'un demi-pixel, aucune ombre, aucun flou.
-        // Le verre est réservé à la coque (voir .vitre-shell) — une carte
-        // floutée posée sur une coque floutée ne crée pas de profondeur, elle
-        // brouille les deux.
-        "group/card flex flex-col gap-4 overflow-hidden rounded-[18px] border-[0.5px] border-[var(--hairline)] bg-[var(--plaque)] py-5 text-sm text-card-foreground transition-colors duration-200 hover:border-[var(--highlight)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        // Plaque de verre (voir .vitre dans globals.css) : flou + saturation,
+        // dégradé interne, liseré clair sur l'arête haute, reflet d'angle.
+        // La saturation est l'ingrédient qui compte — sans elle, la carte
+        // grise le fond au lieu d'en prendre la couleur.
+        "vitre group/card flex flex-col gap-4 rounded-[18px] py-5 text-sm text-card-foreground transition-[border-color,transform] duration-300 [transition-timing-function:var(--ease-ios)] hover:border-[var(--highlight)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
         className
       )}
       {...props}

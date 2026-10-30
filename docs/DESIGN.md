@@ -70,35 +70,53 @@ du dégradé violet sur un fond ardoise.
 
 ## 3. Direction esthétique
 
-> **La rigueur d'un terminal financier + la retenue d'un carnet de bord.**
+> **La rigueur d'un terminal financier + la lumière d'une aurore sur la mer.**
 
-Référence prise sur les tableaux de bord les mieux dessinés (Linear, Vercel,
-les blocs analytiques de 21st.dev). Trois choses y reviennent systématiquement,
-et aucune ne coûte cher :
+Deux corrections successives ont mené ici, et les deux comptent :
 
-1. **Les libellés sont en capitales, petits, très espacés.** « TRÉSORERIE
-   RÉELLE » se lit comme une étiquette de cadran ; « Trésorerie réelle » se lit
-   comme du texte et entre en concurrence avec le chiffre qu'il annonce.
-2. **Les chiffres sont en chasse fixe.** Un montant en proportionnelle se lit
-   comme du texte ; en monospace il se lit comme de la donnée. Sur un tableau
-   de bord financier, c'est aussi le registre du livre de comptes.
-3. **Les surfaces sont franches.** Un filet d'un demi-pixel, pas d'ombre, pas
-   de flou, pas de grain.
+1. Tout était en Times à cause d'une variable CSS cassée (§0).
+2. En corrigeant, j'ai poussé « épuré » trop loin : surfaces à plat, grain
+   supprimé, fond réduit à deux halos pâles. Techniquement propre, visuellement
+   **terne** — un seul bleu désaturé partout, et le verre avait disparu.
 
-**Ce qu'on s'interdit :** la grille de trois cartes à icônes, l'accent
-bleu-violet réflexe, l'ombre portée douce sur tout ce qui est rectangulaire.
+La version actuelle garde la discipline typographique mais rend la matière et
+la couleur.
 
-### Un seul objet en verre
+### Le verre : la saturation, pas le flou
 
-Avant, chaque carte était floutée, saturée, ombrée et grainée. Empilés, ces
-effets ne produisent pas de la profondeur mais du bruit : plus rien ne ressort
-parce que tout ressort.
+Ce qui fait qu'une surface se lit comme du verre et non comme un rectangle
+flou, c'est **`saturate(200%)` accolé au `blur()`**. Le flou seul grise ce qu'il
+y a derrière ; avec la saturation, la couleur du fond remonte à travers la
+plaque et chaque carte prend la teinte de ce qui passe dessous.
 
-Désormais **la coque est la seule plaque de verre** (`.vitre-shell`) ; tout ce
-qui est posé dessus est plat (`.vitre`, `Card`). Le grain a été supprimé, et le
-fond est passé de quatre halos à deux.
+Trois autres détails, anodins séparément, décisifs ensemble :
 
-C'est ça, « épuré » : moins d'effets, des contours plus nets.
+- un **dégradé interne** — la plaque est plus claire en haut, comme une vitre
+  inclinée vers la lumière ;
+- un **liseré clair** sur l'arête supérieure ;
+- un **reflet d'angle** en haut à gauche. Une seule source lumineuse pour toute
+  la page, sinon l'illusion d'épaisseur tombe.
+
+### Le fond : il faut quelque chose à réfracter
+
+Un effet de verre sur un fond uni ne se voit pas. Le fond porte donc quatre
+halos saturés (aqua, indigo, or, bleu) **plus un ruban lumineux en diagonale**,
+emprunté aux aurores. C'est ce ruban que les cartes attrapent quand elles
+passent devant — et c'est la raison pour laquelle le verre paraissait absent
+dans la version précédente.
+
+Les dégradés sont sur un pseudo-élément **fixe** : `background-attachment: fixed`
+est rendu de travers par Safari iOS et laissait une cassure horizontale.
+
+### La couleur : quatre accents, pas un
+
+Quatre cartes identiques se fondent en un bloc gris. Chaque indicateur porte
+donc sa couleur — un halo diffus dans l'angle, un filet teinté, et le chiffre
+lui-même pour la carte principale.
+
+**Ce qu'on s'interdit toujours :** la grille de trois cartes à icônes, l'accent
+bleu-violet réflexe sur fond ardoise, l'ombre portée douce sur tout ce qui est
+rectangulaire.
 
 ## 4. Tokens
 
@@ -106,30 +124,30 @@ C'est ça, « épuré » : moins d'effets, des contours plus nets.
 
 | Rôle | Valeur | Emploi |
 | --- | --- | --- |
-| `background` | `#06121F` | fond de page |
-| `surface` | `rgba(255,255,255,.045)` | la coque en verre, et elle seule |
-| `plaque` | `rgba(255,255,255,.032)` | les cartes — opaques, franches |
-| `hairline` | `rgba(255,255,255,.09)` | le filet qui sépare, à la place des ombres |
+| `background` | `#04101D` | fond de page |
+| `aqua` | `#3FC8D8` | la mer — réservations |
+| `indigo` | `#7B8BFF` | le large — leads |
+| `success` | `#2FD68E` | le résultat — marge |
+| `gold` | `#E8C063` | l'argent — trésorerie, signature, pic du graphique |
+| `info` | `#4A7DFF` | actions, liens |
+| `danger` / `warning` | `#FF5C68` / `#FFB547` | alertes |
 | `foreground` | `#F2F6FA` | texte principal |
-| `muted-foreground` | `#8A9BB0` | libellés, légendes |
-| `gold` | `#C9A84C` | **accent unique** — signature, pic du graphique, carte principale |
-| `success` / `danger` / `warning` | `#10B981` / `#EF4444` / `#F59E0B` | sens uniquement |
+| `muted-foreground` | `#95A8BE` | libellés, légendes |
+| `hairline` | `rgba(255,255,255,.11)` | le filet des plaques |
 
-L'or ne décore **jamais**. Il marque soit le panneau signature, soit une valeur
-qui demande une décision.
+Les accents disent quelque chose. Aucun n'est décoratif.
 
 ### Typographie — trois fontes, trois rôles qui ne se chevauchent jamais
 
 | Fonte | Rôle | Où exactement |
 | --- | --- | --- |
-| **Instrument Sans** (400–700) | tout le texte | libellés, titres de carte, prose |
+| **Bricolage Grotesque** (600) | les titres | titre de page, titres de carte, panneau signature |
+| **Plus Jakarta Sans** (400–700) | le texte | libellés, prose, légendes |
 | **Geist Mono** (500) | **tous les chiffres** | KPI, montants, scores, info-bulles |
-| **Instrument Serif** (400) | accent éditorial | titre de page + titre du panneau signature. **Deux emplois par écran.** |
 
-Note : la mono avait été retirée à l'étape précédente, au motif qu'elle n'avait
-pas d'emploi légitime. C'était vrai de la mono dans la **prose**. C'est faux des
-**chiffres** — et c'est précisément là que les meilleurs tableaux de bord
-l'emploient.
+Bricolage remplace la serif éditoriale : même ambition de caractère, registre
+contemporain, et elle tient à toutes les tailles là où une serif à 12 px sur
+fond marine devenait illisible.
 
 **L'interlettrage des chiffres est légèrement positif** (`+0.005em`), à rebours
 du réflexe « grand titre = resserré ». Serrés, les chiffres s'agglutinent en une
@@ -139,19 +157,19 @@ masse qu'on déchiffre ; aérés, chacun reste une unité qu'on lit d'un coup.
 et précède le € d'un U+00A0. En monospace, tout caractère occupe la même chasse
 — « 49 800 € » s'affiche « 49  800  € » et l'œil lit deux nombres.
 `word-spacing` n'y peut rien (la spec CSS ne compte que U+0020 comme séparateur).
-Le composant `components/ui/num.tsx` rend ces seuls caractères dans la
-proportionnelle, où une espace fine est enfin fine. **Tout nombre affiché doit
-passer par `<Num>`.**
+`components/ui/num.tsx` rend ces seuls caractères dans la proportionnelle.
+**Tout nombre affiché doit passer par `<Num>`.**
 
 ### Échelle typographique
 
 | Classe | Taille | Graisse | Usage |
 | --- | --- | --- | --- |
-| `.t-page` | 30 → 41 px (serif) | 400 | titre de page, un par écran |
-| `.t-panel` | 21 px (serif) | 400 | titre du panneau signature |
-| `.t-card` | 15 px | 600 | titre de carte |
+| `.t-page` | 32 → 44 px (display) | 600 | titre de page, un par écran |
+| `.t-panel` | 21,6 px (display) | 600 | titre du panneau signature |
+| `.t-card` | 16 px (display) | 600 | titre de carte |
 | `.t-label` | **11 px, CAPITALES, +0.1em** | 600 | toute étiquette de valeur |
 | `.n-hero` | 31 → 43 px (mono) | 500 | le chiffre principal de l'écran |
+| `.n-gradient` | — | — | remplissage dégradé, **un seul chiffre par page** |
 | `.n-kpi-lead` | 26 → 32 px (mono) | 500 | KPI mis en avant (un seul) |
 | `.n-kpi` | 23 → 28 px (mono) | 500 | KPI courant |
 | `.n-inline` | hérite (mono) | 500 | chiffre dans une ligne |
@@ -163,8 +181,8 @@ passer par `<Num>`.**
 
 - **Base 4 px** : `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`.
 - **Rayon** : 18 px sur les cartes, 32 px sur la coque. Une seule philosophie.
-- **Ombres** : aucune, sauf sous la coque. Les surfaces se séparent par leur
-  filet. C'est le changement le plus structurant de cette version.
+- **Ombres** : une seule, douce et très large, sous les plaques de verre. Pas
+  d'ombre sur autre chose.
 - **Mouvement** : `120 ms` micro-retour, `240 ms` transition, `620 ms` entrée.
   Courbe unique `cubic-bezier(.32,.72,0,1)`, version `prefers-reduced-motion`
   systématique.

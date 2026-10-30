@@ -58,9 +58,13 @@ export function CapsuleChart({
               transition={{ delay: 0.1 + i * 0.045, duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
               className={cn(
                 "relative w-full rounded-full shadow-[0_0.5px_0_rgba(255,255,255,0.3)_inset]",
+                // Les barres montent du bleu profond vers un bleu lumineux :
+                // la colonne a sa propre lumière au lieu d'être un aplat.
+                // Le pic passe en or avec sa lueur — un seul accent par
+                // graphique, sinon l'œil ne sait plus où aller.
                 isPeak
-                  ? "bg-[linear-gradient(180deg,#E8CE85,#C9A84C)] shadow-[0_0.5px_0_rgba(255,255,255,0.6)_inset,0_8px_22px_-6px_rgba(201,168,76,0.55)]"
-                  : "bg-[linear-gradient(180deg,#2B5C8F,#0A1F35)]",
+                  ? "bg-[linear-gradient(180deg,#F6E2AC,#E8C063)] shadow-[0_0.5px_0_rgba(255,255,255,0.65)_inset,0_10px_28px_-6px_rgba(232,192,99,0.6)]"
+                  : "bg-[linear-gradient(180deg,#5FA8E8,#27507E)] shadow-[0_0.5px_0_rgba(255,255,255,0.28)_inset]",
               )}
             />
             {/* Valeur au survol — l'information à la demande plutôt qu'un

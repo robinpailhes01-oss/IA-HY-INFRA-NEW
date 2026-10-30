@@ -12,10 +12,15 @@
      qui faisait s'afficher tout le tableau de bord en Times New Roman.
      Les noms ici (`--font-sans`) et ceux de next/font (`--font-instrument-sans`)
      doivent rester distincts. Voir docs/DESIGN.md §0. */
-  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-jakarta), sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
+
+  /* Quatre accents, pas un seul. Chaque indicateur porte sa couleur : c'est ce
+     qui empêche quatre cartes identiques de se fondre en un bloc gris. */
+  --color-aqua: var(--aqua);
+  --color-indigo: var(--indigo);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -121,7 +126,20 @@
 }
 
 .dark {
-  --background: #06121F;
+  /* Palette ravivée. L'ancienne tournait autour d'un seul bleu désaturé : tout
+     se ressemblait et rien ne ressortait. Les accents sont montés en
+     saturation et on en a quatre — la mer (aqua), le large (indigo), le
+     résultat (vert), l'argent (or). */
+  --aqua: #3FC8D8;
+  --indigo: #7B8BFF;
+  --gold: #E8C063;
+  --gold-100: #F8EFD4;
+  --success: #2FD68E;
+  --warning: #FFB547;
+  --danger: #FF5C68;
+  --info: #4A7DFF;
+
+  --background: #04101D;
   --foreground: #F2F6FA;
   --card: #0E2236;
   --card-foreground: #F2F6FA;
@@ -132,7 +150,7 @@
   --secondary: #1e293b;
   --secondary-foreground: #f8fafc;
   --muted: #1e293b;
-  --muted-foreground: #8A9BB0;
+  --muted-foreground: #95A8BE;
   --accent: #1e293b;
   --accent-foreground: #f8fafc;
   --destructive: #ef4444;
@@ -140,11 +158,11 @@
   --input: rgba(255, 255, 255, 0.15);
   --ring: #2a5a8c;
 
-  --chart-1: #3b82f6;
-  --chart-2: #60a5fa;
-  --chart-3: #c9a84c;
-  --chart-4: #10b981;
-  --chart-5: #f59e0b;
+  --chart-1: #4A7DFF;
+  --chart-2: #3FC8D8;
+  --chart-3: #E8C063;
+  --chart-4: #2FD68E;
+  --chart-5: #7B8BFF;
 
   --sidebar: #0f172a;
   --sidebar-foreground: #e2e8f0;
@@ -253,16 +271,14 @@
 }
 
 .dark {
-  --surface: rgba(255, 255, 255, 0.045);
-  --surface-hover: rgba(255, 255, 255, 0.075);
-  /* La surface de contenu. Opaque et à peine plus claire que le fond : elle se
-     distingue par son filet, pas par son ombre. */
-  --plaque: rgba(255, 255, 255, 0.032);
-  --plaque-hover: rgba(255, 255, 255, 0.055);
-  --hairline: rgba(255, 255, 255, 0.09);
-  --highlight: rgba(255, 255, 255, 0.12);
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+  --plaque: rgba(255, 255, 255, 0.045);
+  --plaque-hover: rgba(255, 255, 255, 0.075);
+  --hairline: rgba(255, 255, 255, 0.11);
+  --highlight: rgba(255, 255, 255, 0.20);
   --shadow-float:
-    0 0.5px 0 var(--highlight) inset,
+    0 1px 0 var(--highlight) inset,
     0 40px 80px -40px rgba(0, 0, 0, 0.85);
 }
 
@@ -288,34 +304,87 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(56rem 38rem at 6% -12%, rgba(201, 168, 76, 0.13), transparent 58%),
-    radial-gradient(54rem 36rem at 92% -10%, rgba(40, 96, 152, 0.20), transparent 56%),
-    linear-gradient(158deg, #050E18 0%, #081626 52%, #06111D 100%);
+    radial-gradient(62rem 40rem at 4% -8%, rgba(63, 200, 216, 0.26), transparent 58%),
+    radial-gradient(58rem 40rem at 96% -6%, rgba(74, 125, 255, 0.30), transparent 56%),
+    radial-gradient(52rem 34rem at 82% 96%, rgba(232, 192, 99, 0.18), transparent 60%),
+    radial-gradient(46rem 30rem at 14% 104%, rgba(123, 139, 255, 0.18), transparent 62%),
+    linear-gradient(158deg, #04101D 0%, #07192C 50%, #050F1C 100%);
 }
 
-/* UN SEUL objet en verre : la coque. Tout ce qui est posé dessus est plat.
+/* Le ruban lumineux. Une diagonale claire qui traverse le fond, empruntée aux
+   aurores : c'est ce qui empêche le dégradé d'être un simple fondu, et c'est
+   SURTOUT ce que le verre attrape quand une carte passe devant. Sans quelque
+   chose de contrasté derrière, un effet de verre n'a rien à réfracter — c'est
+   la raison pour laquelle il paraissait absent. */
+.app-ambient::after {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.75;
+  background: linear-gradient(
+    104deg,
+    transparent 30%,
+    rgba(63, 200, 216, 0.10) 42%,
+    rgba(214, 232, 255, 0.085) 50%,
+    rgba(232, 192, 99, 0.09) 58%,
+    transparent 70%
+  );
+  filter: blur(44px);
+}
 
-   Avant, chaque carte était floutée, saturée, ombrée et grainée. Empilés, ces
-   effets ne produisent pas de la profondeur mais du bruit : plus rien ne
-   ressort parce que tout ressort. Les tableaux de bord les mieux dessinés font
-   l'inverse — un seul plan matériel, et à l'intérieur des surfaces franches
-   séparées par des filets d'un demi-pixel. C'est ça, épuré : moins d'effets,
-   des contours plus nets.
+/* ═══ LE VERRE ═══════════════════════════════════════════════════════════
+   J'avais tout mis à plat au nom de l'épure, et le résultat était terne. Le
+   verre revient — mais construit, pas empilé au hasard.
 
-   Le grain a été retiré. C'était l'élément le plus coûteux à l'œil et le plus
-   proche du gadget. */
+   Ce qui fait qu'une surface se lit comme du verre et non comme un rectangle
+   flou, c'est la SATURATION. `blur()` seul grise ce qu'il y a derrière ; avec
+   `saturate(200%)` la couleur du fond remonte à travers la plaque et les
+   cartes prennent la teinte de ce qui passe dessous. C'est exactement ce qui
+   manquait : des cartes grises posées sur un fond coloré.
+
+   Trois autres détails, anodins séparément, décisifs ensemble : un dégradé
+   interne (la plaque est plus claire en haut, comme une vitre inclinée vers la
+   lumière), un liseré clair sur l'arête supérieure, et un reflet dans l'angle
+   haut-gauche. Une seule source lumineuse pour toute la page. */
 .vitre-shell {
-  background: var(--surface);
+  background: linear-gradient(
+    152deg,
+    rgba(255, 255, 255, 0.075) 0%,
+    rgba(255, 255, 255, 0.026) 55%,
+    rgba(255, 255, 255, 0.045) 100%
+  );
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 0.5px solid var(--hairline);
   box-shadow: var(--shadow-float);
 }
 
-/* La surface de contenu : franche, un filet, aucune ombre. */
 .vitre {
-  background: var(--plaque);
+  position: relative;
+  background: linear-gradient(
+    148deg,
+    rgba(255, 255, 255, 0.088) 0%,
+    rgba(255, 255, 255, 0.030) 58%,
+    rgba(255, 255, 255, 0.052) 100%
+  );
+  backdrop-filter: blur(26px) saturate(200%);
+  -webkit-backdrop-filter: blur(26px) saturate(200%);
   border: 0.5px solid var(--hairline);
+  box-shadow:
+    0 1px 0 var(--highlight) inset,
+    0 18px 44px -26px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+/* Le reflet spéculaire : c'est lui qui donne une épaisseur à la plaque. */
+.vitre::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(20rem 13rem at 0% 0%, rgba(255, 255, 255, 0.10), transparent 62%);
 }
 
 /* Le panneau signature. En thème sombre il doit être CLAIR : sur fond sombre,
@@ -333,26 +402,22 @@
   position: relative;
   overflow: hidden;
 }
-
 /* ═══════════════════════════════════════════════════════════════════════
    TYPOGRAPHIE — trois fontes, des rôles qui ne se chevauchent jamais.
    Spec complète et justification : docs/DESIGN.md §4.
 
-   · Instrument Sans porte 95 % de l'interface, CHIFFRES COMPRIS. Un montant
-     en serif ressemble à un faire-part ; en sans 600 à chasse fixe, il
-     ressemble à de l'argent. Les chiffres sont la raison d'être de l'écran.
-   · Instrument Serif ne sert qu'à DEUX choses : le titre de page et le titre
-     du panneau signature. Une serif à 12 px sur fond marine est illisible —
-     c'est ce qui rendait les libellés et les légendes impossibles à lire.
-   · JetBrains Mono est réservée aux colonnes de données alignées. Jamais de
-     prose : « comptable · pas la trésorerie » en mono tenait sur trois lignes
-     et ressemblait à un message d'erreur.
-
-   Pour revenir à une interface 100 % sans serif : passer --font-title à
-   var(--font-instrument-sans). Un seul endroit à changer.
+   · Bricolage Grotesque porte les TITRES. Elle remplace la serif éditoriale :
+     même ambition de caractère, registre contemporain, et elle tient à toutes
+     les tailles là où une serif à 12 px sur fond marine devenait illisible.
+   · Plus Jakarta Sans porte le TEXTE : libellés, prose, légendes. Géométrique
+     mais chaleureuse, excellente à 11 px en capitales espacées — l'emploi
+     principal ici.
+   · Geist Mono porte les CHIFFRES, tous. Un montant en proportionnelle se lit
+     comme du texte ; en chasse fixe il se lit comme de la donnée, et sur un
+     tableau de bord financier c'est le registre du livre de comptes.
    ═══════════════════════════════════════════════════════════════════════ */
 :root {
-  --font-title: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-title: var(--font-bricolage), var(--font-jakarta), sans-serif;
 }
 
 /* ── Libellés : CAPITALES, PETITES, ESPACÉES ─────────────────────────────
@@ -372,21 +437,28 @@
 /* Titres — la serif, et seulement ici. */
 .t-page {
   font-family: var(--font-title);
-  font-size: clamp(1.9rem, 1.35rem + 2.2vw, 2.55rem);
-  font-weight: 400;
-  letter-spacing: -0.018em;
-  line-height: 1.04;
+  font-size: clamp(2rem, 1.4rem + 2.4vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.032em;
+  line-height: 1.02;
 }
 .t-panel {
   font-family: var(--font-title);
-  font-size: 1.32rem;
-  font-weight: 400;
-  letter-spacing: -0.012em;
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
   line-height: 1.15;
 }
 
-/* Titre de carte — sans. Une carte n'est pas une page. */
-.t-card { font-size: 1rem; font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; }
+/* Titre de carte — la display aussi, mais discrète. Une carte n'est pas une
+   page : le caractère vient de la fonte, pas de la taille. */
+.t-card {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
 
 /* ── Chiffres : TOUS en mono ─────────────────────────────────────────────
    C'est le second détail qui change tout. Un montant en sans se lit comme du
@@ -408,6 +480,18 @@
 .n-kpi-lead { font-size: clamp(1.6rem, 1.35rem + 1vw, 2rem);     font-weight: 500; letter-spacing: 0.005em; line-height: 1; }
 .n-kpi      { font-size: clamp(1.45rem, 1.25rem + 0.8vw, 1.75rem); font-weight: 500; letter-spacing: 0.005em; line-height: 1; }
 .n-inline   { font-size: 0.95em; font-weight: 500; }
+
+/* Le chiffre principal de l'écran, rempli d'un dégradé plutôt que d'un blanc
+   plat. Repris des cartes de statistique les mieux faites : le nombre capte la
+   lumière comme une surface, au lieu d'être une forme découpée. Réservé à UN
+   chiffre par page — appliqué partout, l'effet se neutralise. */
+.n-gradient {
+  background: linear-gradient(168deg, #FFFFFF 12%, #DCE9F6 48%, #9FB9D4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
 
 /* Les séparateurs français à l'intérieur d'un nombre en chasse fixe. Voir
    components/ui/num.tsx : rendus dans la proportionnelle, ils retrouvent

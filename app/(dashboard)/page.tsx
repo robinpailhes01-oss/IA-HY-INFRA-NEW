@@ -411,8 +411,8 @@ export default async function OverviewPage() {
           Ils étaient enterrés en sixième position, après trois bandeaux et
           deux grandes cartes. C'est pourtant ce qu'on vient voir. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Réservations à venir" value={upcomingCount} accent="info" hint="hors annulations" index={0} />
-        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} accent="info" index={1} />
+        <KpiCard label="Réservations à venir" value={upcomingCount} accent="aqua" hint="hors annulations" index={0} />
+        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} accent="indigo" index={1} />
         <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
         {/* Seule carte en `primary` : la trésorerie décide si Robin dort bien.
             La marge nette à côté est un résultat comptable — les deux ensemble
@@ -440,7 +440,7 @@ export default async function OverviewPage() {
         <Card className="rise order-1 lg:order-none">
           <CardContent className="pt-1">
             <p className="t-label text-muted-foreground">Chiffre d&apos;affaires {year}</p>
-            <Num className="n-hero mt-3 block text-foreground">{formatEur(caYtd)}</Num>
+            <Num className="n-hero n-gradient mt-3 block">{formatEur(caYtd)}</Num>
             {/* Deux appuis sous le chiffre principal, chacun en étiquette +
                 valeur plutôt qu'en phrase : on compare deux montants, on ne
                 lit pas une ligne de texte. */}
