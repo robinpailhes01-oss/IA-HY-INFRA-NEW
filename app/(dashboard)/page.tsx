@@ -13,9 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import { RevenueHero } from "@/components/dashboard/revenue-hero";
-import { MonthlyBars } from "@/components/dashboard/monthly-bars";
-import { Reveal } from "@/components/dashboard/reveal";
+import { CapsuleChart } from "@/components/dashboard/capsule-chart";
+import { SignaturePanel } from "@/components/dashboard/signature-panel";
 import { RevenueGauge } from "@/components/dashboard/revenue-gauge";
 import {
   WeatherWidget,
@@ -261,6 +260,13 @@ export default async function OverviewPage() {
     if (inYear(r.date)) monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
   }
 
+  // Le graphique s'arrête au mois courant : afficher des mois futurs à zéro
+  // écraserait visuellement les mois réalisés et laisserait croire à une chute.
+  const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+  const chartData = monthly
+    .slice(0, monthIdx + 1)
+    .map((value, i) => ({ label: MOIS[i], value }));
+
   const upcoming: UpcomingBooking[] = (upcomingRes.data ?? []).map((b) => ({
     id: b.id,
     date: b.date,
@@ -341,44 +347,42 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      {awaitingReplyCount > 0 && (
-        <Link
-          href="/leads?view=priority&bucket=unanswered"
-          className="enter-up flex items-center gap-3 rounded-xl border border-danger/40 bg-danger/8 px-4 py-3 text-sm transition-colors hover:bg-danger/12"
-        >
-          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-danger" />
-          <p className="flex-1 text-foreground/90">
-            <strong className="text-danger">
-              {awaitingReplyCount} client{awaitingReplyCount > 1 ? "s" : ""}
-            </strong>
-            {awaitingReplyCount > 1 ? " attendent" : " attend"} votre réponse — ils ont écrit,
-            personne n&apos;a répondu.
-          </p>
-        </Link>
+      {/* Les urgences d'abord, sur une seule rangée. Empilées sur toute la
+          largeur, trois bandeaux repoussaient les chiffres sous la ligne de
+          flottaison et finissaient par ne plus être lus. */}
+      {(awaitingReplyCount > 0 || imminentCount > 0 || (attentionLeadsRes.data?.length ?? 0) > 0) && (
+        <div className="rise grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {awaitingReplyCount > 0 && (
+            <AlertBanner
+              href="/leads?view=priority&bucket=unanswered"
+              tone="danger"
+              strong={`${awaitingReplyCount} client${awaitingReplyCount > 1 ? "s" : ""} sans réponse`}
+              text="ils ont écrit, personne n'a répondu"
+            />
+          )}
+          {imminentCount > 0 && (
+            <AlertBanner
+              href="/leads?view=priority&bucket=imminent"
+              tone="gold"
+              strong={`${imminentCount} sortie${imminentCount > 1 ? "s" : ""} sous 7 jours`}
+              text="à confirmer avant que la date ne passe"
+            />
+          )}
+          {(attentionLeadsRes.data?.length ?? 0) > 0 && (
+            <AlertBanner
+              href="/leads?view=priority&bucket=takeover"
+              tone="warning"
+              strong={`${attentionLeadsRes.data?.length} lead${(attentionLeadsRes.data?.length ?? 0) > 1 ? "s" : ""} à reprendre`}
+              text="Léa a escaladé ces conversations"
+            />
+          )}
+        </div>
       )}
 
-      {imminentCount > 0 && (
-        <Link
-          href="/leads?view=priority&bucket=imminent"
-          className="enter-up flex items-center gap-3 rounded-xl border border-gold/40 bg-gold/8 px-4 py-3 text-sm transition-colors hover:bg-gold/12"
-        >
-          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-gold" />
-          <p className="flex-1 text-foreground/90">
-            <strong className="text-gold">
-              {imminentCount} sortie{imminentCount > 1 ? "s" : ""} souhaitée
-              {imminentCount > 1 ? "s" : ""} sous 7 jours
-            </strong>
-            {" "}— à confirmer avant que la date ne passe.
-          </p>
-        </Link>
-      )}
-
-      <header className="enter-up flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Vue d&apos;ensemble
-          </h1>
-          <p className="text-sm text-muted-foreground">
+      <header className="rise flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="display-lg text-foreground">Vue d&apos;ensemble</h1>
+          <p className="mt-1.5 text-[14.5px] text-muted-foreground">
             {goal
               ? `Saison en cours · ${formatDateLong(periodStart)} – ${formatDateLong(periodEnd)}`
               : "Tableau de bord Harmonie Yacht"}
@@ -391,32 +395,100 @@ export default async function OverviewPage() {
         </div>
       </header>
 
-      {(attentionLeadsRes.data?.length ?? 0) > 0 && (
-        <Link
-          href="/leads?view=priority&bucket=takeover"
-          className="enter-up flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/8 px-4 py-3 text-sm transition-colors hover:bg-warning/12"
-        >
-          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-warning" />
-          <p className="flex-1 text-warning-foreground/90">
-            <strong className="text-warning">
-              {attentionLeadsRes.data?.length} lead
-              {(attentionLeadsRes.data?.length ?? 0) > 1 ? "s" : ""} à reprendre
-            </strong>
-            {" "}— Léa a escaladé ces conversations vers vous.
-          </p>
-          <span className="text-xs text-warning-foreground/70">Voir les leads →</span>
-        </Link>
-      )}
+      {/* ── Les chiffres d'abord ───────────────────────────────────
+          Ils étaient enterrés en sixième position, après trois bandeaux et
+          deux grandes cartes. C'est pourtant ce qu'on vient voir. */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="info" hint="hors annulations" index={0} />
+        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
+        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
+        {/* Seule carte en `primary` : la trésorerie décide si Robin dort bien.
+            La marge nette à côté est un résultat comptable — les deux ensemble
+            empêchent de lire l'une pour l'autre. */}
+        {treasury === null ? (
+          <KpiCard label="Trésorerie réelle" value={0} format="eur" icon={Banknote} accent="gold" hint="Qonto non connecté" index={3} primary />
+        ) : (
+          <KpiCard label="Trésorerie réelle" value={treasury} format="eur" icon={Banknote} accent="gold" hint={`solde Qonto · ${treasuryUpdatedLabel}`} index={3} primary />
+        )}
+      </div>
 
-      {/* ── 1. Chiffre d'affaires vs objectifs ─────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RevenueHero year={year} caYtd={caYtd} caMonth={caMonth} outstanding={outstanding} />
-        </div>
-        <Card className="enter-up" style={{ animationDelay: "120ms" }}>
+      {/* ── Le chiffre d'affaires et son année, dans un seul bloc ──── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
+        <Card className="rise lg:col-span-2">
+          <CardContent className="pt-1">
+            <p className="text-[14.5px] font-medium text-muted-foreground">
+              Chiffre d&apos;affaires {year}
+            </p>
+            <p className="display-xl numeric mt-2.5 text-foreground">{formatEur(caYtd)}</p>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-[12.5px] text-muted-foreground">
+              <span>Ce mois <span className="font-semibold text-foreground">{formatEur(caMonth)}</span></span>
+              <span>Reste à encaisser <span className="font-semibold text-foreground">{formatEur(outstanding)}</span></span>
+            </div>
+            <CapsuleChart
+              data={chartData}
+              format={(v) => formatEur(v)}
+              className="mt-8 mb-6"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Le panneau signature : clair sur fond sombre, un seul par écran. */}
+        <SignaturePanel title="Prochaines sorties" className="rise">
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-[#64798F]">Aucune sortie programmée.</p>
+          ) : (
+            <div className="space-y-4">
+              {upcoming.slice(0, 4).map((b) => (
+                <div key={b.id} className="flex gap-3.5">
+                  <span className="mt-[7px] size-[7px] shrink-0 rounded-full bg-gold shadow-[0_0_0_4px_rgba(201,168,76,0.16)]" />
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold tracking-[-0.015em] text-[#06121F]">
+                      {b.offerName ?? "Sortie"}
+                    </p>
+                    <p className="font-mono text-[11.5px] text-[#64798F]">
+                      {formatDateLong(b.date)}
+                      {b.startTime ? ` · ${b.startTime.slice(0, 5)}` : ""}
+                      {b.customerName ? ` · ${b.customerName}` : ""}
+                    </p>
+                    {b.amount ? (
+                      <p className="numeric mt-1 text-[15.5px] font-semibold text-[#8A6D1F]">
+                        {formatEur(b.amount)}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SignaturePanel>
+      </div>
+
+      {/* ── Prospects et objectif ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
+        <Card className="rise lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                <Flame className="size-4 text-gold" />
+                Leads les plus chauds
+              </CardTitle>
+              <CardDescription>
+                Prospects dont la sortie souhaitée est à venir — à convertir en priorité
+              </CardDescription>
+            </div>
+            <Link href="/leads" className="text-sm font-medium text-gold hover:underline">
+              Tous les leads →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <HotLeads leads={hotLeads} />
+          </CardContent>
+        </Card>
+
+        <Card className="rise">
           <CardHeader>
-            <CardTitle>Objectif chiffre d&apos;affaires</CardTitle>
-            <CardDescription>CA {year} vs objectifs de saison</CardDescription>
+            <CardTitle>Objectif de saison</CardTitle>
+            <CardDescription>CA {year} vs objectifs</CardDescription>
           </CardHeader>
           <CardContent>
             <RevenueGauge current={caYtd} min={min} medium={medium} strong={strong} />
@@ -424,72 +496,26 @@ export default async function OverviewPage() {
         </Card>
       </div>
 
-      {/* ── 2. Leads les plus chauds ───────────────────────────────── */}
-      <Card className="enter-up" style={{ animationDelay: "160ms" }}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <Flame className="size-4 text-gold" />
-              Leads les plus chauds
-            </CardTitle>
-            <CardDescription>Prospects dont la sortie souhaitée est à venir — à convertir en priorité</CardDescription>
-          </div>
-          <Link href="/leads" className="text-sm font-medium text-gold hover:underline">
-            Tous les leads →
-          </Link>
-        </CardHeader>
-        <CardContent>
-          <HotLeads leads={hotLeads} />
-        </CardContent>
-      </Card>
-
-      {/* ── 3. Performance de Léa — tous canaux ────────────────────── */}
-      <Card className="enter-up" style={{ animationDelay: "200ms" }}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Bot className="size-4 text-gold" />
-            Performance de Léa — tous canaux
-          </CardTitle>
-          <CardDescription>
-            {agentTotals.conversations} conversation{agentTotals.conversations !== 1 ? "s" : ""} ·{" "}
-            {agentTotals.leads} lead{agentTotals.leads !== 1 ? "s" : ""} ·{" "}
-            {pct(agentTotals.qualified, agentTotals.leads)}% qualifiés
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AgentChannelStats channels={agentChannels} totals={agentTotals} />
-        </CardContent>
-      </Card>
-
-      {/* ── KPIs ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="primary" hint="hors annulations" index={0} />
-        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
-        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
-        {/* Solde bancaire réel (Qonto). La marge nette ci-contre est un résultat
-            comptable : elle ignore tout ce qui sort du compte sans être saisi
-            (charges sociales, prélèvements, échéances). Les deux côte à côte
-            évitent de lire l'une pour l'autre. */}
-        {treasury === null ? (
-          <KpiCard label="Trésorerie réelle" value={0} format="eur" icon={Banknote} accent="gold" hint="Qonto non connecté" index={3} />
-        ) : (
-          <KpiCard label="Trésorerie réelle" value={treasury} format="eur" icon={Banknote} accent="gold" hint={`solde Qonto · ${treasuryUpdatedLabel}`} index={3} />
-        )}
-      </div>
-
-      {/* ── Secondaire ─────────────────────────────────────────────── */}
-      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-        <Card className="lg:col-span-2">
+      {/* ── Léa et ce qui demande une action ───────────────────────── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
+        <Card className="rise lg:col-span-2">
           <CardHeader>
-            <CardTitle>Revenus par mois</CardTitle>
-            <CardDescription>CA confirmé {year}</CardDescription>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bot className="size-4 text-gold" />
+              Performance de Léa — tous canaux
+            </CardTitle>
+            <CardDescription>
+              {agentTotals.conversations} conversation{agentTotals.conversations !== 1 ? "s" : ""} ·{" "}
+              {agentTotals.leads} lead{agentTotals.leads !== 1 ? "s" : ""} ·{" "}
+              {pct(agentTotals.qualified, agentTotals.leads)}% qualifiés
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <MonthlyBars values={monthly} currentMonth={monthIdx} />
+            <AgentChannelStats channels={agentChannels} totals={agentTotals} />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rise">
           <CardHeader>
             <CardTitle>Alertes</CardTitle>
             <CardDescription>Actions à traiter</CardDescription>
@@ -498,10 +524,11 @@ export default async function OverviewPage() {
             <AlertsPanel alerts={alerts} />
           </CardContent>
         </Card>
-      </Reveal>
+      </div>
 
-      <Reveal className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-        <Card className="lg:col-span-2">
+      {/* ── Détail ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
+        <Card className="rise lg:col-span-2">
           <CardHeader>
             <CardTitle>Réservations à venir</CardTitle>
             <CardDescription>Les 6 prochaines sorties</CardDescription>
@@ -511,7 +538,7 @@ export default async function OverviewPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rise">
           <CardHeader>
             <CardTitle>Météo marine — Carnon</CardTitle>
             <CardDescription>Prévisions des 5 prochains jours</CardDescription>
@@ -520,20 +547,53 @@ export default async function OverviewPage() {
             <WeatherWidget days={weatherDays} />
           </CardContent>
         </Card>
-      </Reveal>
+      </div>
 
-      <Reveal className="grid grid-cols-1 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Transactions récentes</CardTitle>
-            <CardDescription>Derniers revenus et dépenses enregistrés</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentTransactions transactions={recentTransactions} />
-          </CardContent>
-        </Card>
-      </Reveal>
+      <Card className="rise">
+        <CardHeader>
+          <CardTitle>Transactions récentes</CardTitle>
+          <CardDescription>Derniers revenus et dépenses enregistrés</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RecentTransactions transactions={recentTransactions} />
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+const ALERT_TONE = {
+  danger: "border-danger/35 bg-danger/10 hover:bg-danger/15 text-danger",
+  gold: "border-gold/35 bg-gold/10 hover:bg-gold/15 text-gold",
+  warning: "border-warning/35 bg-warning/10 hover:bg-warning/15 text-warning",
+} as const;
+
+function AlertBanner({
+  href,
+  tone,
+  strong,
+  text,
+}: {
+  href: string;
+  tone: keyof typeof ALERT_TONE;
+  strong: string;
+  text: string;
+}) {
+  const cls = ALERT_TONE[tone];
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border-[0.5px] px-4 py-3 text-sm transition-colors duration-300 [transition-timing-function:var(--ease-ios)]",
+        cls,
+      )}
+    >
+      <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-current" />
+      <span className="min-w-0 flex-1">
+        <span className="font-semibold">{strong}</span>
+        <span className="block truncate text-[12.5px] text-muted-foreground">{text}</span>
+      </span>
+    </Link>
   );
 }
 
