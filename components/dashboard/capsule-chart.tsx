@@ -12,11 +12,11 @@ import { cn } from "@/lib/utils";
 // deux, l'œil ne sait plus où aller.
 export function CapsuleChart({
   data,
-  format,
   className,
 }: {
-  data: Array<{ label: string; value: number }>;
-  format?: (v: number) => string;
+  // `display` est formaté CÔTÉ SERVEUR : on ne peut pas passer de fonction de
+  // formatage à un composant client, seulement des valeurs sérialisables.
+  data: Array<{ label: string; value: number; display?: string }>;
   className?: string;
 }) {
   const still = useReducedMotion();
@@ -45,7 +45,7 @@ export function CapsuleChart({
             {/* Valeur au survol — l'information à la demande plutôt qu'un
                 étiquetage permanent qui encombrerait le graphique. */}
             <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border-[0.5px] border-[var(--hairline)] bg-[rgba(10,31,53,0.92)] px-2 py-1 font-mono text-[11px] text-foreground opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover/bar:opacity-100">
-              {format ? format(d.value) : d.value}
+              {d.display ?? d.value}
             </span>
             <span className="absolute -bottom-6 left-0 right-0 text-center font-mono text-[11px] text-muted-foreground">
               {d.label}

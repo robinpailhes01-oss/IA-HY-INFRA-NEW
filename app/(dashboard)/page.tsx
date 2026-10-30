@@ -265,7 +265,7 @@ export default async function OverviewPage() {
   const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
   const chartData = monthly
     .slice(0, monthIdx + 1)
-    .map((value, i) => ({ label: MOIS[i], value }));
+    .map((value, i) => ({ label: MOIS[i], value, display: formatEur(value) }));
 
   const upcoming: UpcomingBooking[] = (upcomingRes.data ?? []).map((b) => ({
     id: b.id,
@@ -424,11 +424,7 @@ export default async function OverviewPage() {
               <span>Ce mois <span className="font-semibold text-foreground">{formatEur(caMonth)}</span></span>
               <span>Reste à encaisser <span className="font-semibold text-foreground">{formatEur(outstanding)}</span></span>
             </div>
-            <CapsuleChart
-              data={chartData}
-              format={(v) => formatEur(v)}
-              className="mt-8 mb-6"
-            />
+            <CapsuleChart data={chartData} className="mt-8 mb-6" />
           </CardContent>
         </Card>
 
