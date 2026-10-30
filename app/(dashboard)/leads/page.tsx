@@ -47,5 +47,9 @@ export default async function LeadsPage() {
     };
   });
 
-  return <LeadsView initialLeads={leads} now={Date.now()} />;
+  return (
+    <div className="glass-ambient -m-4 p-4 sm:-m-6 sm:p-6">
+      <LeadsView initialLeads={leads} now={Date.now()} />
+    </div>
+  );
 }

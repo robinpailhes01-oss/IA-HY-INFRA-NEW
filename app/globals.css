@@ -295,3 +295,21 @@
 @supports not (backdrop-filter: blur(1px)) {
   .glass, .glass-strong { background: var(--card); }
 }
+
+/* Une page entière en mode verre : toutes ses cartes adoptent la matière, sans
+   avoir à l'écrire sur chaque appel. On passe par .glass-strong et non .glass —
+   une carte porte des données denses, et la lisibilité prime sur l'effet.
+
+   Portée volontairement limitée aux cartes : les lignes de liste et de tableau
+   restent opaques, sinon on paierait un flou par ligne. */
+.glass-ambient [data-slot='card'] {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-ambient [data-slot='card'] { background: var(--card); }
+}
