@@ -1,4 +1,3 @@
-import { CalendarClock, Ship, Wallet } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -242,13 +241,12 @@ export default async function BookingsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="Confirmées" value={confirmees} icon={Ship} accent="primary" index={0} />
-        <KpiCard label="À venir" value={aVenir} icon={CalendarClock} accent="info" index={1} />
+        <KpiCard label="Confirmées" value={confirmees} accent="primary" index={0} />
+        <KpiCard label="À venir" value={aVenir} accent="info" index={1} />
         <KpiCard
           label="Reste à encaisser"
           value={resteAEncaisser}
           format="eur"
-          icon={Wallet}
           accent="success"
           hint={
             resteEnRetard > 0

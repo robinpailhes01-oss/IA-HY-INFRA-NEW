@@ -1,4 +1,4 @@
-import { CalendarDays, Euro, Ticket, Users } from "lucide-react";
+import { Ticket } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -86,9 +86,9 @@ export default async function EventsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Événements à venir" value={upcoming.length} icon={CalendarDays} accent="primary" index={0} />
-        <KpiCard label="Places réservées" value={totalSeats} icon={Users} accent="info" index={1} />
-        <KpiCard label="CA événements" value={totalRevenue} format="eur" icon={Euro} accent="success" index={2} />
+        <KpiCard label="Événements à venir" value={upcoming.length} accent="primary" index={0} />
+        <KpiCard label="Places réservées" value={totalSeats} accent="info" index={1} />
+        <KpiCard label="CA événements" value={totalRevenue} format="eur" accent="success" index={2} />
       </div>
 
       {events.length === 0 ? (

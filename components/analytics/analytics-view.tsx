@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Bot, Eye, Globe, Users } from "lucide-react";
+import { Bot, Globe } from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -126,10 +126,10 @@ export function AnalyticsView({ snapshots }: { snapshots: AnalyticsSnapshot[] })
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <KpiCard label="Visiteurs" value={totals.visitors} icon={Users} accent="primary" index={0} />
-          <KpiCard label="Pages vues" value={totals.pageviews} icon={Eye} accent="info" index={1} />
-          <KpiCard label="Référents distincts" value={referrers.length} icon={Globe} accent="success" index={2} />
-          <KpiCard label="Visites via IA" value={aiVisitors} icon={Bot} accent="gold" index={3} />
+          <KpiCard label="Visiteurs" value={totals.visitors} accent="primary" index={0} />
+          <KpiCard label="Pages vues" value={totals.pageviews} accent="info" index={1} />
+          <KpiCard label="Référents distincts" value={referrers.length} accent="success" index={2} />
+          <KpiCard label="Visites via IA" value={aiVisitors} accent="gold" index={3} />
         </div>
       </div>
 

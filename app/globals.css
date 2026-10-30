@@ -14,7 +14,7 @@
      doivent rester distincts. Voir docs/DESIGN.md §0. */
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --font-heading: var(--font-sans);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -253,18 +253,23 @@
 }
 
 .dark {
-  --surface: rgba(255, 255, 255, 0.055);
-  --surface-hover: rgba(255, 255, 255, 0.085);
-  --hairline: rgba(255, 255, 255, 0.10);
-  --highlight: rgba(255, 255, 255, 0.14);
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-hover: rgba(255, 255, 255, 0.075);
+  /* La surface de contenu. Opaque et à peine plus claire que le fond : elle se
+     distingue par son filet, pas par son ombre. */
+  --plaque: rgba(255, 255, 255, 0.032);
+  --plaque-hover: rgba(255, 255, 255, 0.055);
+  --hairline: rgba(255, 255, 255, 0.09);
+  --highlight: rgba(255, 255, 255, 0.12);
   --shadow-float:
     0 0.5px 0 var(--highlight) inset,
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 34px 70px -34px rgba(0, 0, 0, 0.8);
+    0 40px 80px -40px rgba(0, 0, 0, 0.85);
 }
 
-/* Le fond : jamais un aplat. Quatre halos qui se recouvrent donnent au verre
-   de quoi réfracter — sans eux, le flou n'a rien à faire.
+/* Le fond : jamais un aplat, mais deux halos au lieu de quatre. Quatre, ça
+   faisait une aurore derrière un tableau de comptes — joli en capture,
+   fatigant au quotidien, et ça volait l'attention aux chiffres. Il en reste
+   juste assez pour que la coque ait quelque chose à réfracter.
 
    Les dégradés sont posés sur un pseudo-élément FIXE, pas sur l'élément avec
    `background-attachment: fixed`. Deux raisons : cette propriété est ignorée
@@ -283,25 +288,23 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(58rem 40rem at 0% -10%, rgba(201, 168, 76, 0.26), transparent 56%),
-    radial-gradient(50rem 34rem at 88% -14%, rgba(40, 96, 152, 0.40), transparent 54%),
-    radial-gradient(64rem 46rem at 112% 72%, rgba(201, 168, 76, 0.14), transparent 58%),
-    radial-gradient(40rem 28rem at 20% 108%, rgba(40, 96, 152, 0.18), transparent 60%),
-    linear-gradient(152deg, #06101C 0%, #0A1829 48%, #071321 100%);
+    radial-gradient(56rem 38rem at 6% -12%, rgba(201, 168, 76, 0.13), transparent 58%),
+    radial-gradient(54rem 36rem at 92% -10%, rgba(40, 96, 152, 0.20), transparent 56%),
+    linear-gradient(158deg, #050E18 0%, #081626 52%, #06111D 100%);
 }
 
-.app-grain::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.45;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.38'/%3E%3C/svg%3E");
-}
+/* UN SEUL objet en verre : la coque. Tout ce qui est posé dessus est plat.
 
-.vitre {
+   Avant, chaque carte était floutée, saturée, ombrée et grainée. Empilés, ces
+   effets ne produisent pas de la profondeur mais du bruit : plus rien ne
+   ressort parce que tout ressort. Les tableaux de bord les mieux dessinés font
+   l'inverse — un seul plan matériel, et à l'intérieur des surfaces franches
+   séparées par des filets d'un demi-pixel. C'est ça, épuré : moins d'effets,
+   des contours plus nets.
+
+   Le grain a été retiré. C'était l'élément le plus coûteux à l'œil et le plus
+   proche du gadget. */
+.vitre-shell {
   background: var(--surface);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -309,29 +312,26 @@
   box-shadow: var(--shadow-float);
 }
 
+/* La surface de contenu : franche, un filet, aucune ombre. */
+.vitre {
+  background: var(--plaque);
+  border: 0.5px solid var(--hairline);
+}
+
 /* Le panneau signature. En thème sombre il doit être CLAIR : sur fond sombre,
    un panneau sombre se fond et perd son rôle de point d'ancrage. L'inversion
    est la correction du défaut repéré sur la maquette précédente. */
+/* Le panneau signature : clair sur fond sombre. Un seul par écran.
+   Sur un fond sombre, un panneau sombre se fond et perd son rôle d'ancrage —
+   l'inversion est volontaire, et c'est le seul élément autorisé à rompre.
+   Le halo doré et l'ombre portée ont sauté : l'inversion suffit largement à
+   attirer l'œil, le reste n'était que du décor par-dessus. */
 .vitre-signature {
-  background: linear-gradient(158deg, rgba(255, 255, 255, 0.97) 0%, rgba(236, 243, 250, 0.94) 100%);
+  background: #F4F7FA;
   color: #06121F;
-  border: 0.5px solid rgba(255, 255, 255, 0.8);
-  box-shadow:
-    0 0.5px 0 rgba(255, 255, 255, 0.9) inset,
-    0 30px 64px -28px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(201, 168, 76, 0.18);
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
   position: relative;
   overflow: hidden;
-}
-.vitre-signature::before {
-  content: '';
-  position: absolute;
-  width: 16rem;
-  height: 16rem;
-  right: -5rem;
-  top: -6rem;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(201, 168, 76, 0.26), transparent 68%);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -355,6 +355,20 @@
   --font-title: var(--font-instrument-serif), ui-serif, Georgia, serif;
 }
 
+/* ── Libellés : CAPITALES, PETITES, ESPACÉES ─────────────────────────────
+   Le détail qui sépare un tableau de bord dessiné d'un tableau de bord
+   assemblé. « TRÉSORERIE RÉELLE » à 10,5 px avec 0.1em d'interlettrage se lit
+   comme une étiquette de cadran ; « Trésorerie réelle » en phrase se lit comme
+   du texte et entre en concurrence avec le chiffre qu'il annonce.
+   C'est ce que font tous les tableaux de bord de référence, et c'est gratuit. */
+.t-label {
+  font-size: 0.69rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
 /* Titres — la serif, et seulement ici. */
 .t-page {
   font-family: var(--font-title);
@@ -374,24 +388,49 @@
 /* Titre de carte — sans. Une carte n'est pas une page. */
 .t-card { font-size: 1rem; font-weight: 600; letter-spacing: -0.012em; line-height: 1.3; }
 
-/* Chiffres. La chasse fixe sert deux fois : les colonnes s'alignent, et le
-   nombre ne tressaute pas pendant son animation de comptage. */
+/* ── Chiffres : TOUS en mono ─────────────────────────────────────────────
+   C'est le second détail qui change tout. Un montant en sans se lit comme du
+   texte ; le même en mono se lit comme de la donnée — précis, mesuré, aligné.
+   Sur un tableau de bord financier c'est aussi le bon registre, celui du livre
+   de comptes.
+   L'interlettrage est LÉGÈREMENT POSITIF, à rebours du réflexe « grand titre =
+   resserré ». Des chiffres serrés s'agglutinent en une masse qu'on doit
+   déchiffrer ; aérés, chaque chiffre reste une unité qu'on lit d'un coup. */
 .n-hero,
 .n-kpi-lead,
 .n-kpi,
 .n-inline {
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
-.n-hero     { font-size: clamp(2rem, 1.45rem + 2.2vw, 2.85rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1; }
-.n-kpi-lead { font-size: clamp(1.7rem, 1.45rem + 1vw, 2.15rem); font-weight: 600; letter-spacing: -0.032em; line-height: 1; }
-.n-kpi      { font-size: clamp(1.5rem, 1.3rem + 0.8vw, 1.85rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
-.n-inline   { font-weight: 600; letter-spacing: -0.015em; }
+.n-hero     { font-size: clamp(1.95rem, 1.4rem + 2.2vw, 2.7rem); font-weight: 500; letter-spacing: 0.005em; line-height: 1; }
+.n-kpi-lead { font-size: clamp(1.6rem, 1.35rem + 1vw, 2rem);     font-weight: 500; letter-spacing: 0.005em; line-height: 1; }
+.n-kpi      { font-size: clamp(1.45rem, 1.25rem + 0.8vw, 1.75rem); font-weight: 500; letter-spacing: 0.005em; line-height: 1; }
+.n-inline   { font-size: 0.95em; font-weight: 500; }
+
+/* Les séparateurs français à l'intérieur d'un nombre en chasse fixe. Voir
+   components/ui/num.tsx : rendus dans la proportionnelle, ils retrouvent
+   leur largeur normale au lieu d'occuper une chasse entière. */
+.num-sep { font-family: var(--font-sans); padding-inline: 0.045em; }
 
 /* Texte courant. */
-.t-label   { font-size: 0.785rem; font-weight: 500; letter-spacing: 0.005em; line-height: 1.25; }
 .t-body    { font-size: 0.875rem; line-height: 1.55; }
-.t-caption { font-size: 0.72rem; line-height: 1.4; letter-spacing: 0.004em; }
+.t-caption { font-size: 0.72rem; line-height: 1.45; letter-spacing: 0.004em; }
+
+/* Pastille de variation ou de précision, posée sur la ligne de base du
+   chiffre plutôt qu'en dessous : la valeur et sa nuance se lisent ensemble. */
+.pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 6px;
+  padding: 0.14rem 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+}
 
 @supports not (backdrop-filter: blur(1px)) {
   .vitre { background: var(--card); }
@@ -406,5 +445,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .rise { animation: none; opacity: 1; transform: none; }
-  .app-grain::after { display: none; }
 }

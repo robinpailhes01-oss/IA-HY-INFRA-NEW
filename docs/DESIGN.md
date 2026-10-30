@@ -70,19 +70,35 @@ du dégradé violet sur un fond ardoise.
 
 ## 3. Direction esthétique
 
-> **La discipline typographique de Linear + la retenue d'un carnet de bord de
-> marine.**
+> **La rigueur d'un terminal financier + la retenue d'un carnet de bord.**
 
-De Linear : une seule famille sans serif pour 95 % de l'interface, un
-interlettrage resserré sur les grandes tailles, des chiffres à chasse fixe, un
-fond sombre qui n'est jamais un aplat noir.
+Référence prise sur les tableaux de bord les mieux dessinés (Linear, Vercel,
+les blocs analytiques de 21st.dev). Trois choses y reviennent systématiquement,
+et aucune ne coûte cher :
 
-Du carnet de bord : le bleu de nuit et l'or de l'identité Harmonie Yacht, une
-serif éditoriale employée **deux fois par écran et pas une de plus**, et des
-libellés qui disent ce qu'ils mesurent plutôt que de porter un nom de métrique.
+1. **Les libellés sont en capitales, petits, très espacés.** « TRÉSORERIE
+   RÉELLE » se lit comme une étiquette de cadran ; « Trésorerie réelle » se lit
+   comme du texte et entre en concurrence avec le chiffre qu'il annonce.
+2. **Les chiffres sont en chasse fixe.** Un montant en proportionnelle se lit
+   comme du texte ; en monospace il se lit comme de la donnée. Sur un tableau
+   de bord financier, c'est aussi le registre du livre de comptes.
+3. **Les surfaces sont franches.** Un filet d'un demi-pixel, pas d'ombre, pas
+   de flou, pas de grain.
 
-Ce qu'on s'interdit explicitement : la grille de trois cartes à icônes, l'accent
+**Ce qu'on s'interdit :** la grille de trois cartes à icônes, l'accent
 bleu-violet réflexe, l'ombre portée douce sur tout ce qui est rectangulaire.
+
+### Un seul objet en verre
+
+Avant, chaque carte était floutée, saturée, ombrée et grainée. Empilés, ces
+effets ne produisent pas de la profondeur mais du bruit : plus rien ne ressort
+parce que tout ressort.
+
+Désormais **la coque est la seule plaque de verre** (`.vitre-shell`) ; tout ce
+qui est posé dessus est plat (`.vitre`, `Card`). Le grain a été supprimé, et le
+fond est passé de quatre halos à deux.
+
+C'est ça, « épuré » : moins d'effets, des contours plus nets.
 
 ## 4. Tokens
 
@@ -90,95 +106,91 @@ bleu-violet réflexe, l'ombre portée douce sur tout ce qui est rectangulaire.
 
 | Rôle | Valeur | Emploi |
 | --- | --- | --- |
-| `background` | `#06121F` | fond de page, sous le verre |
-| `card` / `surface` | `rgba(255,255,255,.055)` | plaques de verre |
+| `background` | `#06121F` | fond de page |
+| `surface` | `rgba(255,255,255,.045)` | la coque en verre, et elle seule |
+| `plaque` | `rgba(255,255,255,.032)` | les cartes — opaques, franches |
+| `hairline` | `rgba(255,255,255,.09)` | le filet qui sépare, à la place des ombres |
 | `foreground` | `#F2F6FA` | texte principal |
 | `muted-foreground` | `#8A9BB0` | libellés, légendes |
-| `gold` | `#C9A84C` | **accent unique** — signature, pic du graphique, montants à encaisser |
-| `success` / `danger` / `warning` | `#10B981` / `#EF4444` / `#F59E0B` | sens uniquement, jamais décoratif |
+| `gold` | `#C9A84C` | **accent unique** — signature, pic du graphique, carte principale |
+| `success` / `danger` / `warning` | `#10B981` / `#EF4444` / `#F59E0B` | sens uniquement |
 
-L'or ne sert **jamais** à décorer. Il marque soit le panneau signature, soit une
-valeur qui demande une décision.
+L'or ne décore **jamais**. Il marque soit le panneau signature, soit une valeur
+qui demande une décision.
 
 ### Typographie — trois fontes, trois rôles qui ne se chevauchent jamais
 
 | Fonte | Rôle | Où exactement |
 | --- | --- | --- |
-| **Instrument Sans** (400–700) | 95 % de l'interface, **chiffres compris** | tout, sauf les deux cas ci-dessous |
+| **Instrument Sans** (400–700) | tout le texte | libellés, titres de carte, prose |
+| **Geist Mono** (500) | **tous les chiffres** | KPI, montants, scores, info-bulles |
 | **Instrument Serif** (400) | accent éditorial | titre de page + titre du panneau signature. **Deux emplois par écran.** |
-| mono **système** (`ui-monospace`) | colonnes de données alignées | tableaux, horodatages. **Jamais de prose.** |
 
-Deux polices téléchargées, pas trois. La mono n'a aujourd'hui aucun emploi
-légitime dans l'application — les chiffres de l'interface sont déjà à chasse
-fixe en Instrument Sans. Faire télécharger JetBrains Mono sur un réseau mobile
-pour des cas qui n'existent pas serait du poids gratuit ; `ui-monospace` rend
-SF Mono sur l'iPhone de Robin, gratuitement. À réintroduire le jour où un vrai
-tableau de données l'exige.
+Note : la mono avait été retirée à l'étape précédente, au motif qu'elle n'avait
+pas d'emploi légitime. C'était vrai de la mono dans la **prose**. C'est faux des
+**chiffres** — et c'est précisément là que les meilleurs tableaux de bord
+l'emploient.
 
-Trois règles qui expliquent ces choix :
+**L'interlettrage des chiffres est légèrement positif** (`+0.005em`), à rebours
+du réflexe « grand titre = resserré ». Serrés, les chiffres s'agglutinent en une
+masse qu'on déchiffre ; aérés, chacun reste une unité qu'on lit d'un coup.
 
-- **Les chiffres sont en sans, pas en serif.** `49 800 €` en serif ressemble à
-  un faire-part ; en Instrument Sans 600 avec chasse fixe, ça ressemble à de
-  l'argent. Les chiffres sont la raison d'être de l'écran.
-- **Instrument Sans est étroite.** Sur une carte de 150 px de large sur iPhone,
-  un libellé y tient en deux lignes là où Inter en demandait trois. C'est ce qui
-  règle le problème de débordement, bien plus que de réduire le corps.
-- **La mono ne touche pas la prose.** « comptable · pas la trésorerie » en
-  JetBrains Mono tenait sur trois lignes et ressemblait à un message d'erreur.
-
-Pour revenir à une interface 100 % sans serif : passer `--font-title` à
-`var(--font-instrument-sans)` dans `globals.css`. Un seul endroit.
+**Piège français :** `Intl.NumberFormat('fr-FR')` sépare les milliers par U+202F
+et précède le € d'un U+00A0. En monospace, tout caractère occupe la même chasse
+— « 49 800 € » s'affiche « 49  800  € » et l'œil lit deux nombres.
+`word-spacing` n'y peut rien (la spec CSS ne compte que U+0020 comme séparateur).
+Le composant `components/ui/num.tsx` rend ces seuls caractères dans la
+proportionnelle, où une espace fine est enfin fine. **Tout nombre affiché doit
+passer par `<Num>`.**
 
 ### Échelle typographique
-
-Base 4 px, resserrée pour une interface dense. Les tailles sont des classes, pas
-des valeurs arbitraires dans les composants.
 
 | Classe | Taille | Graisse | Usage |
 | --- | --- | --- | --- |
 | `.t-page` | 30 → 41 px (serif) | 400 | titre de page, un par écran |
 | `.t-panel` | 21 px (serif) | 400 | titre du panneau signature |
-| `.t-card` | 16 px | 600 | titre de carte |
-| `.n-hero` | 32 → 46 px | 600 | le chiffre principal de l'écran |
-| `.n-kpi-lead` | 27 → 34 px | 600 | KPI mis en avant (un seul) |
-| `.n-kpi` | 24 → 30 px | 600 | KPI courant |
-| `.n-inline` | hérite | 600 | chiffre dans une phrase |
-| `.t-label` | 12,5 px | 500 | libellé de KPI |
+| `.t-card` | 15 px | 600 | titre de carte |
+| `.t-label` | **11 px, CAPITALES, +0.1em** | 600 | toute étiquette de valeur |
+| `.n-hero` | 31 → 43 px (mono) | 500 | le chiffre principal de l'écran |
+| `.n-kpi-lead` | 26 → 32 px (mono) | 500 | KPI mis en avant (un seul) |
+| `.n-kpi` | 23 → 28 px (mono) | 500 | KPI courant |
+| `.n-inline` | hérite (mono) | 500 | chiffre dans une ligne |
 | `.t-body` | 14 px | 400 | prose |
-| `.t-caption` | 11,5 px | 400 | légende, précision sous un chiffre |
-
-Toutes les classes `.n-*` portent `tabular-nums lining-nums` : les colonnes
-s'alignent et le nombre ne tressaute pas pendant son animation de comptage.
+| `.t-caption` | 11,5 px | 400 | précision sous un chiffre |
+| `.pastille` | 11 px | 500 | variation, étiquette de contexte |
 
 ### Espacement, rayons, ombres, mouvement
 
 - **Base 4 px** : `4 / 8 / 12 / 16 / 24 / 32 / 48 / 64`.
-- **Rayon** : plafond à 22 px sur les cartes, 32 px sur la coque. Une seule
-  philosophie — pas de carte à 8 px à côté d'une carte à 24 px.
-- **Ombres** : portées très larges et très douces, uniquement sur les surfaces
-  en verre, plus un liseré clair intérieur en haut (la tranche éclairée de la
-  plaque). Rien d'autre ne porte d'ombre.
-- **Mouvement** : `120 ms` micro-retour, `240 ms` transition, `620 ms` entrée de
-  page. Courbe unique `cubic-bezier(.32,.72,0,1)`. Toute animation a sa version
-  `prefers-reduced-motion`.
+- **Rayon** : 18 px sur les cartes, 32 px sur la coque. Une seule philosophie.
+- **Ombres** : aucune, sauf sous la coque. Les surfaces se séparent par leur
+  filet. C'est le changement le plus structurant de cette version.
+- **Mouvement** : `120 ms` micro-retour, `240 ms` transition, `620 ms` entrée.
+  Courbe unique `cubic-bezier(.32,.72,0,1)`, version `prefers-reduced-motion`
+  systématique.
 
 ## 5. Élément signature
 
 **Le panneau clair « Prochaines sorties »** : une plaque blanche posée sur le
-bleu de nuit, avec un halo doré. Un seul par écran.
+bleu de nuit. Un seul par écran.
 
 Sur un fond sombre, un panneau sombre se fond et perd son rôle d'ancrage —
-l'inversion est volontaire. C'est le seul élément autorisé à rompre avec le
-reste, et c'est pour ça qu'il fonctionne : il porte ce que Robin vient voir en
-premier.
+l'inversion est volontaire, et c'est le seul élément autorisé à rompre avec le
+reste. Son halo doré et son ombre portée ont été retirés : l'inversion suffit
+largement, le reste n'était que du décor par-dessus.
 
 ## 6. Passe mobile
 
 Le mobile est le cas principal, pas une réduction du bureau.
 
-- Les KPI passent en grille 2×2. **Le libellé et l'icône occupent une ligne, le
-  chiffre récupère ensuite toute la largeur de la carte** — c'est la différence
-  entre un chiffre lisible et un chiffre coupé.
+- Les KPI passent en grille 2×2. **Plus d'icône** : elle ne distinguait rien
+  (quatre cartes, quatre icônes, aucune information en plus) et coûtait un tiers
+  de la largeur, ce qui écrasait le chiffre qu'on vient précisément lire.
+- Les blocs s'ordonnent indépendamment des colonnes du bureau : sur téléphone
+  CA → prochaines sorties → leads → objectif, via `contents` + `order` (voir le
+  commentaire dans `app/(dashboard)/page.tsx`).
+- Le graphique n'affiche qu'une étiquette de mois sur deux au-delà de dix mois,
+  en gardant toujours celle du mois le plus fort.
 - Le bloc de libellé a une hauteur minimale de deux lignes sous `lg`, pour que
   les quatre chiffres s'alignent entre eux.
 - Cibles tactiles ≥ 44 px.

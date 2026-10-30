@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { formatEur, formatNumber } from "@/lib/format";
+import { Num } from "@/components/ui/num";
 
 type Format = "int" | "eur";
 
@@ -53,5 +54,5 @@ export function AnimatedNumber({
   const rounded = Math.round(display);
   const text = format === "eur" ? formatEur(rounded) : formatNumber(rounded);
 
-  return <span className={className}>{text}</span>;
+  return <Num className={className}>{text}</Num>;
 }

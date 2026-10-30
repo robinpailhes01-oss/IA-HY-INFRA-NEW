@@ -1,4 +1,3 @@
-import { Euro, PiggyBank, Receipt, TrendingUp } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -174,12 +173,11 @@ export default async function FinancesPage({
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Revenus" value={revenue} format="eur" icon={Euro} accent="primary" index={0} />
+        <KpiCard label="Revenus" value={revenue} format="eur" accent="primary" index={0} />
         <KpiCard
           label="Dépenses"
           value={opex}
           format="eur"
-          icon={Receipt}
           accent="info"
           index={1}
         />
@@ -187,7 +185,6 @@ export default async function FinancesPage({
           label="Résultat net"
           value={netResult}
           format="eur"
-          icon={PiggyBank}
           accent={netResult >= 0 ? "success" : "gold"}
           hint={`${pct(netResult, revenue)}% des revenus`}
           index={2}
@@ -196,7 +193,6 @@ export default async function FinancesPage({
           label="Marge"
           value={pct(netResult, revenue)}
           format="int"
-          icon={TrendingUp}
           accent="gold"
           hint="% Résultat / Revenus"
           index={3}

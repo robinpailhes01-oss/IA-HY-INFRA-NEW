@@ -1,4 +1,3 @@
-import { CalendarRange, Euro, Ship, Wallet } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -142,10 +141,10 @@ export default async function ReportsPage() {
       </header>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="CA cette semaine" value={caWeek} format="eur" icon={Wallet} accent="gold" index={0} />
-        <KpiCard label="CA ce mois" value={caMonth} format="eur" icon={Euro} accent="primary" index={1} />
-        <KpiCard label="Réservations ce mois" value={countMonth} format="int" icon={Ship} accent="info" index={2} />
-        <KpiCard label="Panier moyen" value={avgBasket} format="eur" icon={CalendarRange} accent="success" hint="ce mois-ci" index={3} />
+        <KpiCard label="CA cette semaine" value={caWeek} format="eur" accent="gold" index={0} />
+        <KpiCard label="CA ce mois" value={caMonth} format="eur" accent="primary" index={1} />
+        <KpiCard label="Réservations ce mois" value={countMonth} format="int" accent="info" index={2} />
+        <KpiCard label="Panier moyen" value={avgBasket} format="eur" accent="success" hint="ce mois-ci" index={3} />
       </div>
 
       <ReportsView

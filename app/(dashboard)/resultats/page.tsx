@@ -1,4 +1,3 @@
-import { Inbox, MessageSquare, Euro, Sparkles } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +66,6 @@ export default async function ResultatsPage() {
           label="Demandes traitées"
           value={demandesTraitees}
           format="int"
-          icon={Inbox}
           accent="primary"
           index={0}
         />
@@ -75,7 +73,6 @@ export default async function ResultatsPage() {
           label="Messages envoyés"
           value={messagesTotal}
           format="int"
-          icon={MessageSquare}
           accent="info"
           hint={`${formatNumber(messagesWhatsapp)} WhatsApp · ${formatNumber(messagesEmail)} email`}
           index={1}
@@ -84,7 +81,6 @@ export default async function ResultatsPage() {
           label="CA généré"
           value={caGenere}
           format="eur"
-          icon={Euro}
           accent="success"
           index={2}
         />
@@ -92,7 +88,6 @@ export default async function ResultatsPage() {
           label="Crédits IA consommés"
           value={creditsAffiches}
           format="int"
-          icon={Sparkles}
           accent="gold"
           index={3}
         />

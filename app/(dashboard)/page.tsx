@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, Bot, CalendarDays, Flame, Ship, TrendingUp, Users } from "lucide-react";
+import { Bot, CalendarDays, Flame, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { Num } from "@/components/ui/num";
 import { CapsuleChart } from "@/components/dashboard/capsule-chart";
 import { SignaturePanel } from "@/components/dashboard/signature-panel";
 import { RevenueGauge } from "@/components/dashboard/revenue-gauge";
@@ -410,72 +411,56 @@ export default async function OverviewPage() {
           Ils étaient enterrés en sixième position, après trois bandeaux et
           deux grandes cartes. C'est pourtant ce qu'on vient voir. */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Réservations à venir" value={upcomingCount} icon={Ship} accent="info" hint="hors annulations" index={0} />
-        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} icon={Users} accent="info" index={1} />
-        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" icon={TrendingUp} accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
+        <KpiCard label="Réservations à venir" value={upcomingCount} accent="info" hint="hors annulations" index={0} />
+        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} accent="info" index={1} />
+        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
         {/* Seule carte en `primary` : la trésorerie décide si Robin dort bien.
             La marge nette à côté est un résultat comptable — les deux ensemble
             empêchent de lire l'une pour l'autre. */}
         {treasury === null ? (
-          <KpiCard label="Trésorerie réelle" value={0} format="eur" icon={Banknote} accent="gold" hint="Qonto non connecté" index={3} primary />
+          <KpiCard label="Trésorerie réelle" value={0} format="eur" accent="gold" hint="Qonto non connecté" index={3} primary />
         ) : (
-          <KpiCard label="Trésorerie réelle" value={treasury} format="eur" icon={Banknote} accent="gold" hint={`solde Qonto · ${treasuryUpdatedLabel}`} index={3} primary />
+          <KpiCard label="Trésorerie réelle" value={treasury} format="eur" accent="gold" hint={`solde Qonto · ${treasuryUpdatedLabel}`} index={3} primary />
         )}
       </div>
 
-      {/* ── Le chiffre d'affaires et son année, dans un seul bloc ──── */}
+      {/* ── Deux colonnes qui se remplissent indépendamment ─────────────
+          Avant, chaque rangée était une grille à part : la carte haute de
+          gauche imposait sa hauteur à la rangée, et la colonne de droite —
+          souvent courte en basse saison, avec une seule sortie à venir —
+          laissait un demi-écran de vide avant la rangée suivante.
+          En empilant les blocs dans deux vraies colonnes, le vide disparaît.
+
+          Sous `lg`, `contents` efface les deux conteneurs : les quatre blocs
+          redeviennent enfants directs de la grille et `order` peut les classer
+          pour le téléphone — CA, sorties, leads, objectif — alors qu'en deux
+          colonnes on veut CA + leads à gauche, sorties + objectif à droite. */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
-        <Card className="rise lg:col-span-2">
+        <div className="contents lg:col-span-2 lg:block lg:space-y-5">
+        <Card className="rise order-1 lg:order-none">
           <CardContent className="pt-1">
             <p className="t-label text-muted-foreground">Chiffre d&apos;affaires {year}</p>
-            <p className="n-hero mt-2.5 text-foreground">{formatEur(caYtd)}</p>
-            <div className="mt-3 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[13px] text-muted-foreground">
-              <span>
-                Ce mois <span className="n-inline text-foreground">{formatEur(caMonth)}</span>
-              </span>
-              <span>
-                Reste à encaisser{" "}
-                <span className="n-inline text-foreground">{formatEur(outstanding)}</span>
-              </span>
+            <Num className="n-hero mt-3 block text-foreground">{formatEur(caYtd)}</Num>
+            {/* Deux appuis sous le chiffre principal, chacun en étiquette +
+                valeur plutôt qu'en phrase : on compare deux montants, on ne
+                lit pas une ligne de texte. */}
+            <div className="mt-5 flex flex-wrap gap-x-10 gap-y-4 border-t border-[var(--hairline)] pt-4">
+              <div>
+                <p className="t-label text-muted-foreground">Ce mois</p>
+                <Num className="n-inline mt-1.5 block text-[17px] text-foreground">{formatEur(caMonth)}</Num>
+              </div>
+              <div>
+                <p className="t-label text-muted-foreground">Reste à encaisser</p>
+                <Num className="n-inline mt-1.5 block text-[17px] text-foreground">
+                  {formatEur(outstanding)}
+                </Num>
+              </div>
             </div>
             <CapsuleChart data={chartData} className="mt-8 mb-6" />
           </CardContent>
         </Card>
 
-        {/* Le panneau signature : clair sur fond sombre, un seul par écran. */}
-        <SignaturePanel title="Prochaines sorties" className="rise">
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-[#64798F]">Aucune sortie programmée.</p>
-          ) : (
-            <div className="space-y-4">
-              {upcoming.slice(0, 4).map((b) => (
-                <div key={b.id} className="flex gap-3.5">
-                  <span className="mt-[7px] size-[7px] shrink-0 rounded-full bg-gold shadow-[0_0_0_4px_rgba(201,168,76,0.16)]" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold tracking-[-0.015em] text-[#06121F]">
-                      {b.offerName ?? "Sortie"}
-                    </p>
-                    <p className="t-caption mt-0.5 text-[#64798F]">
-                      {formatDateLong(b.date)}
-                      {b.startTime ? ` · ${b.startTime.slice(0, 5)}` : ""}
-                      {b.customerName ? ` · ${b.customerName}` : ""}
-                    </p>
-                    {b.amount ? (
-                      <p className="n-inline mt-1 text-[15.5px] text-[#8A6D1F]">
-                        {formatEur(b.amount)}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SignaturePanel>
-      </div>
-
-      {/* ── Prospects et objectif ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
-        <Card className="rise lg:col-span-2">
+        <Card className="rise order-3 lg:order-none">
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
@@ -494,8 +479,40 @@ export default async function OverviewPage() {
             <HotLeads leads={hotLeads} />
           </CardContent>
         </Card>
+        </div>
 
-        <Card className="rise">
+        <div className="contents lg:block lg:space-y-5">
+        {/* Le panneau signature : clair sur fond sombre, un seul par écran. */}
+        <SignaturePanel title="Prochaines sorties" className="rise order-2 lg:order-none">
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-[#64798F]">Aucune sortie programmée.</p>
+          ) : (
+            <div className="space-y-4">
+              {upcoming.slice(0, 4).map((b) => (
+                <div key={b.id} className="flex gap-3.5">
+                  <span className="mt-[7px] size-[7px] shrink-0 rounded-full bg-gold shadow-[0_0_0_4px_rgba(201,168,76,0.16)]" />
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold tracking-[-0.015em] text-[#06121F]">
+                      {b.offerName ?? "Sortie"}
+                    </p>
+                    <p className="t-caption mt-0.5 text-[#64798F]">
+                      {formatDateLong(b.date)}
+                      {b.startTime ? ` · ${b.startTime.slice(0, 5)}` : ""}
+                      {b.customerName ? ` · ${b.customerName}` : ""}
+                    </p>
+                    {b.amount ? (
+                      <Num className="n-inline mt-1 block text-[15.5px] text-[#8A6D1F]">
+                        {formatEur(b.amount)}
+                      </Num>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SignaturePanel>
+
+        <Card className="rise order-4 lg:order-none">
           <CardHeader>
             <CardTitle>Objectif de saison</CardTitle>
             <CardDescription>CA {year} vs objectifs</CardDescription>
@@ -504,6 +521,7 @@ export default async function OverviewPage() {
             <RevenueGauge current={caYtd} min={min} medium={medium} strong={strong} />
           </CardContent>
         </Card>
+        </div>
       </div>
 
       {/* ── Léa et ce qui demande une action ───────────────────────── */}

@@ -1,4 +1,3 @@
-import { Archive, Mail, MailCheck, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,10 +64,10 @@ export default async function ArchivesPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Clients archivés" value={total} icon={Archive} accent="primary" index={0} />
-        <KpiCard label="Avec email" value={withEmail} icon={Users} accent="info" index={1} />
-        <KpiCard label="Relance envoyée" value={sent} icon={MailCheck} accent="success" index={2} />
-        <KpiCard label="Échecs d'envoi" value={failed} icon={Mail} accent="gold" index={3} />
+        <KpiCard label="Clients archivés" value={total} accent="primary" index={0} />
+        <KpiCard label="Avec email" value={withEmail} accent="info" index={1} />
+        <KpiCard label="Relance envoyée" value={sent} accent="success" index={2} />
+        <KpiCard label="Échecs d'envoi" value={failed} accent="gold" index={3} />
       </div>
 
       <Card className="enter-up" style={{ animationDelay: "180ms" }}>

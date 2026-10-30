@@ -3,10 +3,9 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+import { Num } from "@/components/ui/num";
 
-// Histogramme en capsules : un rail gris sur toute la hauteur, la valeur
-// remplie par-dessus. Deux avantages sur une barre nue — on lit « combien sur
-// combien » d'un coup d'œil, et la colonne garde une présence même à zéro.
+// Histogramme en capsules : une barre par mois, rien derrière.
 //
 // Le mois le plus fort passe en or. Un seul accent par graphique : s'il y en a
 // deux, l'œil ne sait plus où aller.
@@ -46,7 +45,13 @@ export function CapsuleChart({
         const isPeak = i === peak && d.value > 0;
         return (
           <div key={d.label} className="group/bar relative flex h-full flex-1 items-end">
-            <span className="absolute inset-0 rounded-full bg-[rgba(255,255,255,0.06)]" />
+            {/* Plus de rail de fond.
+                Il était censé faire lire « combien sur combien », mais sa
+                hauteur ne représentait rien : elle valait le meilleur mois,
+                c'est-à-dire une valeur arbitraire. Sur une activité
+                saisonnière où huit mois sur douze sont proches de zéro, douze
+                rails pleine hauteur ne montraient qu'une chose — du vide — et
+                volaient l'attention aux trois mois qui comptent. */}
             <motion.span
               initial={still ? false : { height: 0 }}
               animate={{ height: `${pct}%` }}
@@ -61,7 +66,7 @@ export function CapsuleChart({
             {/* Valeur au survol — l'information à la demande plutôt qu'un
                 étiquetage permanent qui encombrerait le graphique. */}
             <span className="n-inline pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border-[0.5px] border-[var(--hairline)] bg-[rgba(10,31,53,0.92)] px-2 py-1 text-[11px] text-foreground opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover/bar:opacity-100">
-              {d.display ?? d.value}
+              <Num>{d.display ?? String(d.value)}</Num>
             </span>
             {/* Les noms de mois en sans plutôt qu'en mono : la mono est large,
                 et douze étiquettes à 390 px se chevauchaient. */}

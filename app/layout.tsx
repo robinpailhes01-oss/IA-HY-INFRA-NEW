@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Instrument_Sans, Instrument_Serif } from "next/font/google";
+import { Geist_Mono, Instrument_Sans, Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -33,12 +33,22 @@ const instrumentSerif = Instrument_Serif({
   display: "swap",
 });
 
-// Pas de troisième police téléchargée. Le rôle « colonne de données alignée »
-// est tenu par la mono système (`ui-monospace` → SF Mono sur iPhone et Mac),
-// voir --font-mono dans globals.css. Les chiffres de l'interface sont de toute
-// façon en Instrument Sans à chasse fixe : faire télécharger une police de plus
-// sur un réseau mobile pour des cas qui n'existent pas encore serait du poids
-// gratuit. À réintroduire ici le jour où un vrai tableau de données l'exige.
+// Tous les chiffres de l'application.
+//
+// Revirement assumé : j'avais retiré la mono au motif qu'elle n'avait pas
+// d'emploi légitime. C'était vrai de la mono dans la PROSE — « comptable · pas
+// la trésorerie » en monospace ressemblait à une erreur système. Mais en
+// regardant ce que font les tableaux de bord les mieux dessinés, la mono est
+// précisément ce qui donne leur allure aux grands nombres : elle les rend
+// précis, alignés, et lisibles comme de la donnée plutôt que comme du texte.
+// Sur un tableau de bord financier, c'est aussi le registre juste — celui du
+// livre de comptes. Geist Mono plutôt que JetBrains Mono : plus neutre, moins
+// de maniérismes, elle ne se fait pas remarquer à côté d'Instrument Sans.
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Harmonie Yacht — Dashboard",
@@ -63,7 +73,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`dark ${instrumentSans.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`dark ${instrumentSans.variable} ${instrumentSerif.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

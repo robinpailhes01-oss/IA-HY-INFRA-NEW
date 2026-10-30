@@ -12,7 +12,11 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card flex flex-col gap-4 overflow-hidden rounded-[22px] border-[0.5px] border-[var(--hairline)] bg-[var(--surface)] py-5 text-sm text-card-foreground backdrop-blur-[44px] backdrop-saturate-[1.85] shadow-[0_0.5px_0_var(--highlight)_inset,0_1px_2px_rgba(0,0,0,0.3),0_26px_56px_-30px_rgba(0,0,0,0.75)] transition-[box-shadow,transform,background-color] duration-[400ms] [transition-timing-function:var(--ease-ios)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        // Surface franche : un filet d'un demi-pixel, aucune ombre, aucun flou.
+        // Le verre est réservé à la coque (voir .vitre-shell) — une carte
+        // floutée posée sur une coque floutée ne crée pas de profondeur, elle
+        // brouille les deux.
+        "group/card flex flex-col gap-4 overflow-hidden rounded-[18px] border-[0.5px] border-[var(--hairline)] bg-[var(--plaque)] py-5 text-sm text-card-foreground transition-colors duration-200 hover:border-[var(--highlight)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
         className
       )}
       {...props}
@@ -38,7 +42,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        "font-heading text-[15px] leading-snug font-semibold tracking-[-0.012em] group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}

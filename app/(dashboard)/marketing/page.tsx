@@ -1,4 +1,4 @@
-import { Euro, Eye, Heart, Megaphone, TrendingDown, TrendingUp, Users } from "lucide-react";
+import { Eye, Heart } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
@@ -200,7 +200,6 @@ export default async function MarketingPage() {
           label="CA Payant"
           value={catAgg.paid.revenue}
           format="eur"
-          icon={TrendingUp}
           accent="info"
           hint={`${catAgg.paid.count} réservation${catAgg.paid.count !== 1 ? "s" : ""}`}
           index={0}
@@ -209,7 +208,6 @@ export default async function MarketingPage() {
           label="CA Organique"
           value={catAgg.organic.revenue}
           format="eur"
-          icon={Heart}
           accent="success"
           hint={`${catAgg.organic.count} réservation${catAgg.organic.count !== 1 ? "s" : ""}`}
           index={1}
@@ -217,7 +215,6 @@ export default async function MarketingPage() {
         <KpiCard
           label="Sans source"
           value={untaggedCount}
-          icon={Users}
           accent="gold"
           hint="Réservations à étiqueter"
           index={2}
@@ -299,7 +296,6 @@ export default async function MarketingPage() {
           label="Budget pub dépensé"
           value={totalAdSpend}
           format="eur"
-          icon={Megaphone}
           accent="info"
           hint={`${adExpenses.length} dépense${adExpenses.length !== 1 ? "s" : ""} marketing`}
           index={0}
@@ -308,7 +304,6 @@ export default async function MarketingPage() {
           label="CA généré par la pub"
           value={paidAdsRevenue}
           format="eur"
-          icon={Euro}
           accent="success"
           hint={`${paidAdsBookings} réservation${paidAdsBookings !== 1 ? "s" : ""}`}
           index={1}
@@ -317,7 +312,6 @@ export default async function MarketingPage() {
           label="Coût par réservation"
           value={cpa}
           format="eur"
-          icon={TrendingUp}
           accent="gold"
           hint={
             totalAdSpend > 0
@@ -330,7 +324,6 @@ export default async function MarketingPage() {
           label="Marge nette pub"
           value={netAdMargin}
           format="eur"
-          icon={netAdMargin >= 0 ? TrendingUp : TrendingDown}
           accent={netAdMargin >= 0 ? "success" : "gold"}
           hint="CA payant − budget pub"
           index={3}
