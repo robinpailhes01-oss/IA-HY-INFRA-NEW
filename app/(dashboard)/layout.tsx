@@ -5,6 +5,7 @@ import { Header, type Attention } from "@/components/header";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { MobileTabBar } from "@/components/shell/mobile-tab-bar";
 import { MotionProvider } from "@/components/shell/motion-provider";
+import { LeaWidget } from "@/components/lea/lea-widget";
 
 export default async function DashboardLayout({
   children,
@@ -64,11 +65,14 @@ export default async function DashboardLayout({
               firstName={profile?.first_name ?? null}
               attention={attention}
             />
-            <main className="flex-1 pb-32 pt-2 lg:pb-12">{children}</main>
+            {/* Marge basse : la barre d'onglets (téléphone) et l'orbe de Léa
+                (partout) flottent au-dessus de la fin de page. */}
+            <main className="flex-1 pb-44 pt-2 lg:pb-28">{children}</main>
           </div>
         </div>
 
         <MobileTabBar attention={attentionTotal} />
+        <LeaWidget />
       </div>
     </MotionProvider>
   );
