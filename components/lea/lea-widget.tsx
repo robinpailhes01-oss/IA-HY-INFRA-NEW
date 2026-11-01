@@ -1,14 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUp, Mic, MicOff, RotateCcw, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { LeaOrbFallback } from "@/components/lea/lea-orb-fallback";
-import type { LeaState } from "@/components/lea/lea-orb-3d";
+import { LeaAvatar, type LeaState } from "@/components/lea/lea-avatar";
 import { LEA_ASK_EVENT } from "@/components/lea/ask-lea";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -24,17 +22,10 @@ import { LEA_ASK_EVENT } from "@/components/lea/ask-lea";
 // toujours soumis à confirmation explicite). Ses garde-fous contre les
 // confirmations inventées vivent côté serveur.
 //
-// Ici : la présence (l'orbe 3D), la conversation, la dictée vocale, et le
+// Ici : la présence (son avatar), la conversation, la dictée vocale, et le
 // rafraîchissement des données affichées après chaque réponse — une
 // dépense ajoutée par Léa doit apparaître sans recharger la page.
 // ═══════════════════════════════════════════════════════════════════════
-
-// Le moteur 3D (three.js) n'est chargé qu'au premier affichage, côté client ;
-// l'orbe CSS identique tient la place pendant ce temps.
-const LeaOrb3D = dynamic(() => import("@/components/lea/lea-orb-3d"), {
-  ssr: false,
-  loading: () => <LeaOrbFallback className="size-full" />,
-});
 
 type Msg = { id: string; role: "user" | "lea"; text: string; failed?: boolean };
 
@@ -73,26 +64,8 @@ function createRecognition(): Recognition | null {
   return Ctor ? new Ctor() : null;
 }
 
-function supportsWebGL(): boolean {
-  try {
-    const c = document.createElement("canvas");
-    return Boolean(c.getContext("webgl2") ?? c.getContext("webgl"));
-  } catch {
-    return false;
-  }
-}
-
 function newId() {
   return Math.random().toString(36).slice(2, 10);
-}
-
-/** L'orbe : 3D quand c'est possible, CSS sinon. */
-function Orb({ state, three, className }: { state: LeaState; three: boolean; className?: string }) {
-  return (
-    <span className={cn("relative block", className)}>
-      {three ? <LeaOrb3D state={state} className="!absolute inset-0" /> : <LeaOrbFallback className="size-full" />}
-    </span>
-  );
 }
 
 export function LeaWidget() {
@@ -104,7 +77,6 @@ export function LeaWidget() {
   const [pending, setPending] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
-  const [three, setThree] = useState(false);
   const [voiceOk, setVoiceOk] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -112,8 +84,6 @@ export function LeaWidget() {
 
   // Capacités du navigateur, lues une fois montées (jamais au rendu serveur).
   useEffect(() => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setThree(!reduced && supportsWebGL());
     setVoiceOk(Boolean(createRecognition()));
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
@@ -240,11 +210,11 @@ export function LeaWidget() {
   // La page Jarvis EST déjà Léa en plein écran (même cerveau, en vocal).
   if (pathname.startsWith("/jarvis")) return null;
 
-  const orbState: LeaState = listening ? "listening" : pending ? "thinking" : speaking ? "speaking" : "idle";
+  const leaState: LeaState = listening ? "listening" : pending ? "thinking" : speaking ? "speaking" : "idle";
 
   return (
     <>
-      {/* ── Le bouton : l'orbe flottante ────────────────────────────── */}
+      {/* ── Le bouton : Léa, flottante ─────────────────────────────── */}
       <AnimatePresence>
         {!open && (
           <motion.button
@@ -264,10 +234,10 @@ export function LeaWidget() {
               "bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+78px)] lg:bottom-7",
             )}
           >
-            {/* Halo : la lumière que l'orbe projette sur le verre derrière elle. */}
+            {/* Halo : la lumière que Léa projette sur le verre derrière elle. */}
             <span className="absolute -inset-3 rounded-full bg-[radial-gradient(circle,rgba(124,192,245,0.55),rgba(47,127,224,0.12)_55%,transparent_72%)] blur-md" />
             <span className="absolute inset-0 rounded-full border border-white/90 bg-white/40 shadow-[inset_0_1px_0_#fff,0_14px_30px_-10px_rgba(11,37,69,0.45)] backdrop-blur-md" />
-            <Orb state={orbState} three={three} className="absolute inset-[3px]" />
+            <LeaAvatar state={leaState} tilt priority className="absolute inset-[4px]" />
             <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-white shadow-[0_1px_3px_rgba(11,37,69,0.25)]">
               <span className="size-2 rounded-full bg-[#1fae5b]" />
             </span>
@@ -298,7 +268,7 @@ export function LeaWidget() {
           >
             {/* En-tête marine : la présence de Léa. */}
             <header className="vitre-signature relative flex shrink-0 items-center gap-3.5 rounded-none border-0 px-5 py-4">
-              <Orb state={orbState} three={three} className="size-[72px] shrink-0 -my-1" />
+              <LeaAvatar state={leaState} className="size-16 shrink-0" />
               <div className="relative min-w-0 flex-1">
                 <p className="t-eyebrow text-[#9fc6ee]">Ta manageuse</p>
                 <h2 className="font-serif text-[28px] leading-none tracking-[-0.01em] text-white">Léa</h2>
@@ -358,7 +328,7 @@ export function LeaWidget() {
                   {messages.map((m) => (
                     <li key={m.id} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "justify-start")}>
                       {m.role === "lea" && (
-                        <LeaOrbFallback className="mt-0.5 size-6 shrink-0" />
+                        <LeaAvatar ring={false} className="mt-0.5 size-7 shrink-0" />
                       )}
                       <p
                         className={cn(
@@ -376,7 +346,7 @@ export function LeaWidget() {
                   ))}
                   {pending && (
                     <li className="flex items-center gap-2">
-                      <LeaOrbFallback className="size-6 shrink-0" />
+                      <LeaAvatar state="thinking" className="size-7 shrink-0" />
                       <span className="flex items-center gap-1 rounded-[20px] rounded-bl-md border border-white bg-white/85 px-3.5 py-3 shadow-[var(--shadow-glass)]">
                         {[0, 1, 2].map((i) => (
                           <span

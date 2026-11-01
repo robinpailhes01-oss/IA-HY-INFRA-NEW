@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { LeaAvatar } from "@/components/lea/lea-avatar";
 
 export type LeaStatus = "connected" | "pending" | "waiting" | "error";
 
@@ -106,8 +106,8 @@ export function LeaStatusPill({ variant = "pill" }: { variant?: "card" | "pill" 
         className="group flex items-center gap-3 rounded-[20px] border border-white/90 bg-white/60 p-2.5 pr-3 shadow-[inset_0_1px_0_#fff,0_1px_2px_rgba(11,37,69,0.05)] transition-colors duration-200 hover:bg-white"
         title="Ouvrir les conversations de Léa"
       >
-        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_30%_25%,#4f9cf0_0%,#1d4f8c_45%,#0b2545_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-6px_rgba(11,37,69,0.7)]">
-          <Sparkles className="size-[17px] text-white" strokeWidth={1.8} />
+        <span className="relative size-10 shrink-0">
+          <LeaAvatar ring={false} className="size-10" />
           <span className="absolute -bottom-0.5 -right-0.5 grid size-3.5 place-items-center rounded-full bg-white">
             <StatusDot status={status} className="size-2" />
           </span>

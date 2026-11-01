@@ -500,6 +500,33 @@
   100% { transform: scale(1.9); opacity: 0; }
 }
 
+/* ── Léa : l'anneau de lumière autour de son avatar ─────────────────────
+   Un dégradé conique qui tourne — lentement au repos, vite quand elle
+   réfléchit, en pulsation quand elle répond. Masqué au centre (mask) pour
+   ne garder qu'un anneau fin. Voir components/lea/lea-avatar.tsx. */
+.lea-ring {
+  background: conic-gradient(from 0deg, #7cc0f5, #2f7fe0, #c7d4fa, #ffffff, #7cc0f5);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+  animation: lea-spin 7s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(124, 192, 245, 0.7));
+}
+.lea-avatar[data-state="listening"] .lea-ring { animation-duration: 2.4s; }
+.lea-avatar[data-state="thinking"] .lea-ring { animation-duration: 0.9s; }
+.lea-avatar[data-state="speaking"] .lea-ring {
+  animation: lea-spin 2s linear infinite, lea-pulse 0.8s var(--ease-ios) infinite alternate;
+}
+@keyframes lea-spin { to { transform: rotate(360deg); } }
+@keyframes lea-pulse { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* Elle respire : un zoom d'un pour cent et demi, à peine perceptible —
+   assez pour qu'elle ait l'air présente plutôt que collée. */
+.lea-breathe { animation: lea-breathe 4.8s ease-in-out infinite; transform-origin: 50% 60%; }
+@keyframes lea-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+
 /* Barre de défilement discrète dans les panneaux (listes, fil de messages). */
 .scroll-soft {
   scrollbar-width: thin;
@@ -553,7 +580,9 @@
   .animate-gauge,
   .animate-grow,
   .vitre-signature::before,
-  .pulse-dot::after {
+  .pulse-dot::after,
+  .lea-ring,
+  .lea-breathe {
     animation: none !important;
   }
   .rise,
