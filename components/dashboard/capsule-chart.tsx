@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { Num } from "@/components/ui/num";
@@ -18,7 +18,6 @@ export function CapsuleChart({
   data: Array<{ label: string; value: number; display?: string }>;
   className?: string;
 }) {
-  const still = useReducedMotion();
   const max = Math.max(...data.map((d) => d.value), 1);
   const peak = data.reduce((best, d, i) => (d.value > data[best].value ? i : best), 0);
 
@@ -53,23 +52,22 @@ export function CapsuleChart({
                 rails pleine hauteur ne montraient qu'une chose — du vide — et
                 volaient l'attention aux trois mois qui comptent. */}
             <motion.span
-              initial={still ? false : { height: 0 }}
+              initial={{ height: 0 }}
               animate={{ height: `${pct}%` }}
               transition={{ delay: 0.1 + i * 0.045, duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
               className={cn(
-                "relative w-full rounded-full shadow-[0_0.5px_0_rgba(255,255,255,0.3)_inset]",
-                // Les barres montent du bleu profond vers un bleu lumineux :
-                // la colonne a sa propre lumière au lieu d'être un aplat.
-                // Le pic passe en or avec sa lueur — un seul accent par
-                // graphique, sinon l'œil ne sait plus où aller.
+                "relative w-full rounded-full",
+                // Les barres sont de la glace bleutée ; le mois le plus fort
+                // passe au marine plein, avec sa lueur océan. Un seul accent
+                // par graphique, sinon l'œil ne sait plus où aller.
                 isPeak
-                  ? "bg-[linear-gradient(180deg,#F6E2AC,#E8C063)] shadow-[0_0.5px_0_rgba(255,255,255,0.65)_inset,0_10px_28px_-6px_rgba(232,192,99,0.6)]"
-                  : "bg-[linear-gradient(180deg,#5FA8E8,#27507E)] shadow-[0_0.5px_0_rgba(255,255,255,0.28)_inset]",
+                  ? "bg-[linear-gradient(180deg,#2f7fe0,#0b2545)] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_12px_26px_-8px_rgba(47,127,224,0.6)]"
+                  : "bg-[linear-gradient(180deg,#bfe0fa,#8cc4f0)] shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
               )}
             />
             {/* Valeur au survol — l'information à la demande plutôt qu'un
                 étiquetage permanent qui encombrerait le graphique. */}
-            <span className="n-inline pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border-[0.5px] border-[var(--hairline)] bg-[rgba(10,31,53,0.92)] px-2 py-1 text-[11px] text-foreground opacity-0 backdrop-blur-xl transition-opacity duration-200 group-hover/bar:opacity-100">
+            <span className="n-inline pointer-events-none absolute -top-8 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-navy px-2.5 py-1 text-[11px] text-white opacity-0 shadow-[0_8px_18px_-8px_rgba(11,37,69,0.6)] transition-opacity duration-200 group-hover/bar:opacity-100">
               <Num>{d.display ?? String(d.value)}</Num>
             </span>
             {/* Les noms de mois en sans plutôt qu'en mono : la mono est large,

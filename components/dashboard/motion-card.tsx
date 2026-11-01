@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 
@@ -21,17 +21,13 @@ export function MotionCard({
   lift?: boolean;
   className?: string;
 }) {
-  const still = useReducedMotion();
-
   return (
     <motion.div
-      initial={still ? false : { opacity: 0, y: 14, scale: 0.985 }}
+      initial={{ opacity: 0, y: 14, scale: 0.985 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: index * 0.06, duration: 0.62, ease: [0.32, 0.72, 0, 1] }}
       whileHover={
-        still || !lift
-          ? undefined
-          : { y: -4, transition: { type: "spring", stiffness: 420, damping: 28 } }
+        lift ? { y: -3, transition: { type: "spring", stiffness: 420, damping: 28 } } : undefined
       }
       className={cn(className)}
     >

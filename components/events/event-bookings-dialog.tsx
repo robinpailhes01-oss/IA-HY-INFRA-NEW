@@ -134,13 +134,13 @@ export function EventBookingsDialog({
         </DialogHeader>
 
         {/* Onglets */}
-        <div className="mb-2 inline-flex rounded-lg border border-border bg-muted/40 p-0.5 text-sm">
+        <div className="mb-2 inline-flex rounded-full border border-white/90 bg-[rgba(11,37,69,0.045)] p-1 text-sm shadow-[inset_0_1px_2px_rgba(11,37,69,0.05)]">
           {(["list", "add"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`rounded-md px-3 py-1.5 font-medium transition-colors ${tab === t ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+              className={`rounded-full px-3.5 py-1.5 font-medium transition-colors ${tab === t ? "bg-white text-foreground shadow-[inset_0_1px_0_#fff,0_1px_2px_rgba(11,37,69,0.08),0_4px_12px_-6px_rgba(11,37,69,0.25)]" : "text-ink-2 hover:text-foreground"}`}
             >
               {t === "list" ? `Inscrits (${bookings.length})` : "Ajouter"}
             </button>

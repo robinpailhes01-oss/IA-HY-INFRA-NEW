@@ -1,137 +1,153 @@
+import Link from "next/link";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 import { AnimatedNumber } from "@/components/dashboard/animated-number";
 import { MotionCard } from "@/components/dashboard/motion-card";
+import { Sparkline } from "@/components/charts/sparkline";
 import { cn } from "@/lib/utils";
 
-// Trois lignes, rien d'autre : étiquette, chiffre, précision.
+// Une carte KPI : une pastille d'icône teintée, un libellé, LE chiffre, puis
+// une précision (variation ou contexte). Une courbe discrète en option.
 //
-// Pas d'icône. Elle ne distinguait rien — quatre cartes, quatre icônes, aucune
-// information en plus — et mangeait un tiers de la largeur sur iPhone, ce qui
-// écrasait le chiffre qu'on vient précisément lire.
+// Ce qui distingue les cartes entre elles, c'est la TEINTE de la pastille et
+// de la courbe — pas le fond. Quatre plaques de verre identiques restent
+// lisibles parce que chacune porte sa couleur au même endroit.
 //
-// Ce qui distingue les cartes, c'est maintenant LA COULEUR. Chacune porte la
-// sienne : un halo diffus dans l'angle, un filet teinté, le chiffre lui-même.
-// Quatre plaques de verre identiques se fondaient en un bloc gris ; quatre
-// plaques teintées se lisent d'un coup d'œil.
-//
-// Composant SERVEUR : l'animation vit dans MotionCard, qui ne reçoit que des
-// enfants déjà rendus.
+// Composant SERVEUR : l'animation vit dans MotionCard / AnimatedNumber, qui
+// ne reçoivent que des valeurs sérialisables et des enfants déjà rendus.
 
-type Accent = "gold" | "aqua" | "indigo" | "success" | "info" | "primary";
+export type KpiAccent = "ocean" | "sky" | "navy" | "aqua" | "indigo" | "success" | "gold" | "warning" | "danger" | "info" | "primary" | "whatsapp";
 
-type Teinte = { halo: string; filet: string; chiffre: string };
-
-const TEINTE: Record<Accent, Teinte> = {
-  aqua: {
-    halo: "bg-[radial-gradient(14rem_9rem_at_100%_0%,rgba(63,200,216,0.30),transparent_68%)]",
-    filet: "border-[rgba(63,200,216,0.30)]",
-    chiffre: "text-[#9BE9F2]",
-  },
-  indigo: {
-    halo: "bg-[radial-gradient(14rem_9rem_at_100%_0%,rgba(123,139,255,0.30),transparent_68%)]",
-    filet: "border-[rgba(123,139,255,0.30)]",
-    chiffre: "text-[#BFC7FF]",
-  },
-  success: {
-    halo: "bg-[radial-gradient(14rem_9rem_at_100%_0%,rgba(47,214,142,0.26),transparent_68%)]",
-    filet: "border-[rgba(47,214,142,0.28)]",
-    chiffre: "text-[#9BEFC9]",
-  },
-  gold: {
-    halo: "bg-[radial-gradient(14rem_9rem_at_100%_0%,rgba(232,192,99,0.32),transparent_68%)]",
-    filet: "border-[rgba(232,192,99,0.34)]",
-    chiffre: "text-[#F4DFA8]",
-  },
-  info: {
-    halo: "bg-[radial-gradient(14rem_9rem_at_100%_0%,rgba(74,125,255,0.28),transparent_68%)]",
-    filet: "border-[rgba(74,125,255,0.30)]",
-    chiffre: "text-[#B6C8FF]",
-  },
-  primary: {
-    halo: "bg-[radial-gradient(14rem_9rem_at_100%_0%,rgba(74,125,255,0.28),transparent_68%)]",
-    filet: "border-[rgba(74,125,255,0.30)]",
-    chiffre: "text-[#B6C8FF]",
-  },
+const TEINTE: Record<KpiAccent, { chip: string; line: string }> = {
+  ocean: { chip: "bg-[rgba(47,127,224,0.1)] text-ocean", line: "#2f7fe0" },
+  info: { chip: "bg-[rgba(47,127,224,0.1)] text-ocean", line: "#2f7fe0" },
+  sky: { chip: "bg-[rgba(124,192,245,0.18)] text-[#2b7fc9]", line: "#5aaef0" },
+  navy: { chip: "bg-[rgba(11,37,69,0.08)] text-navy", line: "#0b2545" },
+  primary: { chip: "bg-[rgba(11,37,69,0.08)] text-navy", line: "#0b2545" },
+  aqua: { chip: "bg-[rgba(34,167,191,0.12)] text-aqua", line: "#22a7bf" },
+  indigo: { chip: "bg-[rgba(109,124,242,0.12)] text-indigo", line: "#6d7cf2" },
+  success: { chip: "bg-[rgba(15,159,110,0.11)] text-success", line: "#0f9f6e" },
+  gold: { chip: "bg-[rgba(164,126,44,0.12)] text-gold", line: "#a47e2c" },
+  warning: { chip: "bg-[rgba(217,130,43,0.12)] text-warning", line: "#d9822b" },
+  danger: { chip: "bg-[rgba(224,77,85,0.11)] text-danger", line: "#e04d55" },
+  whatsapp: { chip: "bg-[rgba(31,174,91,0.12)] text-whatsapp", line: "#1fae5b" },
 };
 
 type KpiCardProps = {
   label: string;
   value: number;
   format?: "int" | "eur";
-  accent?: Accent;
+  /** Suffixe collé au chiffre (« % », « h »…). */
+  suffix?: string;
+  accent?: KpiAccent;
+  /** Élément icône lucide déjà rendu, ex. `icon={<Users />}`. */
+  icon?: React.ReactNode;
   delta?: { value: string; positive: boolean };
   hint?: string;
+  /** Série courte (6 à 30 points) dessinée en bas à droite. */
+  trend?: number[];
+  href?: string;
   index?: number;
-  /** Un seul par écran : la carte prend plus de présence que ses voisines. */
+  /** Un seul par écran : le chiffre passe en dégradé marine → océan. */
   primary?: boolean;
+  className?: string;
 };
 
 export function KpiCard({
   label,
   value,
   format = "int",
-  accent = "info",
+  suffix,
+  accent = "ocean",
+  icon,
   delta,
   hint,
+  trend,
+  href,
   index = 0,
   primary = false,
+  className,
 }: KpiCardProps) {
   const teinte = TEINTE[accent];
 
+  const body = (
+    <div
+      className={cn(
+        "vitre group/kpi relative flex h-full flex-col overflow-hidden rounded-[24px] p-4 sm:p-5",
+        href && "transition-shadow duration-300 hover:shadow-[var(--shadow-lift)]",
+        className,
+      )}
+    >
+      <div className="relative z-[1] flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {icon && (
+            <span
+              className={cn(
+                "grid size-9 shrink-0 place-items-center rounded-full [&_svg]:size-[17px] [&_svg]:stroke-[1.8]",
+                teinte.chip,
+              )}
+            >
+              {icon}
+            </span>
+          )}
+          <p className="t-label min-w-0 text-ink-2">{label}</p>
+        </div>
+        {href && (
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/80 text-ink-3 shadow-[var(--shadow-glass)] transition-colors group-hover/kpi:text-ocean">
+            <ArrowUpRight className="size-3.5" />
+          </span>
+        )}
+      </div>
+
+      <div className="relative z-[1] mt-4 flex items-end justify-between gap-3">
+        <span className="flex items-baseline gap-0.5">
+          <AnimatedNumber
+            value={value}
+            format={format}
+            className={cn(
+              "block",
+              primary ? "n-kpi-lead n-gradient" : "n-kpi text-foreground",
+            )}
+          />
+          {suffix && (
+            <span className={cn("font-medium text-ink-2", primary ? "text-xl" : "text-lg")}>{suffix}</span>
+          )}
+        </span>
+        {trend && trend.length > 1 && (
+          <Sparkline values={trend} color={teinte.line} className="h-9 w-20 shrink-0 sm:w-24" />
+        )}
+      </div>
+
+      {(delta || hint) && (
+        <div className="relative z-[1] mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-3">
+          {delta && (
+            <span
+              className={cn(
+                "pastille",
+                delta.positive
+                  ? "bg-[rgba(15,159,110,0.1)] text-success"
+                  : "bg-[rgba(224,77,85,0.1)] text-danger",
+              )}
+            >
+              {delta.positive ? <ArrowUpRight className="size-3" /> : <ArrowDownRight className="size-3" />}
+              {delta.value}
+            </span>
+          )}
+          {hint && <span className="t-caption text-ink-3">{hint}</span>}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <MotionCard index={index} className="h-full">
-      <div
-        className={cn(
-          "vitre group/kpi relative flex h-full flex-col rounded-[18px] p-4 transition-[border-color] duration-300 sm:p-5",
-          teinte.filet,
-        )}
-      >
-        {/* Le halo coloré dans l'angle opposé à la source lumineuse : la carte
-            a une teinte propre sans que le fond devienne un aplat de couleur. */}
-        <span
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-0 opacity-80 transition-opacity duration-500 group-hover/kpi:opacity-100",
-            teinte.halo,
-          )}
-        />
-
-        <p className="t-label relative text-muted-foreground">{label}</p>
-
-        <AnimatedNumber
-          value={value}
-          format={format}
-          className={cn(
-            "relative mt-3 block",
-            primary ? "n-kpi-lead" : "n-kpi",
-            // Seule la carte principale prend la couleur pleine ; les autres
-            // restent blanches pour que la hiérarchie tienne.
-            primary ? teinte.chiffre : "text-foreground",
-          )}
-        />
-
-        {/* Collé au bas de la carte : les précisions s'alignent entre elles
-            même quand les étiquettes n'ont pas le même nombre de lignes. */}
-        {delta ? (
-          <span
-            className={cn(
-              "pastille relative mt-auto self-start",
-              delta.positive ? "bg-success/15 text-success" : "bg-danger/15 text-danger",
-            )}
-          >
-            {delta.positive ? (
-              <ArrowUpRight className="size-3" />
-            ) : (
-              <ArrowDownRight className="size-3" />
-            )}
-            {delta.value}
-            {hint ? <span className="text-muted-foreground">{hint}</span> : null}
-          </span>
-        ) : hint ? (
-          <p className="t-caption relative mt-auto pt-2.5 text-muted-foreground">{hint}</p>
-        ) : null}
-      </div>
+      {href ? (
+        <Link href={href} className="block h-full rounded-[24px] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ocean/20">
+          {body}
+        </Link>
+      ) : (
+        body
+      )}
     </MotionCard>
   );
 }

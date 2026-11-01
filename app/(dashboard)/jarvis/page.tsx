@@ -206,18 +206,18 @@ export default function JarvisPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col overflow-hidden rounded-2xl border border-[#1c1f2e] bg-[radial-gradient(ellipse_at_center,_#0c1020_0%,_#05060b_70%)] text-white">
+    <div className="vitre-signature flex h-[calc(100dvh-13rem)] min-h-[34rem] flex-col overflow-hidden rounded-[28px] text-white lg:h-[calc(100dvh-8.5rem)]">
       <div className="flex shrink-0 items-center justify-between px-5 py-4">
         <div>
-          <h1 className="text-sm font-semibold tracking-wide text-white/90">JARVIS</h1>
-          <p className="text-xs text-white/40">Le Manager, en vocal</p>
+          <p className="t-eyebrow text-[#9fc6ee]">Jarvis</p>
+          <h1 className="t-panel mt-1 text-white">Le Manager, <em className="italic text-[#9fd0f7]">en vocal</em></h1>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowTextInput((v) => !v)}
-            className="text-white/60 hover:bg-white/10 hover:text-white"
+            className="border border-white/15 bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
             title="Basculer en texte"
           >
             <Keyboard className="size-4" />
@@ -226,7 +226,7 @@ export default function JarvisPage() {
             variant="ghost"
             size="icon"
             onClick={() => setVoiceEnabled((v) => !v)}
-            className="text-white/60 hover:bg-white/10 hover:text-white"
+            className="border border-white/15 bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
             title={voiceEnabled ? 'Couper la voix' : 'Activer la voix'}
           >
             {voiceEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
@@ -240,65 +240,65 @@ export default function JarvisPage() {
           onClick={toggleSession}
           disabled={!speechSupported && !showTextInput}
           aria-label={sessionActive ? 'Terminer la conversation' : 'Démarrer la conversation'}
-          className="orb-glow relative flex size-72 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 disabled:opacity-40"
+          className="orb-glow relative flex size-72 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-4 focus-visible:ring-sky/40 disabled:opacity-40"
         >
           <Orb3D status={status} />
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            {sessionActive ? <MicOff className="size-8 text-black/60 drop-shadow-sm" /> : <Mic className="size-8 text-black/60 drop-shadow-sm" />}
+            {sessionActive ? <MicOff className="size-8 text-white drop-shadow-[0_2px_6px_rgba(11,37,69,0.5)]" /> : <Mic className="size-8 text-white drop-shadow-[0_2px_6px_rgba(11,37,69,0.5)]" />}
           </span>
         </button>
 
         <div className="flex flex-col items-center gap-2 text-center">
           <p className="text-base font-medium text-white/85">{STATUS_LABEL[status]}</p>
-          {interim && <p className="max-w-sm text-sm italic text-white/40">« {interim} »</p>}
+          {interim && <p className="max-w-sm text-sm italic text-white/60">« {interim} »</p>}
         </div>
 
         {(lastUser || lastAssistant) && (
           <div className="flex w-full max-w-md flex-col gap-2 text-sm">
             {lastUser && (
-              <p className="rounded-xl bg-white/5 px-3 py-2 text-right text-white/70">{lastUser}</p>
+              <p className="ml-auto max-w-[85%] rounded-[18px] rounded-br-md bg-white/10 px-4 py-2.5 text-right text-white/80">{lastUser}</p>
             )}
             {lastAssistant && (
-              <p className="rounded-xl bg-amber-400/10 px-3 py-2 text-amber-100/90">{lastAssistant}</p>
+              <p className="max-w-[92%] rounded-[18px] rounded-bl-md border border-white/15 bg-[linear-gradient(160deg,rgba(124,192,245,0.22),rgba(47,127,224,0.16))] px-4 py-2.5 text-white/95">{lastAssistant}</p>
             )}
           </div>
         )}
 
         {!speechSupported && !showTextInput && (
-          <p className="max-w-xs text-center text-xs text-white/40">
+          <p className="max-w-xs text-center text-xs text-white/60">
             Reconnaissance vocale non supportée par ce navigateur — utilise le clavier (icône en haut à droite) ou ouvre depuis Chrome.
           </p>
         )}
       </div>
 
       {showTextInput && (
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/10 p-3">
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/10 p-3 sm:p-4">
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Écris à Jarvis…"
             onKeyDown={(e) => e.key === 'Enter' && sendTextDraft()}
-            className="border-white/10 bg-white/5 text-white placeholder:text-white/30"
+            className="border-white/15 bg-white/10 text-white shadow-none placeholder:text-white/40 focus-visible:border-white/30 focus-visible:bg-white/15 focus-visible:ring-white/10"
           />
-          <Button type="button" onClick={sendTextDraft} disabled={!draft.trim()}>
+          <Button type="button" variant="outline" onClick={sendTextDraft} disabled={!draft.trim()}>
             Envoyer
           </Button>
         </div>
       )}
 
       <style jsx>{`
-        /* Halo ambiant derrière l'orbe 3D (le canvas WebGL est transparent) —
+        /* Halo ambiant (bleu glacier) derrière l'orbe 3D (le canvas WebGL est transparent) —
            donne l'impression que l'orbe irradie sur son environnement,
            façon hologramme. Pulse doucement au repos, plus vite en session. */
         .orb-glow {
-          background: radial-gradient(circle, rgba(245, 185, 66, 0.35) 0%, rgba(245, 185, 66, 0.08) 45%, transparent 70%);
+          background: radial-gradient(circle, rgba(124, 192, 245, 0.38) 0%, rgba(47, 127, 224, 0.1) 45%, transparent 70%);
           animation: orb-glow-pulse 4s ease-in-out infinite;
         }
         .orb-fallback {
           height: 12rem;
           width: 12rem;
           border-radius: 9999px;
-          background: radial-gradient(circle at 35% 30%, #ffe8b8, #f5b942 45%, #b8791a 80%);
+          background: radial-gradient(circle at 35% 30%, #e8f4ff, #7cc0f5 45%, #2f7fe0 80%);
           opacity: 0.7;
         }
         @keyframes orb-glow-pulse {

@@ -2,56 +2,136 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type Status = "connected" | "pending" | "waiting" | "error";
+export type LeaStatus = "connected" | "pending" | "waiting" | "error";
 
-const LABELS: Record<Status, { text: string; dot: string; bg: string }> = {
-  connected: { text: "Léa connectée", dot: "bg-success", bg: "bg-success/8 text-success" },
-  pending: { text: "Léa : scan requis", dot: "bg-warning animate-pulse", bg: "bg-warning/10 text-warning" },
-  waiting: { text: "Léa : démarrage…", dot: "bg-muted-foreground/60", bg: "bg-muted text-muted-foreground" },
-  error: { text: "Léa hors ligne", dot: "bg-destructive animate-pulse", bg: "bg-destructive/10 text-destructive" },
+const LABELS: Record<LeaStatus, { short: string; long: string; dot: string; text: string }> = {
+  connected: {
+    short: "Léa en ligne",
+    long: "En ligne sur WhatsApp",
+    dot: "bg-[#1fae5b] text-[#1fae5b]",
+    text: "text-[#127a42]",
+  },
+  pending: {
+    short: "Scan requis",
+    long: "Scan WhatsApp requis",
+    dot: "bg-warning text-warning",
+    text: "text-warning",
+  },
+  waiting: {
+    short: "Démarrage…",
+    long: "Le service WhatsApp démarre",
+    dot: "bg-ink-3 text-ink-3",
+    text: "text-ink-2",
+  },
+  error: {
+    short: "Léa hors ligne",
+    long: "WhatsApp injoignable",
+    dot: "bg-danger text-danger",
+    text: "text-danger",
+  },
 };
 
-/**
- * Indicateur global de l'état de Léa. Poll /api/wa/qr toutes les 30s — assez
- * pour repérer une déconnexion en moins d'une minute, pas assez pour spammer.
- * Cliquable : renvoie sur /agent pour rescanner si besoin.
- */
-export function LeaStatusPill() {
-  const [status, setStatus] = useState<Status>("waiting");
+// Un seul sondage pour toute l'application : la carte de la barre latérale,
+// la pastille de l'en-tête et l'onglet mobile lisent le même état. Trois
+// composants qui interrogent chacun /api/wa/qr toutes les 30 s, c'était trois
+// fois le même appel.
+let current: LeaStatus = "waiting";
+const listeners = new Set<(s: LeaStatus) => void>();
+let timer: ReturnType<typeof setInterval> | null = null;
 
+async function poll() {
+  let next: LeaStatus = "error";
+  try {
+    const res = await fetch("/api/wa/qr", { cache: "no-store" });
+    if (res.ok) {
+      const data = (await res.json()) as { status?: LeaStatus };
+      next = data.status ?? "error";
+    }
+  } catch {
+    next = "error";
+  }
+  current = next;
+  listeners.forEach((l) => l(next));
+}
+
+export function useLeaStatus(): LeaStatus {
+  const [status, setStatus] = useState<LeaStatus>(current);
   useEffect(() => {
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await fetch("/api/wa/qr", { cache: "no-store" });
-        if (cancelled) return;
-        if (!res.ok) return setStatus("error");
-        const data = (await res.json()) as { status?: Status };
-        setStatus(data.status ?? "error");
-      } catch {
-        if (!cancelled) setStatus("error");
+    listeners.add(setStatus);
+    if (!timer) {
+      void poll();
+      timer = setInterval(poll, 30_000);
+    }
+    return () => {
+      listeners.delete(setStatus);
+      if (listeners.size === 0 && timer) {
+        clearInterval(timer);
+        timer = null;
       }
     };
-    poll();
-    const id = setInterval(poll, 30_000);
-    return () => { cancelled = true; clearInterval(id); };
   }, []);
+  return status;
+}
 
+export function StatusDot({ status, className }: { status: LeaStatus; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "size-2 shrink-0 rounded-full",
+        status === "connected" && "pulse-dot",
+        LABELS[status].dot,
+        className,
+      )}
+    />
+  );
+}
+
+/**
+ * État de Léa, l'agent IA WhatsApp.
+ * · `card` : la carte vivante en bas de la barre latérale ;
+ * · `pill` : la pastille compacte de l'en-tête.
+ */
+export function LeaStatusPill({ variant = "pill" }: { variant?: "card" | "pill" }) {
+  const status = useLeaStatus();
   const cfg = LABELS[status];
+
+  if (variant === "card") {
+    return (
+      <Link
+        href="/agent/conversations"
+        className="group flex items-center gap-3 rounded-[20px] border border-white/90 bg-white/60 p-2.5 pr-3 shadow-[inset_0_1px_0_#fff,0_1px_2px_rgba(11,37,69,0.05)] transition-colors duration-200 hover:bg-white"
+        title="Ouvrir les conversations de Léa"
+      >
+        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_30%_25%,#4f9cf0_0%,#1d4f8c_45%,#0b2545_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_14px_-6px_rgba(11,37,69,0.7)]">
+          <Sparkles className="size-[17px] text-white" strokeWidth={1.8} />
+          <span className="absolute -bottom-0.5 -right-0.5 grid size-3.5 place-items-center rounded-full bg-white">
+            <StatusDot status={status} className="size-2" />
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13.5px] font-semibold tracking-[-0.015em] text-foreground">
+            Léa · agent IA
+          </span>
+          <span className={cn("block truncate text-[11.5px] font-medium", cfg.text)}>
+            {cfg.long}
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
   return (
     <Link
       href="/agent"
-      className={cn(
-        "flex items-center gap-2 rounded-lg border border-sidebar-border px-3 py-2 text-xs font-medium transition-colors hover:opacity-80",
-        cfg.bg,
-      )}
-      title="Voir l'état de Léa"
+      className="flex h-10 items-center gap-2 rounded-full border border-white/90 bg-white/65 pl-3 pr-3.5 text-[12.5px] font-semibold tracking-[-0.01em] shadow-[inset_0_1px_0_#fff,0_1px_2px_rgba(11,37,69,0.05)] backdrop-blur-xl transition-colors hover:bg-white"
+      title={cfg.long}
     >
-      <span className={cn("size-2 shrink-0 rounded-full", cfg.dot)} />
-      <span className="truncate">{cfg.text}</span>
+      <StatusDot status={status} />
+      <span className={cfg.text}>{cfg.short}</span>
     </Link>
   );
 }

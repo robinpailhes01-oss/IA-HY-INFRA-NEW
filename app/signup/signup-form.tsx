@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/shell/brand-mark";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -48,21 +49,23 @@ export function SignupForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="space-y-1 text-center">
-          <div className="text-2xl font-semibold tracking-tight">
-            <span className="text-gold">⚓</span> Harmonie{" "}
-            <span className="text-gold">Yacht</span>
+    <main className="app-ambient flex min-h-dvh items-center justify-center p-5">
+      <Card className="rise w-full max-w-[400px] rounded-[30px] py-7">
+        <CardHeader className="space-y-1 px-7 text-center">
+          <div className="mb-3 flex flex-col items-center gap-3">
+            <BrandMark className="size-12 rounded-[16px]" />
+            <span className="text-[13px] font-semibold tracking-[-0.015em] text-ink-2">
+              Harmonie Yacht · pilotage
+            </span>
           </div>
-          <CardTitle className="text-lg font-medium">
+          <CardTitle className="font-serif text-[28px] font-normal leading-tight tracking-[-0.01em]">
             Créer un compte (dev)
           </CardTitle>
           <CardDescription>
             Page de développement — création des comptes équipe.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">Prénom</Label>
@@ -72,7 +75,7 @@ export function SignupForm() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="h-10"
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
@@ -85,7 +88,7 @@ export function SignupForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-10"
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
@@ -98,10 +101,10 @@ export function SignupForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="h-10"
+                className="h-11"
               />
             </div>
-            <Button type="submit" disabled={loading} className="h-10 w-full">
+            <Button type="submit" disabled={loading} className="h-11 w-full">
               {loading && <Loader2 className="animate-spin" />}
               Créer le compte
             </Button>

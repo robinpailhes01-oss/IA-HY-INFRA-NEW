@@ -137,7 +137,10 @@ export function ArchivesTable({ clients }: { clients: ArchiveClient[] }) {
         <div className="flex items-center gap-2">
           <Select value={yearFilter} onValueChange={(v) => setYearFilter((v as string) ?? "all")}>
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="Année" />
+              {/* Sans rendu explicite, Base UI affiche la valeur brute (« all »). */}
+              <SelectValue>
+                {(v: string | null) => (!v || v === "all" ? "Toutes les années" : v)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Toutes les années</SelectItem>
@@ -162,7 +165,7 @@ export function ArchivesTable({ clients }: { clients: ArchiveClient[] }) {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border">
+      <div className="vitre-inset overflow-hidden rounded-[20px]">
         <Table>
           <TableHeader>
             <TableRow>

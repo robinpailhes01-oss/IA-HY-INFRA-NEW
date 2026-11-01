@@ -22,13 +22,13 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       className={cn(
-        "relative inline-flex rounded-[13px] border-[0.5px] border-[var(--hairline)] bg-[rgba(255,255,255,0.06)] p-[3px]",
+        "relative inline-flex rounded-full border border-white/90 bg-[rgba(11,37,69,0.045)] p-[3px] shadow-[inset_0_1px_2px_rgba(11,37,69,0.05)]",
         className,
       )}
     >
       <span
         aria-hidden
-        className="absolute inset-y-[3px] rounded-[10px] bg-[rgba(255,255,255,0.16)] shadow-[0_0.5px_0_rgba(255,255,255,0.22)_inset,0_4px_12px_-6px_rgba(0,0,0,0.8)] transition-[transform,width] duration-[420ms] [transition-timing-function:var(--ease-ios)]"
+        className="absolute inset-y-[3px] rounded-full bg-white shadow-[inset_0_1px_0_#fff,0_1px_2px_rgba(11,37,69,0.08),0_4px_12px_-6px_rgba(11,37,69,0.25)] transition-[transform,width] duration-[420ms] [transition-timing-function:var(--ease-ios)]"
         style={{
           width: `calc((100% - 6px) / ${options.length})`,
           transform: `translateX(calc(${index} * 100%))`,
@@ -42,8 +42,8 @@ export function Segmented<T extends string>({
           aria-selected={o.value === value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "relative z-10 flex-1 whitespace-nowrap rounded-[10px] px-4 py-1.5 text-[13px] font-medium tracking-[-0.01em] transition-colors duration-200",
-            o.value === value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            "relative z-10 flex-1 whitespace-nowrap rounded-full px-4 py-1.5 text-[13px] font-medium tracking-[-0.01em] transition-colors duration-200",
+            o.value === value ? "text-foreground" : "text-ink-2 hover:text-foreground",
           )}
         >
           {o.label}

@@ -3,6 +3,12 @@ import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 
 export async function createClient() {
+  // Mode démo local uniquement (jamais en production) — voir lib/demo/mode.ts.
+  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_HY_DEMO === "1") {
+    const { createMockClient } = await import("@/lib/demo/mock-client");
+    return createMockClient() as ReturnType<typeof createServerClient<Database>>;
+  }
+
   const cookieStore = await cookies();
 
   return createServerClient<Database>(

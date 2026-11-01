@@ -1,14 +1,12 @@
-import { Ticket } from "lucide-react";
+import { CalendarHeart, Euro, PartyPopper, Ticket, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { KpiCard } from "@/components/dashboard/kpi-card";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shell/page-header";
+import { Num } from "@/components/ui/num";
 import { formatDateLong, formatEur, formatTimeRange } from "@/lib/format";
 import { AddEventDialog } from "@/components/events/add-event-dialog";
 import { EventBookingsDialog } from "@/components/events/event-bookings-dialog";
@@ -73,32 +71,46 @@ export default async function EventsPage() {
     return acc;
   }, {});
 
-  return (
-    <div className="space-y-6">
-      <header className="enter-up flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Événements</h1>
-          <p className="text-sm text-muted-foreground">
-            {upcoming.length} événement{upcoming.length !== 1 ? "s" : ""} à venir
-          </p>
-        </div>
-        <AddEventDialog />
-      </header>
+  // Le jour du mois en grand, à gauche de chaque événement : on lit une liste
+  // d'événements comme un agenda, par la date d'abord.
+  const dayParts = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`);
+    return {
+      day: d.toLocaleDateString("fr-FR", { day: "numeric" }),
+      month: d.toLocaleDateString("fr-FR", { month: "short" }).replace(".", ""),
+    };
+  };
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <KpiCard label="Événements à venir" value={upcoming.length} accent="primary" index={0} />
-        <KpiCard label="Places réservées" value={totalSeats} accent="info" index={1} />
-        <KpiCard label="CA événements" value={totalRevenue} format="eur" accent="success" index={2} />
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        eyebrow="Outils"
+        title={<>Événements <em>publics</em></>}
+        description={`${upcoming.length} événement${upcoming.length !== 1 ? "s" : ""} à venir — soirées à thème, couchers de soleil partagés, sorties à la place.`}
+        actions={<AddEventDialog />}
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-5">
+        <KpiCard label="Événements à venir" value={upcoming.length} accent="ocean" icon={<CalendarHeart />} index={0} />
+        <KpiCard label="Places réservées" value={totalSeats} accent="aqua" icon={<Users />} index={1} />
+        <KpiCard
+          label="CA événements"
+          value={totalRevenue}
+          format="eur"
+          accent="success"
+          icon={<Euro />}
+          index={2}
+          className="col-span-2 lg:col-span-1"
+        />
       </div>
 
       {events.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Aucun événement. Crée le premier avec le bouton ci-dessus.
-          </CardContent>
-        </Card>
+        <EmptyState icon={<PartyPopper />} title="Aucun événement pour l'instant">
+          Crée le premier avec « Nouvel événement » : il apparaîtra ici avec sa
+          jauge de remplissage et la liste des inscrits.
+        </EmptyState>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
           {events.map((ev, i) => {
             const evBookings = bookingsByEvent[ev.id] ?? [];
             const seats = ev.current_bookings ?? 0;
@@ -106,92 +118,89 @@ export default async function EventsPage() {
             const isPast = ev.date < todayIso;
             const time = formatTimeRange(ev.start_time, ev.end_time);
             const fillPct = capacity ? Math.min(100, Math.round((seats / capacity) * 100)) : null;
+            const { day, month } = dayParts(ev.date);
 
             return (
               <Card
                 key={ev.id}
-                className={`enter-up ${isPast ? "opacity-60" : ""}`}
+                // L'animation d'entrée finit sur opacity: 1 et écraserait une opacité
+                // posée sur la carte elle-même : on estompe donc son contenu.
+                className={`rise ${isPast ? "[&>*]:opacity-55" : ""}`}
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-base">{ev.title}</CardTitle>
+                <CardHeader className="pb-1">
+                  <div className="flex items-start gap-4">
+                    <span className="flex w-14 shrink-0 flex-col items-center rounded-[18px] border border-white bg-white/80 py-2 shadow-[var(--shadow-glass)]">
+                      <span className="n-inline text-[22px] leading-none text-foreground">{day}</span>
+                      <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ocean">{month}</span>
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <CardTitle className="text-[16px]">{ev.title}</CardTitle>
                         {isPast && <Badge variant="outline">Passé</Badge>}
                         {!isPast && ev.status === "published" && (
-                          <Badge className="bg-success/15 text-success hover:bg-success/15">En ligne</Badge>
+                          <Badge className="bg-[rgba(15,159,110,0.1)] text-success">En ligne</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-[13px] text-ink-2">
                         {formatDateLong(ev.date)}
-                        {time && <span className="ml-2">{time}</span>}
+                        {time && <span className="text-ink-3"> · {time}</span>}
                       </p>
-                      {ev.theme && (
-                        <p className="text-xs text-muted-foreground">{ev.theme}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {ev.price_per_person != null && (
-                        <span className="text-sm font-semibold text-foreground">
-                          {formatEur(ev.price_per_person)}<span className="font-normal text-muted-foreground">/pers.</span>
-                        </span>
-                      )}
-                      <EventBookingsDialog event={ev} bookings={evBookings} />
+                      {ev.theme && <p className="text-xs text-ink-3">{ev.theme}</p>}
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   {/* Jauge de remplissage */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <Ticket className="size-3.5 text-muted-foreground" />
-                      <span className="font-medium text-foreground">{seats}</span>
-                      {capacity && (
-                        <span className="text-muted-foreground">/ {capacity} places</span>
-                      )}
-                      {!capacity && (
-                        <span className="text-muted-foreground">inscrit{seats !== 1 ? "s" : ""}</span>
-                      )}
-                    </div>
+                  <div className="vitre-inset flex items-center gap-3 rounded-full px-4 py-2.5">
+                    <Ticket className="size-4 shrink-0 text-ocean" />
+                    <span className="shrink-0 text-[13px]">
+                      <span className="n-inline text-foreground">{seats}</span>
+                      <span className="text-ink-3">
+                        {capacity ? ` / ${capacity} places` : ` inscrit${seats !== 1 ? "s" : ""}`}
+                      </span>
+                    </span>
                     {fillPct !== null && (
-                      <div className="flex-1">
-                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={`h-full rounded-full transition-all ${fillPct >= 90 ? "bg-warning" : "bg-primary"}`}
-                            style={{ width: `${fillPct}%` }}
-                          />
-                        </div>
-                      </div>
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-[rgba(11,37,69,0.07)]">
+                        <span
+                          className={`block h-full rounded-full ${fillPct >= 90 ? "bg-warning" : "bg-[linear-gradient(90deg,#7cc0f5,#2f7fe0)]"}`}
+                          style={{ width: `${fillPct}%` }}
+                        />
+                      </span>
                     )}
                     {Number(ev.total_revenue) > 0 && (
-                      <span className="ml-auto text-sm font-semibold text-success">
+                      <Num className="n-inline ml-auto shrink-0 text-[13px] text-success">
                         {formatEur(ev.total_revenue)}
-                      </span>
+                      </Num>
                     )}
                   </div>
 
-                  {/* Résumé des inscrits */}
-                  {evBookings.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {evBookings.slice(0, 5).map((b) => (
-                        <span
-                          key={b.id}
-                          className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                        >
-                          {b.first_name} {b.last_name ?? ""}
-                          {(b.party_size ?? 1) > 1 && (
-                            <span className="font-medium text-foreground">×{b.party_size}</span>
-                          )}
-                        </span>
-                      ))}
-                      {evBookings.length > 5 && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                          +{evBookings.length - 5} autres
+                  <div className="flex flex-wrap items-center gap-2">
+                    {evBookings.slice(0, 4).map((b) => (
+                      <span
+                        key={b.id}
+                        className="inline-flex items-center gap-1 rounded-full border border-white bg-white/70 px-2.5 py-1 text-xs text-ink-2"
+                      >
+                        {b.first_name} {b.last_name ?? ""}
+                        {(b.party_size ?? 1) > 1 && (
+                          <span className="font-semibold text-foreground">×{b.party_size}</span>
+                        )}
+                      </span>
+                    ))}
+                    {evBookings.length > 4 && (
+                      <span className="rounded-full bg-[rgba(11,37,69,0.05)] px-2.5 py-1 text-xs text-ink-2">
+                        +{evBookings.length - 4} autres
+                      </span>
+                    )}
+                    <span className="ml-auto flex items-center gap-2">
+                      {ev.price_per_person != null && (
+                        <span className="text-[13px] text-ink-2">
+                          <Num className="n-inline text-foreground">{formatEur(ev.price_per_person)}</Num> / pers.
                         </span>
                       )}
-                    </div>
-                  )}
+                      <EventBookingsDialog event={ev} bookings={evBookings} />
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             );

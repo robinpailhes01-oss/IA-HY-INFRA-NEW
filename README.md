@@ -22,6 +22,21 @@ npm run dev
 
 L'app tourne sur http://localhost:3000.
 
+### Mode démo (prévisualisation sans base)
+
+```bash
+NEXT_PUBLIC_HY_DEMO=1 npm run dev
+```
+
+Le client Supabase est remplacé par des données fictives (`lib/demo/`) et la
+connexion est court-circuitée — pratique pour itérer sur le design ou faire
+des captures. Inactif en production (`NODE_ENV=production`), quoi qu'il arrive.
+
+## Design
+
+Système « Verre glacier » (blanc, bleu ciel, marine) et architecture en quatre
+espaces : voir `docs/DESIGN.md`.
+
 ## Structure
 
 ```

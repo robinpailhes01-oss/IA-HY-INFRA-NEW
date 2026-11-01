@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { DEMO_MODE } from "@/lib/demo/mode";
 
 const PUBLIC_PATHS =
   process.env.NODE_ENV === "development" ? ["/login", "/signup"] : ["/login"];
@@ -27,6 +28,9 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublicApi(pathname)) return NextResponse.next();
+
+  // Mode démo local (jamais en production) : pas de session à rafraîchir.
+  if (DEMO_MODE) return NextResponse.next();
 
   // Refreshes the Supabase session cookie on every request.
   const { supabaseResponse, user } = await updateSession(request);

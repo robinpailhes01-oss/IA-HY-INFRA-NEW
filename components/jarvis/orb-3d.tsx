@@ -37,8 +37,8 @@ function OrbMesh({ status }: { status: JarvisStatus }) {
       <mesh ref={coreRef}>
         <icosahedronGeometry args={[1, 6]} />
         <MeshDistortMaterial
-          color="#f5b942"
-          emissive="#d97f0a"
+          color="#7cc0f5"
+          emissive="#2f7fe0"
           emissiveIntensity={params.emissive}
           distort={params.distort}
           speed={params.speed}
@@ -48,9 +48,9 @@ function OrbMesh({ status }: { status: JarvisStatus }) {
       </mesh>
       <mesh ref={wireRef} scale={1.32}>
         <icosahedronGeometry args={[1, 1]} />
-        <meshBasicMaterial color="#ffd27a" wireframe transparent opacity={0.28} />
+        <meshBasicMaterial color="#cfe8ff" wireframe transparent opacity={0.28} />
       </mesh>
-      <Sparkles count={90} scale={3} size={2.2} speed={params.sparkleSpeed} color="#ffd27a" opacity={0.6} />
+      <Sparkles count={90} scale={3} size={2.2} speed={params.sparkleSpeed} color="#d6ecff" opacity={0.6} />
     </group>
   );
 }
@@ -63,9 +63,9 @@ export default function Orb3D({ status }: { status: JarvisStatus }) {
       camera={{ position: [0, 0, 4.2], fov: 40 }}
       style={{ pointerEvents: 'none' }}
     >
-      <ambientLight intensity={0.5} color="#ffe6bd" />
-      <pointLight position={[3, 3, 3]} intensity={2.2} color="#ffdca8" />
-      <pointLight position={[-3, -2, -3]} intensity={0.7} color="#ff9c3a" />
+      <ambientLight intensity={0.55} color="#e3f1ff" />
+      <pointLight position={[3, 3, 3]} intensity={2.2} color="#dcefff" />
+      <pointLight position={[-3, -2, -3]} intensity={0.8} color="#2f7fe0" />
       <OrbMesh status={status} />
     </Canvas>
   );

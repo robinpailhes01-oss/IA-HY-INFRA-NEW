@@ -68,9 +68,9 @@ export default async function ContractPage({
   const total = data.total_amount ?? 0;
 
   return (
-    <div className="min-h-screen bg-muted/30 print:bg-white">
+    <div className="min-h-screen bg-[#edf3fa] print:bg-white">
       {/* Barre d'actions — cachée à l'impression */}
-      <div className="print:hidden sticky top-0 z-10 border-b bg-background">
+      <div className="print:hidden sticky top-0 z-10 border-b border-[var(--hairline)] bg-white/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-6 py-3">
           <Link
             href="/bookings"
@@ -90,7 +90,7 @@ export default async function ContractPage({
       </div>
 
       {/* Le contrat lui-même */}
-      <main className="mx-auto max-w-4xl bg-white px-12 py-10 text-[15px] leading-relaxed text-zinc-900 shadow-sm print:max-w-none print:px-12 print:py-0 print:shadow-none">
+      <main className="mx-auto max-w-4xl bg-white px-6 py-10 text-[15px] leading-relaxed text-zinc-900 shadow-[var(--shadow-glass)] sm:my-6 sm:rounded-[24px] sm:px-12 print:my-0 print:max-w-none print:rounded-none print:px-12 print:py-0 print:shadow-none">
         <header className="mb-8 flex items-start justify-between border-b border-zinc-200 pb-6">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Harmonie Yacht</h1>

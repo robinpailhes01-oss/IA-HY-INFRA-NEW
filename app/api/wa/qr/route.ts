@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { DEMO_MODE } from '@/lib/demo/mode';
 
 export async function GET() {
+  if (DEMO_MODE) return NextResponse.json({ status: 'connected' });
   const serviceUrl = process.env.BAILEYS_SERVICE_URL;
   if (!serviceUrl) return NextResponse.json({ error: 'BAILEYS_SERVICE_URL non configuré' }, { status: 500 });
 

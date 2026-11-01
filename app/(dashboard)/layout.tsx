@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { Header } from "@/components/header";
+import { Header, type Attention } from "@/components/header";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { MobileTabBar } from "@/components/shell/mobile-tab-bar";
+import { MotionProvider } from "@/components/shell/motion-provider";
 
 export default async function DashboardLayout({
   children,
@@ -18,33 +20,56 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("first_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Ce qui attend une réponse HUMAINE, affiché partout (badge de l'agent,
+  // cloche) : c'est la seule information qui doit pouvoir interrompre Robin
+  // quelle que soit la page où il se trouve.
+  const [{ data: profile }, { data: leads }, { data: lastMessages }] = await Promise.all([
+    supabase.from("profiles").select("first_name").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("leads")
+      .select("id, status, needs_human_intervention")
+      .eq("archived", false)
+      .returns<{ id: string; status: string | null; needs_human_intervention: boolean | null }[]>(),
+    supabase
+      .from("lead_last_message")
+      .select("lead_id")
+      .eq("last_from_me", false)
+      .returns<{ lead_id: string | null }[]>(),
+  ]);
 
-  // La coque : LA seule plaque de verre de l'application, qui contient la
-  // navigation ET le contenu. C'est ce qui distingue une application d'une
-  // page web — le menu n'est plus une barre collée au bord, il fait partie
-  // du même objet. Le fond reste visible tout autour pour que le verre ait
-  // quelque chose à réfracter.
-  //
-  // Tout ce qui est posé à l'intérieur est plat (.vitre). Quand chaque carte
-  // était elle aussi floutée et ombrée, plus rien ne ressortait : la
-  // profondeur ne se lit que s'il y a un seul plan matériel.
+  const active = new Set(
+    (leads ?? []).filter((l) => l.status !== "booked" && l.status !== "lost").map((l) => l.id),
+  );
+  const attention: Attention = {
+    unanswered: (lastMessages ?? []).filter((m) => m.lead_id && active.has(m.lead_id)).length,
+    takeover: (leads ?? []).filter((l) => l.needs_human_intervention && active.has(l.id)).length,
+  };
+  const attentionTotal = attention.unanswered + attention.takeover;
+
+  // Deux plans seulement : le fond (les nappes de bleu) et le verre. La barre
+  // latérale est une plaque flottante, détachée du bord ; le contenu pose ses
+  // cartes directement sur le fond, pour que chacune ait de la couleur à
+  // réfracter. Sur téléphone, la navigation descend sous le pouce.
   return (
-    <div className="app-ambient min-h-screen p-3 sm:p-5 lg:p-6">
-      <div className="vitre-shell relative z-10 flex min-h-[calc(100vh-1.5rem)] rounded-[2rem] sm:min-h-[calc(100vh-2.5rem)] lg:min-h-[calc(100vh-3rem)] lg:rounded-[2.25rem]">
-        <aside className="hidden w-[15rem] shrink-0 border-r border-[var(--hairline)] py-6 md:block">
-          <SidebarNav />
-        </aside>
+    <MotionProvider>
+      <div className="app-ambient min-h-dvh">
+        <div className="mx-auto flex min-h-dvh max-w-[1680px] gap-6 px-3 pt-3 sm:px-5 lg:px-6 lg:pt-6">
+          <aside className="vitre-shell sticky top-6 hidden h-[calc(100dvh-3rem)] w-[256px] shrink-0 rounded-[30px] lg:block">
+            <SidebarNav attention={attentionTotal} />
+          </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Header email={user.email ?? ""} firstName={profile?.first_name ?? null} />
-          <main className="flex-1 px-4 pb-8 pt-2 sm:px-7 sm:pb-10">{children}</main>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Header
+              email={user.email ?? ""}
+              firstName={profile?.first_name ?? null}
+              attention={attention}
+            />
+            <main className="flex-1 pb-32 pt-2 lg:pb-12">{children}</main>
+          </div>
         </div>
+
+        <MobileTabBar attention={attentionTotal} />
       </div>
-    </div>
+    </MotionProvider>
   );
 }

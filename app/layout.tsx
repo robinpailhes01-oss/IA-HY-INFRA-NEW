@@ -1,51 +1,40 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-// Trois fontes, trois rôles stricts — voir docs/DESIGN.md §4.
+// Deux familles, des rôles stricts — voir docs/DESIGN.md §4.
 //
-// On ne s'appuie plus sur une pile système (`-apple-system`, 'SF Pro Display').
-// Une pile système n'est pas une typographie : c'est un pari sur l'appareil du
-// lecteur, et quand le pari échoue on se retrouve en Times — ce qui est
-// exactement ce qui est arrivé. Ces trois polices sont servies par nous, donc
-// le rendu est identique sur iPhone, sur un PC et sur une capture d'écran.
+// Les polices sont servies par nous (next/font) : le rendu est identique sur
+// iPhone, sur un PC et sur une capture. Une pile système n'est pas une
+// typographie, c'est un pari sur l'appareil du lecteur.
 //
-// Les noms de variables sont volontairement distincts des tokens Tailwind
-// (`--font-sans`, `--font-mono`) : une variable CSS qui se référence
-// elle-même est invalide et fait tomber toute l'application sur la police par
-// défaut du navigateur.
+// Les noms de variables (`--font-geist`, `--font-instrument`) sont
+// volontairement distincts des tokens Tailwind (`--font-sans`, `--font-serif`) :
+// une variable CSS qui se référence elle-même est invalide et fait tomber
+// toute l'application sur la police par défaut du navigateur (§0).
 
-// LES TITRES. Bricolage Grotesque remplace la serif éditoriale : même ambition
-// de caractère, mais dans un registre contemporain qui tient à toutes les
-// tailles. Ses terminaisons coupées en biais et son axe optique variable lui
-// donnent une personnalité qu'aucune grotesque neutre n'a — c'est ce qui
-// empêche l'interface de ressembler à un gabarit.
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
+// TOUT le texte d'interface et TOUS les chiffres. Geist est dessinée pour
+// l'écran : chasse serrée, chiffres tabulaires nets, elle tient à 11 px comme
+// à 56 px — et sa neutralité laisse la matière (le verre) parler.
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
   display: "swap",
 });
 
-// LE TEXTE. Plus Jakarta Sans : géométrique mais chaleureuse, excellente à
-// 11 px en capitales espacées — exactement l'emploi principal ici.
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+// LA VOIX. Titres de page, salutation, phrase de l'agent IA. Une serif
+// d'éditeur : c'est elle qui donne au tableau de bord le registre d'un carnet
+// de bord plutôt que celui d'un logiciel de gestion.
+const instrument = Instrument_Serif({
+  variable: "--font-instrument",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-// Tous les chiffres de l'application.
-//
-// Revirement assumé : j'avais retiré la mono au motif qu'elle n'avait pas
-// d'emploi légitime. C'était vrai de la mono dans la PROSE — « comptable · pas
-// la trésorerie » en monospace ressemblait à une erreur système. Mais en
-// regardant ce que font les tableaux de bord les mieux dessinés, la mono est
-// précisément ce qui donne leur allure aux grands nombres : elle les rend
-// précis, alignés, et lisibles comme de la donnée plutôt que comme du texte.
-// Sur un tableau de bord financier, c'est aussi le registre juste — celui du
-// livre de comptes. Geist Mono plutôt que JetBrains Mono : plus neutre, moins
-// de maniérismes, elle ne se fait pas remarquer à côté d'Instrument Sans.
+// Réservée aux identifiants techniques (numéros masqués, références).
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -53,18 +42,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Harmonie Yacht — Dashboard",
-  description: "Pilotage des leads, réservations, finances et marketing d'Harmonie Yacht.",
+  title: "Harmonie Yacht — Pilotage",
+  description:
+    "Le tableau de bord d'Harmonie Yacht, piloté par l'agent IA : WhatsApp, réseaux sociaux et finances.",
   formatDetection: { telephone: false, date: false, address: false, email: false },
   appleWebApp: {
     capable: true,
     title: "Harmonie Yacht",
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#06121F",
+  themeColor: "#EDF3FA",
 };
 
 export default function RootLayout({
@@ -75,11 +65,11 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`dark ${jakarta.variable} ${bricolage.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geist.variable} ${instrument.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster position="top-right" />
       </body>
     </html>
   );
