@@ -93,13 +93,15 @@ export function KpiCard({
           <p className="t-label min-w-0 text-ink-2">{label}</p>
         </div>
         {href && (
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/80 text-ink-3 shadow-[var(--shadow-glass)] transition-colors group-hover/kpi:text-ocean">
+          <span className="hidden size-7 shrink-0 place-items-center rounded-full bg-white/80 text-ink-3 shadow-[var(--shadow-glass)] transition-colors group-hover/kpi:text-ocean sm:grid">
             <ArrowUpRight className="size-3.5" />
           </span>
         )}
       </div>
 
-      <div className="relative z-[1] mt-4 flex items-end justify-between gap-3">
+      {/* Sur téléphone, la courbe passe SOUS le chiffre : en grille 2 × 2, à
+          côté, elle écrasait le montant (« 38 4… »). */}
+      <div className="relative z-[1] mt-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
         <span className="flex items-baseline gap-0.5">
           <AnimatedNumber
             value={value}
@@ -114,7 +116,7 @@ export function KpiCard({
           )}
         </span>
         {trend && trend.length > 1 && (
-          <Sparkline values={trend} color={teinte.line} className="h-9 w-20 shrink-0 sm:w-24" />
+          <Sparkline values={trend} color={teinte.line} className="h-8 w-full shrink-0 sm:h-9 sm:w-24" />
         )}
       </div>
 

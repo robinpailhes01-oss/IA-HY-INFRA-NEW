@@ -42,7 +42,7 @@ const at = (date: string, hh: number, mm = 0) =>
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString();
 
 // ── Référentiels ────────────────────────────────────────────────────────
-const FIRST = ["Camille", "Julien", "Sophie", "Thomas", "Léa", "Nicolas", "Manon", "Antoine", "Chloé", "Maxime", "Sarah", "Hugo", "Inès", "Romain", "Clara", "Lucas", "Émilie", "Alexandre", "Pauline", "Mathieu", "Margaux", "Guillaume", "Anaïs", "Benjamin", "Juliette", "Florian", "Océane", "Kevin", "Laura", "Damien", "Elsa", "Quentin", "Marion", "Yann", "Lucie", "Arthur", "Charlotte", "Victor", "Amandine", "Paul"] as const;
+const FIRST = ["Camille", "Julien", "Sophie", "Thomas", "Lina", "Nicolas", "Manon", "Antoine", "Chloé", "Maxime", "Sarah", "Hugo", "Inès", "Romain", "Clara", "Lucas", "Émilie", "Alexandre", "Pauline", "Mathieu", "Margaux", "Guillaume", "Anaïs", "Benjamin", "Juliette", "Florian", "Océane", "Kevin", "Laura", "Damien", "Elsa", "Quentin", "Marion", "Yann", "Lucie", "Arthur", "Charlotte", "Victor", "Amandine", "Paul"] as const;
 const LAST = ["Martin", "Bernard", "Dubois", "Moreau", "Laurent", "Simon", "Michel", "Lefèvre", "Leroy", "Roux", "David", "Bertrand", "Morel", "Fournier", "Girard", "Bonnet", "Dupont", "Lambert", "Fontaine", "Rousseau", "Vincent", "Muller", "Faure", "André", "Mercier", "Blanc", "Guérin", "Boyer", "Garnier", "Chevalier"] as const;
 
 export const OFFERS = [
@@ -250,9 +250,11 @@ waLeads.forEach((lead, i) => {
     created_at: new Date(lastAt.getTime() - lines.length * 9 * 60_000).toISOString(),
   });
 
+  // Un écart fixe par conversation : les messages restent dans l'ordre.
+  const gap = int(2, 14) * 60_000;
   lines.forEach((body, j) => {
     const fromMe = j % 2 === 1;
-    const t = new Date(lastAt.getTime() - (lines.length - 1 - j) * int(2, 14) * 60_000);
+    const t = new Date(lastAt.getTime() - (lines.length - 1 - j) * gap);
     wa_messages.push({
       id: uid("3e550000"),
       conversation_id: convId,

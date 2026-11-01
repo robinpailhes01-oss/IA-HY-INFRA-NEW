@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
           needsHuman: lead.needs_human_intervention,
           createdAt: lead.created_at,
           notes: lead.notes,
+          aiMemo: lead.ai_memo,
         }
       : null,
     bookings,

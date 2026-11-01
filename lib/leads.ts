@@ -11,6 +11,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { SOURCE_OPTIONS } from "@/lib/status";
+
 /** Shape commun d'un lead utilisé par le Kanban, la table et le détail. */
 export type Lead = {
   id: string;
@@ -362,10 +364,14 @@ const CHANNEL_META: Record<string, ChannelMeta> = {
   other: { label: "Autre", Icon: AtSign, className: "bg-muted text-muted-foreground" },
 };
 
+// Libellés de référence (lib/status) : ChatGPT, Google (recherche)… — un canal
+// absent de CHANNEL_META garde au moins son vrai nom au lieu de l'identifiant.
+const SOURCE_LABEL: Record<string, string> = Object.fromEntries(SOURCE_OPTIONS);
+
 export function channelMeta(channel: string | null): ChannelMeta {
   return (
     CHANNEL_META[channel ?? ""] ?? {
-      label: channel ?? "—",
+      label: SOURCE_LABEL[channel ?? ""] ?? channel ?? "—",
       Icon: AtSign,
       className: "bg-muted text-muted-foreground",
     }

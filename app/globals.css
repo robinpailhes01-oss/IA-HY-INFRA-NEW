@@ -190,6 +190,11 @@
   }
 }
 
+/* Toutes les classes maison (verre, typographie, mouvement) vivent dans la
+   couche `components` : un utilitaire Tailwind posé sur le même élément
+   (`hidden`, `px-4`, `bg-white`…) les surcharge, comme on s'y attend. Hors
+   couche, elles gagnaient sur tous les utilitaires. */
+@layer components {
 /* ═══════════════════════════════════════════════════════════════════════
    LE FOND — il faut quelque chose à réfracter.
    Un verre posé sur un aplat blanc ne se voit pas : il n'a rien à saturer.
@@ -595,3 +600,4 @@
     opacity: 1;
   }
 }
+} /* fin @layer components */

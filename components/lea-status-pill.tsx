@@ -23,7 +23,7 @@ const LABELS: Record<LeaStatus, { short: string; long: string; dot: string; text
   },
   waiting: {
     short: "Démarrage…",
-    long: "Le service WhatsApp démarre",
+    long: "Démarrage…",
     dot: "bg-ink-3 text-ink-3",
     text: "text-ink-2",
   },

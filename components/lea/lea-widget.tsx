@@ -210,13 +210,17 @@ export function LeaWidget() {
   // La page Jarvis EST déjà Léa en plein écran (même cerveau, en vocal).
   if (pathname.startsWith("/jarvis")) return null;
 
+  // Sur la messagerie WhatsApp, la bulle recouvrirait la zone de saisie : on
+  // ne l'affiche pas, mais ⌘J et askLea() ouvrent toujours le panneau.
+  const hideLauncher = pathname.startsWith("/agent/conversations");
+
   const leaState: LeaState = listening ? "listening" : pending ? "thinking" : speaking ? "speaking" : "idle";
 
   return (
     <>
       {/* ── Le bouton : Léa, flottante ─────────────────────────────── */}
       <AnimatePresence>
-        {!open && (
+        {!open && !hideLauncher && (
           <motion.button
             key="lea-launcher"
             type="button"
