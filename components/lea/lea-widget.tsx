@@ -135,10 +135,19 @@ export function LeaWidget() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, pending]);
 
+  // Une question posée pendant que Léa répond encore (bouton d'une page,
+  // suggestion, double envoi) n'est pas perdue : elle attend son tour.
+  const queueRef = useRef<string[]>([]);
+
   const send = useCallback(
     async (raw: string) => {
       const text = raw.trim();
-      if (!text || pending) return;
+      if (!text) return;
+      if (pending) {
+        queueRef.current.push(text);
+        if (raw === input) setInput("");
+        return;
+      }
       setInput("");
       setMessages((m) => [...m, { id: newId(), role: "user", text }]);
       setPending(true);
@@ -165,12 +174,19 @@ export function LeaWidget() {
         setPending(false);
       }
     },
-    [pending, router],
+    [pending, router, input],
   );
 
   useEffect(() => {
     sendRef.current = (text: string) => void send(text);
   }, [send]);
+
+  useEffect(() => {
+    if (!pending && queueRef.current.length > 0) {
+      const next = queueRef.current.shift();
+      if (next) void send(next);
+    }
+  }, [pending, send]);
 
   const toggleVoice = () => {
     if (listening) {

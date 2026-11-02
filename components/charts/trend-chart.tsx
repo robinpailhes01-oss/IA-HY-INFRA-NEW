@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import {
   Area,
   AreaChart,
@@ -48,22 +49,30 @@ export function TrendChart({
   b,
   height = 220,
   showYAxis = true,
+  allTicks = false,
 }: {
   data: TrendPoint[];
   type?: "area" | "bar";
   unit?: "eur" | "int";
   a: TrendSeries;
   b?: TrendSeries;
-  height?: number;
+  height?: number | string;
   showYAxis?: boolean;
+  /** Afficher TOUTES les étiquettes de l'axe X (ex. 12 mois), en plus petit,
+   *  plutôt que d'en sauter quand la place manque. */
+  allTicks?: boolean;
 }) {
+  // Identifiants de dégradé propres à CE graphique : avec des ids fixes, deux
+  // graphiques sur la même page se prenaient mutuellement leurs couleurs.
+  const uid = useId().replace(/:/g, "");
+  const gid = (k: string) => `trend-${k}-${uid}`;
   const colorA = a.color ?? DEFAULT_A;
   const colorB = b?.color ?? DEFAULT_B;
   const hasB = Boolean(b) && data.some((d) => d.b !== undefined);
 
   const axis = {
     stroke: "transparent",
-    tick: { fill: "#8394ab", fontSize: 11, fontWeight: 500 },
+    tick: { fill: "#8394ab", fontSize: allTicks ? 10 : 11, fontWeight: 500 },
     tickLine: false,
     axisLine: false,
   } as const;
@@ -99,34 +108,34 @@ export function TrendChart({
         {type === "bar" ? (
           <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: showYAxis ? 0 : 4 }} barGap={4}>
             <defs>
-              <linearGradient id="trend-bar-a" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gid("bar-a")} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colorA} stopOpacity={1} />
                 <stop offset="100%" stopColor={colorA} stopOpacity={0.72} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke="rgba(11,37,69,0.06)" />
-            <XAxis dataKey="label" {...axis} dy={6} />
+            <XAxis dataKey="label" {...axis} dy={6} minTickGap={allTicks ? 0 : 20} interval={allTicks ? 0 : "preserveStartEnd"} />
             {showYAxis && (
               <YAxis {...axis} width={52} tickFormatter={(v) => fmt(unit, Number(v), true)} />
             )}
             {tooltip}
-            <Bar dataKey="a" fill="url(#trend-bar-a)" radius={[8, 8, 8, 8]} maxBarSize={26} />
+            <Bar dataKey="a" fill={`url(#${gid("bar-a")})`} radius={[8, 8, 8, 8]} maxBarSize={26} />
             {hasB && <Bar dataKey="b" fill={colorB} radius={[8, 8, 8, 8]} maxBarSize={26} />}
           </BarChart>
         ) : (
           <AreaChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: showYAxis ? 0 : 4 }}>
             <defs>
-              <linearGradient id="trend-area-a" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gid("area-a")} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colorA} stopOpacity={0.26} />
                 <stop offset="100%" stopColor={colorA} stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="trend-area-b" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gid("area-b")} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={colorB} stopOpacity={0.3} />
                 <stop offset="100%" stopColor={colorB} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} stroke="rgba(11,37,69,0.06)" />
-            <XAxis dataKey="label" {...axis} dy={6} />
+            <XAxis dataKey="label" {...axis} dy={6} minTickGap={allTicks ? 0 : 20} interval={allTicks ? 0 : "preserveStartEnd"} />
             {showYAxis && (
               <YAxis {...axis} width={52} tickFormatter={(v) => fmt(unit, Number(v), true)} />
             )}
@@ -137,7 +146,7 @@ export function TrendChart({
                 dataKey="b"
                 stroke={colorB}
                 strokeWidth={2}
-                fill="url(#trend-area-b)"
+                fill={`url(#${gid("area-b")})`}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: "#fff" }}
               />
             )}
@@ -146,7 +155,7 @@ export function TrendChart({
               dataKey="a"
               stroke={colorA}
               strokeWidth={2.4}
-              fill="url(#trend-area-a)"
+              fill={`url(#${gid("area-a")})`}
               activeDot={{ r: 5, strokeWidth: 2.5, stroke: "#fff", fill: colorA }}
             />
           </AreaChart>

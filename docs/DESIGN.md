@@ -93,6 +93,16 @@ bleuté (`#EDF3FA`), plus une bande de lumière en diagonale. Sur un pseudo-
 Le **bord du verre est blanc, jamais gris** : c'est la tranche qui capte la
 lumière. Les séparateurs internes utilisent `--hairline` (marine 8 %).
 
+### Léa, la manageuse (widget global)
+
+En bas à droite de chaque page (au-dessus de la barre d'onglets sur téléphone),
+l'avatar de Léa ouvre un panneau de conversation branché sur l'agent Manager
+(`/api/jarvis` → fonction `dashboard-agent`) : elle répond sur tout le tableau
+de bord et agit réellement (relances, dépenses, config — avec confirmation).
+⌘J l'ouvre partout. Toute recommandation cliquable d'une page passe par
+`askLea()` : une seule conversation, une seule mémoire. Ne jamais placer un
+contrôle essentiel dans l'angle bas-droit de l'écran.
+
 ### Le panneau signature
 
 Tout est clair sauf **un** panneau par page, en marine des grands fonds
@@ -177,6 +187,8 @@ Une courbe (`--ease-ios`), trois durées : 120 ms retour, 240 ms transition,
 | `Button` | `components/ui/button.tsx` | pilules : `default` marine, `outline` verre, `secondary` glace, `ghost` |
 | `Badge` | `components/ui/badge.tsx` | variantes + `glass` |
 | `LeaStatusPill`, `useLeaStatus` | `components/lea-status-pill.tsx` | état en direct de l'agent |
+| `LeaAvatar` | `components/lea/lea-avatar.tsx` | le visage de Léa (anneau de lumière selon son état) — partout où elle apparaît |
+| `askLea(question?)` | `components/lea/ask-lea.ts` | ouvre Léa (et lui pose une question) depuis n'importe quel composant client |
 
 ## 6. Passe mobile
 

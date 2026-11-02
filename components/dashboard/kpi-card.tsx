@@ -42,8 +42,10 @@ type KpiCardProps = {
   accent?: KpiAccent;
   /** Élément icône lucide déjà rendu, ex. `icon={<Users />}`. */
   icon?: React.ReactNode;
-  delta?: { value: string; positive: boolean };
-  hint?: string;
+  /** `positive` donne le sens de la flèche ; `good` (par défaut = positive)
+   *  donne la couleur — moins de points critiques est une baisse… verte. */
+  delta?: { value: string; positive: boolean; good?: boolean };
+  hint?: React.ReactNode;
   /** Série courte (6 à 30 points) dessinée en bas à droite. */
   trend?: number[];
   href?: string;
@@ -126,7 +128,7 @@ export function KpiCard({
             <span
               className={cn(
                 "pastille",
-                delta.positive
+                (delta.good ?? delta.positive)
                   ? "bg-[rgba(15,159,110,0.1)] text-success"
                   : "bg-[rgba(224,77,85,0.1)] text-danger",
               )}

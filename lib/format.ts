@@ -19,7 +19,11 @@ export function formatEur(value: number | null | undefined): string {
 }
 
 export function formatEurCompact(value: number | null | undefined): string {
-  return eurCompact.format(value ?? 0);
+  // Sous le millier, la notation compacte n'abrège rien et affichait
+  // « 840,0 € » : on rend le montant entier.
+  const v = value ?? 0;
+  if (Math.abs(v) < 1000) return eur.format(v);
+  return eurCompact.format(v);
 }
 
 export function formatNumber(value: number | null | undefined): string {

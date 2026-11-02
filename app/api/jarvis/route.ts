@@ -41,7 +41,7 @@ function demoReply(message: string): string {
     return "Dépense enregistrée : 45 € de gasoil, catégorie Gasoil, datée d'aujourd'hui. Elle apparaît déjà dans Finance. (Mode démo — rien n'a réellement été enregistré.)";
   }
   if (/trésor|banque|santé|argent/.test(m)) {
-    return "Trésorerie : 38 427 € sur Qonto et 1 240 € en caisse, soit environ 12 mois de charges. Le score de santé est à 64/100 (correct), en léger recul sur 30 jours — normal en basse saison. Il reste 8 088 € à encaisser sur les sorties à venir.";
+    return "Trésorerie : 38 427 € sur Qonto et 1 240 € en caisse, soit environ 12 mois de charges. Le score de santé reste solide, en léger recul sur 30 jours — normal en basse saison. Il reste 8 088 € à encaisser sur les sorties à venir.";
   }
   if (/encaiss|ce mois|chiffre/.test(m)) {
     return "Ce mois-ci tu as encaissé 1 938 € (surtout des acomptes de Nuits Insolites). Depuis janvier : 108 382 € de chiffre d'affaires, 79 % de ton objectif de saison.";

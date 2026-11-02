@@ -41,9 +41,17 @@ export default async function DashboardLayout({
   const active = new Set(
     (leads ?? []).filter((l) => l.status !== "booked" && l.status !== "lost").map((l) => l.id),
   );
+  // Deux ensembles DISJOINTS, comme les filtres de la page Leads : un lead
+  // que Léa a escaladé compte dans « à reprendre », jamais aussi dans « sans
+  // réponse » — sinon la cloche le comptait deux fois.
+  const takeoverIds = new Set(
+    (leads ?? []).filter((l) => l.needs_human_intervention && active.has(l.id)).map((l) => l.id),
+  );
   const attention: Attention = {
-    unanswered: (lastMessages ?? []).filter((m) => m.lead_id && active.has(m.lead_id)).length,
-    takeover: (leads ?? []).filter((l) => l.needs_human_intervention && active.has(l.id)).length,
+    unanswered: (lastMessages ?? []).filter(
+      (m) => m.lead_id && active.has(m.lead_id) && !takeoverIds.has(m.lead_id),
+    ).length,
+    takeover: takeoverIds.size,
   };
   const attentionTotal = attention.unanswered + attention.takeover;
 

@@ -469,7 +469,17 @@ const financial_snapshots: Row[] = Array.from({ length: 90 }, (_, i) => {
   const treasury = Math.round(52_000 - i * 150 + Math.sin(i / 6) * 900);
   const burn = 3_100 + Math.round(Math.cos(i / 9) * 180);
   const runway = +(treasury / burn).toFixed(1);
-  const score = Math.max(40, Math.min(92, Math.round(74 - i * 0.12 + Math.sin(i / 5) * 2)));
+  const outstanding = 6_400 + Math.round(i * 20);
+  const revenue30 = Math.max(1_800, Math.round(26_000 - i * 260));
+  const expenses30 = Math.round(burn * 1.05);
+  // Même barème que supabase/functions/finance-pulse (50 / 25 / 25).
+  const scaled = (v: number, target: number, points: number) => Math.min(1, Math.max(0, v / target)) * points;
+  const runwayScore = scaled(runway, 6, 50);
+  const coverageRatio = +(revenue30 / expenses30).toFixed(2);
+  const coverageScore = scaled(coverageRatio, 1.2, 25);
+  const securedMonths = +(outstanding / burn).toFixed(1);
+  const securedScore = scaled(securedMonths, 2, 25);
+  const score = Math.round(runwayScore + coverageScore + securedScore);
   return {
     id: uid("f1550000"),
     date: iso(daysFromNow(-ago)),
@@ -479,15 +489,15 @@ const financial_snapshots: Row[] = Array.from({ length: 90 }, (_, i) => {
     treasury,
     monthly_burn: burn,
     runway_months: runway,
-    outstanding: 6_400 + Math.round(i * 20),
-    revenue_30d: Math.max(1_800, Math.round(26_000 - i * 260)),
-    expenses_30d: Math.round(burn * 1.05),
+    outstanding,
+    revenue_30d: revenue30,
+    expenses_30d: expenses30,
     score,
     score_label: score >= 75 ? "solide" : score >= 55 ? "correct" : score >= 35 ? "tendu" : "critique",
     details: {
-      runway: { months: runway, score: Math.round(Math.min(40, runway * 3.2)), max: 40 },
-      coverage: { ratio: 1.4, score: 19, max: 30 },
-      secured: { months: 2.1, score: 14, max: 30 },
+      runway: { months: runway, score: Math.round(runwayScore), max: 50 },
+      coverage: { ratio: coverageRatio, score: Math.round(coverageScore), max: 25 },
+      secured: { months: securedMonths, score: Math.round(securedScore), max: 25 },
     },
     created_at: daysFromNow(-ago).toISOString(),
   };
