@@ -1,5 +1,7 @@
 import { ArrowDownLeft, ArrowUpRight, Receipt } from "lucide-react";
 
+import { EmptyState } from "@/components/ui/empty-state";
+import { Num } from "@/components/ui/num";
 import { cn } from "@/lib/utils";
 import { formatDateRelative, formatEur } from "@/lib/format";
 
@@ -20,6 +22,7 @@ const EXPENSE_LABELS: Record<string, string> = {
 const REVENUE_LABELS: Record<string, string> = {
   sea_trip: "Sortie en mer",
   unusual_night: "Nuit insolite",
+  efoil: "E-foil",
   other: "Autre",
 };
 
@@ -59,49 +62,67 @@ export function mergeTransactions(
   return merged.slice(0, limit);
 }
 
-export function RecentTransactions({ transactions }: { transactions: Transaction[] }) {
+// Les derniers mouvements saisis. Une entrée d'argent est verte (c'est un
+// sens : ça rentre) ; une dépense reste à l'encre — sortir de l'argent n'est
+// pas une alerte, c'est la vie d'une entreprise.
+//
+// `columns` : sur grand écran, la liste se répartit en deux colonnes pour ne
+// pas dérouler huit lignes sur toute la largeur.
+export function RecentTransactions({
+  transactions,
+  columns = 1,
+}: {
+  transactions: Transaction[];
+  columns?: 1 | 2;
+}) {
   if (transactions.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
-        <Receipt className="size-6 text-muted-foreground/60" />
-        Aucune transaction récente.
-      </div>
+      <EmptyState icon={<Receipt />} title="Aucun mouvement récent">
+        Les revenus et dépenses enregistrés apparaîtront ici.
+      </EmptyState>
     );
   }
 
   return (
-    <ul className="divide-y divide-border">
+    <ul
+      className={cn(
+        "grid grid-cols-1",
+        // En deux colonnes (le cockpit) : cinq lignes suffisent sur téléphone.
+        columns === 2 &&
+          "lg:grid-cols-2 lg:gap-x-10 max-lg:[&>li:nth-child(5)]:border-b-0 max-lg:[&>li:nth-child(n+6)]:hidden",
+      )}
+    >
       {transactions.map((tx) => {
         const isRevenue = tx.kind === "revenue";
         const Icon = isRevenue ? ArrowDownLeft : ArrowUpRight;
         return (
           <li
             key={tx.id}
-            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/50"
+            className="flex items-center gap-3 border-b border-[var(--hairline)] py-3 last:border-b-0 lg:[&:nth-last-child(2)]:border-b-0"
           >
             <span
               className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-full",
-                isRevenue ? "bg-success/10 text-success" : "bg-warning/10 text-warning",
+                "grid size-9 shrink-0 place-items-center rounded-full",
+                isRevenue ? "bg-[rgba(15,159,110,0.1)] text-success" : "bg-[rgba(11,37,69,0.06)] text-ink-2",
               )}
             >
               <Icon className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{tx.label}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="truncate text-[14px] font-medium tracking-[-0.012em] text-foreground">{tx.label}</p>
+              <p className="truncate text-[12px] text-ink-3">
                 {tx.description ?? (isRevenue ? "Revenu" : "Dépense")}
                 {tx.date ? ` · ${formatDateRelative(tx.date)}` : ""}
               </p>
             </div>
-            <span
+            <Num
               className={cn(
-                "shrink-0 text-sm font-semibold tabular-nums",
-                isRevenue ? "text-success" : "text-warning",
+                "n-inline shrink-0 text-[14px]",
+                isRevenue ? "text-success" : "text-foreground",
               )}
             >
-              {isRevenue ? "+" : "−"} {formatEur(tx.amount)}
-            </span>
+              {`${isRevenue ? "+" : "−"} ${formatEur(tx.amount)}`}
+            </Num>
           </li>
         );
       })}

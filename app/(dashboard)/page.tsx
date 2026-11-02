@@ -1,54 +1,40 @@
-import Link from "next/link";
-import { Bot, CalendarDays, Flame, Users } from "lucide-react";
+import { CalendarDays, Landmark, TrendingUp, Users } from "lucide-react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createClient } from "@/lib/supabase/server";
 import { AddExpenseDialog } from "@/components/finances/add-expense-dialog";
 import { AddRevenueDialog } from "@/components/finances/add-revenue-dialog";
 import { AddBookingDialog } from "@/components/bookings/add-booking-dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { KpiCard } from "@/components/dashboard/kpi-card";
+import { PageHeader } from "@/components/shell/page-header";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Num } from "@/components/ui/num";
-import { CapsuleChart } from "@/components/dashboard/capsule-chart";
-import { SignaturePanel } from "@/components/dashboard/signature-panel";
-import { RevenueGauge } from "@/components/dashboard/revenue-gauge";
-import {
-  WeatherWidget,
-  type WeatherDay,
-} from "@/components/dashboard/weather-widget";
-import {
-  UpcomingBookings,
-  type UpcomingBooking,
-} from "@/components/dashboard/upcoming-bookings";
-import {
-  RecentTransactions,
-  mergeTransactions,
-} from "@/components/dashboard/recent-transactions";
-import {
-  AlertsPanel,
-  type AlertItem,
-} from "@/components/dashboard/alerts-panel";
-import { ChannelLogo } from "@/components/leads/channel-logo";
-import { channelMeta, initials, scoreClasses } from "@/lib/leads";
-import { formatDateLong, formatEur } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { WeatherWidget, type WeatherDay } from "@/components/dashboard/weather-widget";
+import { UpcomingBookings, type DayWeather, type UpcomingBooking } from "@/components/dashboard/upcoming-bookings";
+import { RecentTransactions, mergeTransactions } from "@/components/dashboard/recent-transactions";
+import { CardLink } from "@/components/overview/card-link";
+import { CockpitKpi } from "@/components/overview/cockpit-kpi";
+import { HotLeads, type HotLead } from "@/components/overview/hot-leads";
+import { LeaBrief, type BriefSignals } from "@/components/overview/lea-brief";
+import { SeasonCard } from "@/components/overview/season-card";
+import { formatEur } from "@/lib/format";
+
+// ═══════════════════════════════════════════════════════════════════════
+// VUE D'ENSEMBLE — le cockpit, piloté par l'agent IA.
+//
+// Robin y vient chercher trois réponses, dans cet ordre (docs/DESIGN.md §1) :
+//   1. Quelqu'un attend-il une réponse de moi ?  → le brief de Léa
+//   2. Combien j'ai en banque, combien je vais encaisser ? → les chiffres
+//   3. Qu'est-ce qui sort cette semaine ? → les prochaines sorties
+// La page est construite dans cet ordre, sur téléphone comme sur bureau.
+// ═══════════════════════════════════════════════════════════════════════
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const PARIS = "Europe/Paris";
+const MOIS_COURT = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+const MOIS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+const MOIS_ABBR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 
-type BookingMetricRow = {
-  status: string | null;
-  date: string;
-  deposit_amount: number | null;
-  deposit_paid: boolean | null;
-  balance_due: number | null;
-};
-
-type BookingJoinRow = {
+type FutureBookingRow = {
   id: string;
   date: string;
   start_time: string | null;
@@ -57,128 +43,167 @@ type BookingJoinRow = {
   party_size: number | null;
   total_amount: number | null;
   status: string | null;
+  deposit_amount: number | null;
+  deposit_paid: boolean | null;
   balance_due: number | null;
   balance_due_date: string | null;
-  deposit_paid: boolean | null;
-  reminder_sent: boolean | null;
   customers: { first_name: string | null; last_name: string | null } | null;
 };
 
-type RevenueMetricRow = {
-  amount: number | null;
-  date: string;
+type ActiveLeadRow = {
+  id: string;
+  status: string | null;
+  needs_human_intervention: boolean | null;
+  interested_offer: string | null;
+  desired_date: string | null;
 };
 
-type HotLeadRow = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  source_channel: string | null;
-  interested_offer: string | null;
-  occasion: string | null;
-  party_size: number | null;
-  desired_date: string | null;
-  desired_time_slot: string | null;
-  score: number | null;
+type HotLeadRow = Omit<HotLead, "whatsapp_name"> & {
   status: string | null;
+  // Objet ou tableau selon la façon dont PostgREST résout la relation.
+  wa_conversations: { customer_name: string | null } | { customer_name: string | null }[] | null;
 };
+
+type DatedLeadRow = {
+  id: string;
+  status: string | null;
+  needs_human_intervention: boolean | null;
+  desired_date: string;
+};
+
+type SnapshotRow = { date: string; bank_balance: number | null; runway_months: number | null };
+
+/** Un lead réservé ou perdu n'appelle plus d'action. */
+const isActive = (status: string | null) => status !== "booked" && status !== "lost";
 
 function fullName(first: string | null, last: string | null): string {
-  return [first, last].filter(Boolean).join(" ").trim() || "Lead";
+  return [first, last].filter(Boolean).join(" ").trim() || "Client";
 }
 
-function pct(part: number, whole: number): number {
-  return whole > 0 ? Math.round((part / whole) * 100) : 0;
+/** « 1 avril » → « 1 avr. » pour les étiquettes de période. */
+function shortDate(iso: string) {
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00Z`);
+  return `${d.getUTCDate()} ${MOIS_ABBR[d.getUTCMonth()]}`;
 }
 
-const QUALIFIED_STATUSES = new Set(["qualified", "quote_sent", "booked"]);
+function sinceLabel(iso: string, now: Date): string {
+  const min = Math.round((now.getTime() - new Date(iso).getTime()) / 60_000);
+  if (min < 2) return "à l'instant";
+  if (min < 60) return `il y a ${min} min`;
+  if (min < 24 * 60) return `il y a ${Math.round(min / 60)} h`;
+  const d = new Date(iso);
+  return `le ${d.getUTCDate()} ${MOIS_ABBR[d.getUTCMonth()]}`;
+}
 
 export default async function OverviewPage() {
   const supabase = await createClient();
+  // financial_snapshots (migration 0030) n'est pas encore dans les types
+  // générés : on l'interroge sans typage plutôt que de caster chaque ligne.
+  const untyped = supabase as unknown as SupabaseClient;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const now = new Date();
-  const year = now.getFullYear();
-  const monthIdx = now.getMonth();
-  const todayIso = now.toISOString().slice(0, 10);
-  const ago30Iso = new Date(now.getTime() - 30 * DAY_MS).toISOString();
+  // « Aujourd'hui » est celui de Robin, à Carnon — pas celui du serveur (UTC
+  // sur Vercel). Sans ça, entre minuit et 1 h (2 h l'été), le cockpit datait
+  // l'en-tête du jour J mais comptait encore les sorties de la veille.
+  // en-CA : le seul format de date localisé qui sort en AAAA-MM-JJ.
+  const todayIso = new Intl.DateTimeFormat("en-CA", { timeZone: PARIS }).format(now);
+  const year = Number(todayIso.slice(0, 4));
+  const monthIdx = Number(todayIso.slice(5, 7)) - 1;
+  // Midi UTC : ajouter des jours ne fait jamais basculer la date.
+  const todayNoon = Date.parse(`${todayIso}T12:00:00Z`);
+  const isoIn = (days: number) => new Date(todayNoon + days * DAY_MS).toISOString().slice(0, 10);
+  const agoTs = (days: number) => new Date(now.getTime() - days * DAY_MS).toISOString();
+  const in7Iso = isoIn(7);
+  const in10Iso = isoIn(10);
 
   const [
+    profileRes,
     goalRes,
-    metricsRes,
-    upcomingRes,
+    futureRes,
     newLeadsRes,
-    attentionLeadsRes,
+    prevLeadsRes,
+    recentLeadsRes,
+    activeLeadsRes,
     weatherRes,
     revenuesRes,
     expensesRes,
-    conversationsRes,
-    leadsStatusRes,
     hotLeadsRes,
+    datedLeadsRes,
     awaitingReplyRes,
     bankAccountsRes,
+    snapshotsRes,
   ] = await Promise.all([
+    user
+      ? supabase.from("profiles").select("first_name").eq("id", user.id).maybeSingle()
+      : Promise.resolve({ data: null }),
     supabase
       .from("goals")
       .select("*")
       .order("period_start", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase
-      .from("bookings")
-      .select("status, date, deposit_amount, deposit_paid, balance_due")
-      .returns<BookingMetricRow[]>(),
+    // ── Toutes les sorties à venir, annulées comprises (filtrées plus bas) ──
+    // Une seule requête nourrit le compteur, le reste à encaisser, la liste
+    // des prochaines sorties et les signaux du brief.
     supabase
       .from("bookings")
       .select(
-        "id, date, start_time, end_time, offer_name, party_size, total_amount, status, balance_due, balance_due_date, deposit_paid, reminder_sent, customers(first_name, last_name)",
+        "id, date, start_time, end_time, offer_name, party_size, total_amount, status, deposit_amount, deposit_paid, balance_due, balance_due_date, customers(first_name, last_name)",
       )
       .gte("date", todayIso)
-      .neq("status", "cancelled")
       .order("date", { ascending: true })
-      .limit(6)
-      .returns<BookingJoinRow[]>(),
+      .order("start_time", { ascending: true })
+      .returns<FutureBookingRow[]>(),
+    supabase.from("leads").select("*", { count: "exact", head: true }).gte("created_at", agoTs(30)),
     supabase
       .from("leads")
       .select("*", { count: "exact", head: true })
-      .gte("created_at", ago30Iso),
+      .gte("created_at", agoTs(60))
+      .lt("created_at", agoTs(30)),
+    // Huit semaines de leads, pour la courbe de la tuile.
     supabase
       .from("leads")
-      .select("id, first_name, last_name")
-      .eq("needs_human_intervention", true)
-      .limit(4),
+      .select("created_at")
+      .gte("created_at", agoTs(56))
+      .returns<{ created_at: string | null }[]>(),
+    // Même périmètre que la cloche de l'en-tête (layout) : leads non archivés.
+    // Sans ça, le brief et la cloche annonceraient deux nombres différents.
+    supabase
+      .from("leads")
+      .select("id, status, needs_human_intervention, interested_offer, desired_date")
+      .eq("archived", false)
+      .returns<ActiveLeadRow[]>(),
+    // 16 jours : de quoi couvrir l'horizon des prévisions pour croiser la
+    // météo avec chaque sortie réservée, pas seulement les 5 jours affichés.
     supabase
       .from("weather_cache")
-      .select(
-        "date, rating, wind_speed_kmh, wind_direction, wave_height_m, water_temp_c, swell_m",
-      )
+      .select("date, rating, wind_speed_kmh, wind_direction, wave_height_m, water_temp_c, swell_m")
       .gte("date", todayIso)
       .order("date", { ascending: true })
-      .limit(5)
+      .limit(16)
       .returns<WeatherDay[]>(),
+    // Depuis le 1er janvier de l'an dernier : l'année en cours, la comparaison
+    // à même date l'an passé, et une saison qui aurait commencé l'an dernier.
     supabase
       .from("revenues")
       .select("id, amount, date, type, note")
+      .gte("date", `${year - 1}-01-01`)
       .order("date", { ascending: false })
-      .returns<(RevenueMetricRow & { id: string; type: string | null; note: string | null })[]>(),
+      .returns<{ id: string; amount: number | null; date: string; type: string | null; note: string | null }[]>(),
     supabase
       .from("expenses")
       .select("id, amount, date, category, description")
+      .gte("date", isoIn(-365))
       .order("date", { ascending: false })
       .returns<{ id: string; amount: number | null; date: string; category: string | null; description: string | null }[]>(),
-    // ── Léa multicanal : chaque conversation porte son canal (whatsapp/email…) ──
-    supabase
-      .from("conversations")
-      .select("lead_id, channel")
-      .returns<{ lead_id: string | null; channel: string | null }[]>(),
-    // Statut de chaque lead → pour calculer le taux de qualification par canal.
-    supabase
-      .from("leads")
-      .select("id, status")
-      .returns<{ id: string; status: string | null }[]>(),
     // ── Leads les plus chauds = ceux qui ont une date souhaitée ──
     supabase
       .from("leads")
       .select(
-        "id, first_name, last_name, source_channel, interested_offer, occasion, party_size, desired_date, desired_time_slot, score, status",
+        "id, first_name, last_name, source_channel, interested_offer, occasion, party_size, desired_date, desired_time_slot, score, status, wa_conversations(customer_name)",
       )
       .eq("archived", false)
       .gte("desired_date", todayIso)
@@ -186,89 +211,87 @@ export default async function OverviewPage() {
       .order("desired_date", { ascending: true })
       .limit(30)
       .returns<HotLeadRow[]>(),
+    // Tous les leads datés à venir, en version légère : le compte exact
+    // derrière les tuiles ci-dessus (plafonnées à 30 lignes) et les prospects
+    // de la semaine pour le brief.
+    supabase
+      .from("leads")
+      .select("id, status, needs_human_intervention, desired_date")
+      .eq("archived", false)
+      .gte("desired_date", todayIso)
+      .returns<DatedLeadRow[]>(),
     // ── Clients dont le dernier message attend encore une réponse ──
     // Signal le plus fort de perte de prospect : ils ont écrit, personne n'a
     // répondu. Rien à voir avec un score — c'est nous qui bloquons.
-    supabase
-      .from("lead_last_message")
-      .select("lead_id")
-      .eq("last_from_me", false),
+    supabase.from("lead_last_message").select("lead_id, last_message_at").eq("last_from_me", false),
     // ── Solde bancaire réel, alimenté par la synchro Qonto ──
     supabase
       .from("bank_accounts")
       .select("balance_cents, balance_updated_at")
       .neq("status", "closed")
       .returns<{ balance_cents: number | null; balance_updated_at: string | null }[]>(),
+    // ── Photo financière quotidienne (finance-pulse) : historique du solde et
+    // nombre de mois de charges couverts — le même calcul que celui du
+    // Manager, pour que le brief et l'agent disent la même chose.
+    untyped
+      .from("financial_snapshots")
+      .select("date, bank_balance, runway_months")
+      .order("date", { ascending: false })
+      .limit(30)
+      .returns<SnapshotRow[]>(),
   ]);
 
+  // ── Objectif de saison ───────────────────────────────────────────
   const goal = goalRes.data;
-  const min = goal?.target_min ?? 0;
-  const medium = goal?.target_medium ?? 0;
-  const strong = goal?.target_strong ?? 0;
   const periodStart = goal?.period_start ?? `${year}-06-01`;
   const periodEnd = goal?.period_end ?? `${year}-08-31`;
 
-  const metrics = metricsRes.data ?? [];
-  const inYear = (d: string) => d.slice(0, 4) === String(year);
-  const inCurrentMonth = (d: string) =>
-    inYear(d) && Number(d.slice(5, 7)) - 1 === monthIdx;
-
+  // ── Chiffre d'affaires ───────────────────────────────────────────
   // CA & marge : uniquement depuis la table revenues (évite le double-comptage).
-  const revenuesData = revenuesRes.data ?? [];
-  const caYtd = revenuesData
-    .filter((r) => inYear(r.date))
-    .reduce((s, r) => s + (r.amount ?? 0), 0);
-  const caMonth = revenuesData
-    .filter((r) => inCurrentMonth(r.date))
-    .reduce((s, r) => s + (r.amount ?? 0), 0);
+  const revenues = revenuesRes.data ?? [];
+  const sum = (rows: { amount: number | null }[]) => rows.reduce((s, r) => s + (r.amount ?? 0), 0);
+  const inYear = (d: string) => d.slice(0, 4) === String(year);
+  const caYtd = sum(revenues.filter((r) => inYear(r.date)));
+  const caMonth = sum(revenues.filter((r) => inYear(r.date) && Number(r.date.slice(5, 7)) - 1 === monthIdx));
+  // À date égale l'an dernier : comparer une année entière à onze mois ferait
+  // croire à une chute en fin d'année.
+  const sameDayLastYear = `${year - 1}${todayIso.slice(4)}`;
+  const caLastYtd = sum(revenues.filter((r) => r.date.startsWith(String(year - 1)) && r.date <= sameDayLastYear));
+  const caDelta = caLastYtd > 0 ? Math.round(((caYtd - caLastYtd) / caLastYtd) * 100) : null;
 
-  const expensesData = expensesRes.data ?? [];
-  const opexYtd = expensesData
-    .filter((e) => inYear(e.date))
-    .reduce((s, e) => s + (e.amount ?? 0), 0);
-  const ytdMargin = caYtd - opexYtd;
-
-  // Trésorerie réelle : somme des soldes bancaires remontés par qonto-sync.
-  // null tant qu'aucun compte n'a été synchronisé — on affiche alors « Qonto
-  // non connecté » plutôt qu'un 0 € qui ressemblerait à un compte vide.
-  const bankAccounts = bankAccountsRes.data ?? [];
-  const treasury = bankAccounts.length
-    ? bankAccounts.reduce((s, a) => s + (a.balance_cents ?? 0), 0) / 100
-    : null;
-  const lastBalanceAt = bankAccounts
-    .map((a) => a.balance_updated_at)
-    .filter((d): d is string => Boolean(d))
-    .sort()
-    .at(-1);
-  const treasuryUpdatedLabel = lastBalanceAt
-    ? `maj ${formatDateLong(lastBalanceAt.slice(0, 10))}`
-    : "jamais synchronisé";
-
-  const outstandingOf = (b: BookingMetricRow) =>
-    (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0);
-  // Même définition que sur la page Réservations : le reste à encaisser ne
-  // compte QUE les sorties à venir. Les sorties passées non soldées relèvent
-  // d'une régularisation (elles sont listées là-bas), pas d'argent à attendre.
-  const outstanding = metrics
-    .filter((b) => b.status !== "cancelled" && b.date >= todayIso)
-    .reduce((s, b) => s + outstandingOf(b), 0);
-  const upcomingCount = metrics.filter(
-    (b) => b.date >= todayIso && b.status !== "cancelled",
-  ).length;
-
-  const monthly = Array<number>(12).fill(0);
-  for (const r of revenuesData) {
-    if (inYear(r.date)) monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
-  }
+  // L'objectif porte sur une PÉRIODE (la saison), pas sur l'année civile : on
+  // compare donc le CA encaissé entre ses deux dates. Un objectif 2027 créé
+  // en décembre partira de zéro au lieu d'afficher le CA 2026.
+  const seasonCa = sum(revenues.filter((r) => r.date >= periodStart && r.date <= periodEnd));
+  const strong = goal?.target_strong ?? 0;
 
   // Le graphique s'arrête au mois courant : afficher des mois futurs à zéro
   // écraserait visuellement les mois réalisés et laisserait croire à une chute.
-  const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
-  const chartData = monthly
+  const monthly = Array<number>(12).fill(0);
+  for (const r of revenues) if (inYear(r.date)) monthly[Number(r.date.slice(5, 7)) - 1] += r.amount ?? 0;
+  const months = monthly
     .slice(0, monthIdx + 1)
-    .map((value, i) => ({ label: MOIS[i], value, display: formatEur(value) }));
+    .map((value, i) => ({ label: MOIS_COURT[i], value, display: formatEur(value) }));
 
-  const upcoming: UpcomingBooking[] = (upcomingRes.data ?? []).map((b) => ({
+  // ── Réservations à venir ─────────────────────────────────────────
+  const future = (futureRes.data ?? []).filter((b) => b.status !== "cancelled");
+  // Même définition que sur la page Réservations : le reste à encaisser ne
+  // compte QUE les sorties à venir. Les sorties passées non soldées relèvent
+  // d'une régularisation (elles sont listées là-bas), pas d'argent à attendre.
+  const outstanding = future.reduce(
+    (s, b) => s + (b.deposit_paid ? 0 : b.deposit_amount ?? 0) + (b.balance_due ?? 0),
+    0,
+  );
+  const upcomingCount = future.length;
+  const thisWeek = future.filter((b) => b.date <= in7Iso).length;
+  // Le carnet des huit prochaines semaines, semaine en cours d'abord.
+  const weeksAhead = Array.from({ length: 8 }, (_, w) => {
+    const from = isoIn(w * 7);
+    const to = isoIn((w + 1) * 7);
+    return future.filter((b) => b.date >= from && b.date < to).length;
+  });
+
+  const upcoming: UpcomingBooking[] = future.slice(0, 5).map((b) => ({
     id: b.id,
     date: b.date,
     startTime: b.start_time,
@@ -278,540 +301,383 @@ export default async function OverviewPage() {
     partySize: b.party_size,
     amount: b.total_amount,
     status: b.status,
+    depositPaid: b.deposit_paid,
   }));
 
-  const recentTransactions = mergeTransactions(revenuesData, expensesData, 8);
+  // ── Météo croisée avec le planning ───────────────────────────────
   const weatherDays = weatherRes.data ?? [];
-  const newLeadsCount = newLeadsRes.count ?? 0;
-  const alerts = buildAlerts(upcomingRes.data ?? [], attentionLeadsRes.data ?? [], todayIso);
+  const weatherByDate: Record<string, DayWeather> = {};
+  for (const w of weatherDays) weatherByDate[w.date.slice(0, 10)] = { rating: w.rating, wind: w.wind_speed_kmh };
+  const bookedByDate: Record<string, number> = {};
+  for (const b of future) bookedByDate[b.date] = (bookedByDate[b.date] ?? 0) + 1;
+  const riskyDay = Object.keys(bookedByDate)
+    .sort()
+    .find((d) => weatherByDate[d]?.rating === "discouraged");
 
-  // ── Stats agent Léa par canal (source de vérité : conversations.channel) ──
-  const statusById = new Map((leadsStatusRes.data ?? []).map((l) => [l.id, l.status]));
-  type Agg = { conversations: number; leads: Set<string>; qualified: Set<string> };
-  const perChannel = new Map<string, Agg>();
-  const allLeads = new Set<string>();
-  const allQualified = new Set<string>();
-  let totalConversations = 0;
-  for (const c of conversationsRes.data ?? []) {
-    const ch = c.channel || "autre";
-    const a = perChannel.get(ch) ?? { conversations: 0, leads: new Set(), qualified: new Set() };
-    a.conversations += 1;
-    totalConversations += 1;
-    if (c.lead_id) {
-      a.leads.add(c.lead_id);
-      allLeads.add(c.lead_id);
-      if (QUALIFIED_STATUSES.has(statusById.get(c.lead_id) ?? "")) {
-        a.qualified.add(c.lead_id);
-        allQualified.add(c.lead_id);
-      }
-    }
-    perChannel.set(ch, a);
+  // ── Leads ────────────────────────────────────────────────────────
+  const newLeadsCount = newLeadsRes.count ?? 0;
+  const prevLeadsCount = prevLeadsRes.count;
+  const leadsDiff = prevLeadsCount != null ? newLeadsCount - prevLeadsCount : null;
+  const leadWeeks = Array<number>(8).fill(0);
+  for (const l of recentLeadsRes.data ?? []) {
+    if (!l.created_at) continue;
+    const weeksAgo = Math.floor((now.getTime() - new Date(l.created_at).getTime()) / (7 * DAY_MS));
+    if (weeksAgo >= 0 && weeksAgo < 8) leadWeeks[7 - weeksAgo] += 1;
   }
-  const agentChannels = [...perChannel.entries()]
-    .map(([channel, a]) => ({
-      channel,
-      conversations: a.conversations,
-      leads: a.leads.size,
-      qualified: a.qualified.size,
-    }))
-    .sort((a, b) => b.conversations - a.conversations);
-  const agentTotals = {
-    conversations: totalConversations,
-    leads: allLeads.size,
-    qualified: allQualified.size,
-  };
+
+  const activeLeads = (activeLeadsRes.data ?? []).filter((l) => isActive(l.status));
+  const activeById = new Map(activeLeads.map((l) => [l.id, l]));
+  // Même définition que la cloche et le filtre « sans réponse » de la page
+  // Leads : un lead escaladé par Léa est « à reprendre », pas « sans réponse ».
+  const awaitingLeads = (awaitingReplyRes.data ?? [])
+    .map((r) => (r.lead_id ? activeById.get(r.lead_id) : undefined))
+    .filter((l): l is ActiveLeadRow => Boolean(l) && !l?.needs_human_intervention);
+  // Le client en attente dont la date souhaitée est la plus proche : c'est
+  // lui que le brief nomme.
+  const featured = awaitingLeads
+    .filter((l) => l.desired_date && l.desired_date >= todayIso)
+    .sort((a, b) => (a.desired_date ?? "").localeCompare(b.desired_date ?? ""))[0];
+  const takeoverCount = activeLeads.filter((l) => l.needs_human_intervention).length;
 
   // ── Leads les plus chauds (déjà triés score ↓ puis date ↑) ──
-  const actionableHotLeads = (hotLeadsRes.data ?? []).filter(
-    (l) => l.status !== "booked" && l.status !== "lost",
-  );
-  const hotLeads = actionableHotLeads.slice(0, 6);
-
-  // ── Deux alertes, par ordre d'urgence réelle ──────────────────────
-  // 1. Des clients attendent une réponse : c'est nous le point de blocage.
-  // 2. Une sortie approche : l'échéance rend le lead périssable.
-  // Le score seul ne dit rien de l'urgence — il est descendu en 3ᵉ rideau
-  // dans la vue Priorité, plus dans la bannière.
-  const activeLeadIds = new Set(
-    (leadsStatusRes.data ?? [])
-      .filter((l) => l.status !== "booked" && l.status !== "lost")
-      .map((l) => l.id),
-  );
-  const awaitingReplyCount = (awaitingReplyRes.data ?? []).filter(
-    (r) => r.lead_id && activeLeadIds.has(r.lead_id),
+  // Le nom WhatsApp sert de repli quand Léa n'a pas encore noté le prénom —
+  // comme sur la page Leads, pour qu'un même prospect n'y soit pas « Lead ».
+  const hotLeads: HotLead[] = (hotLeadsRes.data ?? [])
+    .filter((l) => isActive(l.status))
+    .slice(0, 6)
+    .map(({ wa_conversations, status, ...l }) => {
+      void status;
+      const conv = Array.isArray(wa_conversations) ? wa_conversations[0] : wa_conversations;
+      return { ...l, whatsapp_name: conv?.customer_name ?? null };
+    });
+  const datedLeads = (datedLeadsRes.data ?? []).filter((l) => isActive(l.status));
+  // Prospects de la semaine : la règle exacte du seau « Sortie imminente » de
+  // la vue Priorité (lib/leads, priorityBucket), où mène le lien du brief. Un
+  // lead escaladé ou sans réponse est déjà compté plus haut dans le brief ;
+  // le recompter ici annoncerait un nombre que la vue Priorité ne montre pas.
+  const awaitingIds = new Set(awaitingLeads.map((l) => l.id));
+  const imminentCount = datedLeads.filter(
+    (l) => l.desired_date <= in7Iso && !l.needs_human_intervention && !awaitingIds.has(l.id),
   ).length;
 
-  const in7DaysIso = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
-  const imminentCount = actionableHotLeads.filter(
-    (l) => l.desired_date && l.desired_date <= in7DaysIso,
-  ).length;
+  // ── Trésorerie réelle ────────────────────────────────────────────
+  // Somme des soldes bancaires remontés par qonto-sync. null tant qu'aucun
+  // compte n'a été synchronisé — on affiche alors « Qonto non connecté »
+  // plutôt qu'un 0 € qui ressemblerait à un compte vide.
+  const bankAccounts = bankAccountsRes.data ?? [];
+  const treasury = bankAccounts.length
+    ? bankAccounts.reduce((s, a) => s + (a.balance_cents ?? 0), 0) / 100
+    : null;
+  const lastBalanceAt = bankAccounts
+    .map((a) => a.balance_updated_at)
+    .filter((d): d is string => Boolean(d))
+    .sort()
+    .at(-1);
+
+  // Historique du solde : les photos quotidiennes, puis le solde Qonto de
+  // l'instant comme dernier point — le point final de la courbe, c'est
+  // maintenant.
+  const snapshots = (snapshotsRes.data ?? []).filter((s) => s.date < todayIso && s.bank_balance != null).reverse();
+  // numeric Postgres → nombre ou chaîne selon la taille : Number() dans les deux cas.
+  const treasuryTrend =
+    treasury != null && snapshots.length >= 2 ? [...snapshots.map((s) => Number(s.bank_balance ?? 0)), treasury] : [];
+
+  // Mois de charges couverts : la photo du jour si elle a moins d'une
+  // semaine (même calcul que le Manager), sinon solde ÷ charges moyennes
+  // des 90 derniers jours.
+  const freshSnap = (snapshotsRes.data ?? []).find((s) => s.date >= isoIn(-7) && s.runway_months != null);
+  const burn90 = sum((expensesRes.data ?? []).filter((e) => e.date >= isoIn(-90))) / 3;
+  const runwayMonths =
+    freshSnap?.runway_months != null
+      ? Number(freshSnap.runway_months)
+      : treasury != null && burn90 > 0
+        ? treasury / burn90
+        : null;
+
+  // ── Signaux du brief ─────────────────────────────────────────────
+  // Soldes dus le jour J dans les 10 jours. Une sortie dont l'acompte n'est
+  // pas versé relève de l'acompte, pas du solde (même règle qu'avant).
+  const balances = future.filter(
+    (b) => b.deposit_paid !== false && (b.balance_due ?? 0) > 0 && b.balance_due_date && b.balance_due_date <= in10Iso,
+  );
+  const next = future[0];
+  const signals: BriefSignals = {
+    awaiting: awaitingLeads.length,
+    awaitingFeatured: featured?.desired_date ? { offer: featured.interested_offer, date: featured.desired_date } : null,
+    takeover: takeoverCount,
+    imminentLeads: imminentCount,
+    toConfirm: future.filter((b) => b.status === "pending" && b.date <= in7Iso).length,
+    weatherRisk: riskyDay
+      ? { date: riskyDay, count: bookedByDate[riskyDay], wind: weatherByDate[riskyDay]?.wind ?? null }
+      : null,
+    balancesSoon: balances.length
+      ? { count: balances.length, amount: balances.reduce((s, b) => s + (b.balance_due ?? 0), 0) }
+      : null,
+    depositsPending: future.filter((b) => b.deposit_paid === false).length,
+    runwayMonths,
+    outstanding,
+    nextOuting: next
+      ? {
+          date: next.date,
+          time: next.start_time,
+          offer: next.offer_name,
+          customer: fullName(next.customers?.first_name ?? null, next.customers?.last_name ?? null),
+          rating: weatherByDate[next.date]?.rating ?? null,
+        }
+      : null,
+    todayIso,
+  };
+
+  // ── En-tête : la date et l'heure de Robin, pas celles du serveur ──
+  const parisDate = new Intl.DateTimeFormat("fr-FR", {
+    timeZone: PARIS,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(now);
+  // formatToParts, pas format() : en fr-FR l'heure seule s'écrit « 22 h », et
+  // Number("22 h") valait NaN — le cockpit disait « Bonjour » à minuit.
+  const parisHour = Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: PARIS, hour: "2-digit", hourCycle: "h23" })
+      .formatToParts(now)
+      .find((p) => p.type === "hour")?.value ?? 12,
+  );
+  const parisTime = new Intl.DateTimeFormat("fr-FR", { timeZone: PARIS, hour: "numeric", minute: "2-digit" })
+    .format(now)
+    .replace(":", " h ");
+  const greeting = parisHour >= 18 || parisHour < 5 ? "Bonsoir" : "Bonjour";
+  const firstName = profileRes.data?.first_name?.trim() || null;
+
+  // Où en est la saison, en une ligne.
+  const pctStrong = strong > 0 ? Math.round((seasonCa / strong) * 100) : null;
+  const seasonLine = !goal ? (
+    <>
+      {upcomingCount} {upcomingCount > 1 ? "sorties" : "sortie"} au planning · {newLeadsCount} nouveaux leads en 30 jours.
+    </>
+  ) : todayIso < periodStart ? (
+    <>
+      Avant-saison — ouverture le {shortDate(periodStart)} · {upcomingCount}{" "}
+      {upcomingCount > 1 ? "sorties déjà" : "sortie déjà"} au planning.
+    </>
+  ) : todayIso <= periodEnd ? (
+    <>
+      Saison en cours — encore {Math.max(0, Math.round((Date.parse(periodEnd) - Date.parse(todayIso)) / DAY_MS))}{" "}
+      jours{pctStrong != null ? <> · <Num>{`${pctStrong} %`}</Num> de l&apos;objectif fort</> : null}.
+    </>
+  ) : (
+    <>
+      Saison {periodEnd.slice(0, 4)} bouclée
+      {pctStrong != null ? <> à <Num>{`${pctStrong} %`}</Num> de l&apos;objectif fort</> : null} ·{" "}
+      {upcomingCount} {upcomingCount > 1 ? "sorties déjà" : "sortie déjà"} au planning.
+    </>
+  );
+
+  const recentTransactions = mergeTransactions(revenues, expensesRes.data ?? [], 8);
 
   return (
-    <div className="space-y-6">
-      {/* Les urgences d'abord, sur une seule rangée. Empilées sur toute la
-          largeur, trois bandeaux repoussaient les chiffres sous la ligne de
-          flottaison et finissaient par ne plus être lus. */}
-      {(awaitingReplyCount > 0 || imminentCount > 0 || (attentionLeadsRes.data?.length ?? 0) > 0) && (
-        <div className="rise grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {awaitingReplyCount > 0 && (
-            <AlertBanner
-              href="/leads?view=priority&bucket=unanswered"
-              tone="danger"
-              strong={`${awaitingReplyCount} client${awaitingReplyCount > 1 ? "s" : ""} sans réponse`}
-              text="ils ont écrit, personne n'a répondu"
-            />
-          )}
-          {imminentCount > 0 && (
-            <AlertBanner
-              href="/leads?view=priority&bucket=imminent"
-              tone="gold"
-              strong={`${imminentCount} sortie${imminentCount > 1 ? "s" : ""} sous 7 jours`}
-              text="à confirmer avant que la date ne passe"
-            />
-          )}
-          {(attentionLeadsRes.data?.length ?? 0) > 0 && (
-            <AlertBanner
-              href="/leads?view=priority&bucket=takeover"
-              tone="warning"
-              strong={`${attentionLeadsRes.data?.length} lead${(attentionLeadsRes.data?.length ?? 0) > 1 ? "s" : ""} à reprendre`}
-              text="Léa a escaladé ces conversations"
-            />
-          )}
-        </div>
-      )}
+    <div className="flex flex-col gap-4 lg:gap-5">
+      <PageHeader
+        eyebrow={parisDate}
+        title={
+          firstName ? (
+            <>
+              {greeting} <em>{firstName}</em>
+            </>
+          ) : (
+            greeting
+          )
+        }
+        description={seasonLine}
+        actions={
+          // Mobile : l'action principale sur toute la largeur, les deux
+          // secondaires côte à côte dessous, chacune à 44 px de haut (minimum
+          // tactile). Porté ici plutôt que dans les dialogues, qui servent
+          // aussi ailleurs. Les boutons portent `shrink-0 whitespace-nowrap` :
+          // sans grille, ils débordaient de l'écran au lieu de passer dessous.
+          <div className="grid w-full grid-cols-2 gap-2 [&>button]:h-11 [&>button]:px-4 [&>button:first-child]:col-span-2 sm:flex sm:w-auto sm:[&>button]:h-10 sm:[&>button:first-child]:col-span-1">
+            <AddBookingDialog />
+            <AddExpenseDialog />
+            <AddRevenueDialog />
+          </div>
+        }
+        className="mb-1"
+      />
 
-      <header className="rise flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="t-page text-foreground">Vue d&apos;ensemble</h1>
-          <p className="t-body mt-1.5 text-muted-foreground">
-            {goal
-              ? `Saison en cours · ${formatDateLong(periodStart)} – ${formatDateLong(periodEnd)}`
-              : "Tableau de bord Harmonie Yacht"}
-          </p>
-        </div>
-        {/* Deux corrections mobiles, toutes deux portées ici plutôt que dans les
-            trois composants de dialogue — qui servent aussi ailleurs.
-            1. `flex-wrap` + `w-full` : les boutons portent `shrink-0
-               whitespace-nowrap`, donc sans retour à la ligne autorisé ils
-               débordaient de l'écran au lieu de passer en dessous.
-            2. `h-11` : `size="sm"` fait 28 px de haut. C'est confortable à la
-               souris, c'est trop petit pour un pouce — or ce sont les trois
-               actions principales de la page. 44 px est le minimum tactile.
-            3. Le premier bouton prend toute la largeur sur mobile : une action
-               principale sans ambiguïté, et les deux secondaires tiennent
-               côte à côte en dessous au lieu de laisser « Revenu » seul. */}
-        <div className="flex w-full flex-wrap items-center gap-2 [&_button]:h-11 [&_button]:px-4 [&>button:first-child]:w-full sm:w-auto sm:[&_button]:h-8 sm:[&_button]:px-3 sm:[&>button:first-child]:w-auto">
-          <AddBookingDialog />
-          <AddExpenseDialog />
-          <AddRevenueDialog />
-        </div>
-      </header>
+      <LeaBrief signals={signals} updatedAt={parisTime} />
 
-      {/* ── Les chiffres d'abord ───────────────────────────────────
-          Ils étaient enterrés en sixième position, après trois bandeaux et
-          deux grandes cartes. C'est pourtant ce qu'on vient voir. */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Réservations à venir" value={upcomingCount} accent="aqua" hint="hors annulations" index={0} />
-        <KpiCard label="Nouveaux leads (30 j)" value={newLeadsCount} accent="indigo" index={1} />
-        <KpiCard label={`Marge nette ${year}`} value={ytdMargin} format="eur" accent={ytdMargin >= 0 ? "success" : "gold"} hint="comptable · pas la trésorerie" index={2} />
-        {/* Seule carte en `primary` : la trésorerie décide si Robin dort bien.
-            La marge nette à côté est un résultat comptable — les deux ensemble
-            empêchent de lire l'une pour l'autre. */}
+      {/* ── Les chiffres ─────────────────────────────────────────────
+          La trésorerie d'abord et seule en dégradé : c'est elle qui dit si
+          Robin dort bien. Le CA à côté est un résultat, pas de l'argent
+          disponible — les poser ensemble empêche de lire l'un pour l'autre. */}
+      <section aria-label="Chiffres clés" className="grid grid-cols-2 gap-4 lg:gap-5 xl:grid-cols-4">
         {treasury === null ? (
-          <KpiCard label="Trésorerie réelle" value={0} format="eur" accent="gold" hint="Qonto non connecté" index={3} primary />
+          <CockpitKpi
+            label="Trésorerie réelle"
+            icon={<Landmark />}
+            accent="navy"
+            missing="Qonto non connecté"
+            hint="À relier dans Paramètres"
+            href="/settings"
+            index={0}
+          />
         ) : (
-          <KpiCard label="Trésorerie réelle" value={treasury} format="eur" accent="gold" hint={`solde Qonto · ${treasuryUpdatedLabel}`} index={3} primary />
+          <CockpitKpi
+            label="Trésorerie réelle"
+            icon={<Landmark />}
+            accent="navy"
+            value={treasury}
+            format="eur"
+            primary
+            hint={`Qonto · ${lastBalanceAt ? `maj ${sinceLabel(lastBalanceAt, now)}` : "jamais synchronisé"}`}
+            visual={treasuryTrend.length > 1 ? { kind: "line", values: treasuryTrend } : undefined}
+            href="/finances"
+            index={0}
+          />
         )}
-      </div>
+        <CockpitKpi
+          label={`Chiffre d'affaires ${year}`}
+          icon={<TrendingUp />}
+          accent="ocean"
+          value={caYtd}
+          format="eur"
+          delta={
+            caDelta != null
+              ? { value: `${caDelta >= 0 ? "+" : "−"}${Math.abs(caDelta)} %`, positive: caDelta >= 0 }
+              : undefined
+          }
+          hint={
+            caDelta != null ? (
+              `vs même date ${year - 1}`
+            ) : (
+              <>
+                dont <Num>{formatEur(caMonth)}</Num> en {MOIS_LONG[monthIdx]}
+              </>
+            )
+          }
+          visual={{ kind: "line", values: monthly.slice(0, monthIdx + 1) }}
+          href="/finances"
+          index={1}
+        />
+        <CockpitKpi
+          label="Nouveaux leads · 30 j"
+          icon={<Users />}
+          accent="indigo"
+          value={newLeadsCount}
+          delta={
+            leadsDiff != null && leadsDiff !== 0
+              ? { value: `${leadsDiff > 0 ? "+" : "−"}${Math.abs(leadsDiff)}`, positive: leadsDiff > 0 }
+              : undefined
+          }
+          hint={leadsDiff == null ? "créés ces 30 derniers jours" : leadsDiff === 0 ? "autant qu'avant" : "vs 30 j d'avant"}
+          visual={{ kind: "line", values: leadWeeks }}
+          href="/leads"
+          index={2}
+        />
+        <CockpitKpi
+          label="Réservations à venir"
+          icon={<CalendarDays />}
+          accent="aqua"
+          value={upcomingCount}
+          hint={
+            thisWeek > 0
+              ? `dont ${thisWeek} sous 7 jours`
+              : upcomingCount > 0
+                ? "rien sous 7 jours"
+                : "planning vide"
+          }
+          visual={upcomingCount > 0 ? { kind: "bars", values: weeksAhead } : undefined}
+          href="/bookings"
+          index={3}
+        />
+      </section>
 
       {/* ── Deux colonnes qui se remplissent indépendamment ─────────────
-          Avant, chaque rangée était une grille à part : la carte haute de
-          gauche imposait sa hauteur à la rangée, et la colonne de droite —
-          souvent courte en basse saison, avec une seule sortie à venir —
-          laissait un demi-écran de vide avant la rangée suivante.
-          En empilant les blocs dans deux vraies colonnes, le vide disparaît.
+          Sur grand écran : la saison et les leads à gauche, les sorties et
+          la météo à droite — deux vraies colonnes, pour qu'une carte courte
+          ne laisse pas un trou sous elle. La dernière carte de chaque colonne
+          s'étire (flex-1) : les deux colonnes finissent sur la même ligne.
+          Sous `xl`, `contents` efface les deux conteneurs : les quatre cartes
+          redeviennent enfants directs de la grille et `order` les classe pour
+          le téléphone — sorties, leads, saison, météo. */}
+      <div className="grid grid-cols-1 gap-4 lg:gap-5 xl:grid-cols-12">
+        <div className="contents xl:col-span-8 xl:flex xl:flex-col xl:gap-5">
+          <SeasonCard
+            className="rise delay-3 order-3 xl:order-none"
+            year={year}
+            months={months}
+            caMonth={caMonth}
+            monthLabel={MOIS_LONG[monthIdx]}
+            outstanding={outstanding}
+            closed={todayIso > periodEnd}
+            goal={
+              goal && strong > 0
+                ? {
+                    min: goal.target_min ?? 0,
+                    medium: goal.target_medium ?? 0,
+                    strong,
+                    current: seasonCa,
+                    periodLabel: `${shortDate(periodStart)} au ${shortDate(periodEnd)}`,
+                  }
+                : null
+            }
+          />
+          <HotLeads
+            leads={hotLeads}
+            total={datedLeads.length}
+            className="rise delay-4 order-2 xl:order-none xl:flex-1"
+          />
+        </div>
 
-          Sous `lg`, `contents` efface les deux conteneurs : les quatre blocs
-          redeviennent enfants directs de la grille et `order` peut les classer
-          pour le téléphone — CA, sorties, leads, objectif — alors qu'en deux
-          colonnes on veut CA + leads à gauche, sorties + objectif à droite. */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
-        <div className="contents lg:col-span-2 lg:block lg:space-y-5">
-        <Card className="rise order-1 lg:order-none">
-          <CardContent className="pt-1">
-            <p className="t-label text-muted-foreground">Chiffre d&apos;affaires {year}</p>
-            <Num className="n-hero n-gradient mt-3 block">{formatEur(caYtd)}</Num>
-            {/* Deux appuis sous le chiffre principal, chacun en étiquette +
-                valeur plutôt qu'en phrase : on compare deux montants, on ne
-                lit pas une ligne de texte. */}
-            <div className="mt-5 flex flex-wrap gap-x-10 gap-y-4 border-t border-[var(--hairline)] pt-4">
-              <div>
-                <p className="t-label text-muted-foreground">Ce mois</p>
-                <Num className="n-inline mt-1.5 block text-[17px] text-foreground">{formatEur(caMonth)}</Num>
-              </div>
-              <div>
-                <p className="t-label text-muted-foreground">Reste à encaisser</p>
-                <Num className="n-inline mt-1.5 block text-[17px] text-foreground">
-                  {formatEur(outstanding)}
-                </Num>
-              </div>
-            </div>
-            <CapsuleChart data={chartData} className="mt-8 mb-6" />
-          </CardContent>
-        </Card>
-
-        <Card className="rise order-3 lg:order-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2">
-                <Flame className="size-4 text-gold" />
-                Leads les plus chauds
-              </CardTitle>
+        <div className="contents xl:col-span-4 xl:flex xl:flex-col xl:gap-5">
+          <Card className="rise delay-3 order-1 xl:order-none">
+            <CardHeader>
+              <CardTitle>Prochaines sorties</CardTitle>
               <CardDescription>
-                Prospects dont la sortie souhaitée est à venir — à convertir en priorité
+                {upcomingCount > 0
+                  ? `${upcomingCount} au planning · météo de Carnon`
+                  : "Le planning et la météo du jour"}
               </CardDescription>
-            </div>
-            <Link href="/leads" className="text-sm font-medium text-gold hover:underline">
-              Tous les leads →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <HotLeads leads={hotLeads} />
-          </CardContent>
-        </Card>
-        </div>
+              <CardAction>
+                <CardLink href="/bookings" label="Ouvrir le planning des réservations" />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <UpcomingBookings bookings={upcoming} weather={weatherByDate} todayIso={todayIso} />
+            </CardContent>
+          </Card>
 
-        <div className="contents lg:block lg:space-y-5">
-        {/* Le panneau signature : clair sur fond sombre, un seul par écran. */}
-        <SignaturePanel title="Prochaines sorties" className="rise order-2 lg:order-none">
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-[#64798F]">Aucune sortie programmée.</p>
-          ) : (
-            <div className="space-y-4">
-              {upcoming.slice(0, 4).map((b) => (
-                <div key={b.id} className="flex gap-3.5">
-                  <span className="mt-[7px] size-[7px] shrink-0 rounded-full bg-gold shadow-[0_0_0_4px_rgba(201,168,76,0.16)]" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold tracking-[-0.015em] text-[#06121F]">
-                      {b.offerName ?? "Sortie"}
-                    </p>
-                    <p className="t-caption mt-0.5 text-[#64798F]">
-                      {formatDateLong(b.date)}
-                      {b.startTime ? ` · ${b.startTime.slice(0, 5)}` : ""}
-                      {b.customerName ? ` · ${b.customerName}` : ""}
-                    </p>
-                    {b.amount ? (
-                      <Num className="n-inline mt-1 block text-[15.5px] text-[#8A6D1F]">
-                        {formatEur(b.amount)}
-                      </Num>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SignaturePanel>
-
-        <Card className="rise order-4 lg:order-none">
-          <CardHeader>
-            <CardTitle>Objectif de saison</CardTitle>
-            <CardDescription>CA {year} vs objectifs</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RevenueGauge current={caYtd} min={min} medium={medium} strong={strong} />
-          </CardContent>
-        </Card>
+          <Card className="rise delay-4 order-4 xl:order-none xl:flex-1">
+            <CardHeader>
+              <CardTitle>Météo marine</CardTitle>
+              <CardDescription>
+                Carnon
+                {weatherDays[0]?.water_temp_c != null ? (
+                  <>
+                    {" "}
+                    · eau à <Num>{`${Math.round(weatherDays[0].water_temp_c)} °C`}</Num>
+                  </>
+                ) : null}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WeatherWidget days={weatherDays} booked={bookedByDate} todayIso={todayIso} />
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* ── Léa et ce qui demande une action ───────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
-        <Card className="rise lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bot className="size-4 text-gold" />
-              Performance de Léa — tous canaux
-            </CardTitle>
-            <CardDescription>
-              {agentTotals.conversations} conversation{agentTotals.conversations !== 1 ? "s" : ""} ·{" "}
-              {agentTotals.leads} lead{agentTotals.leads !== 1 ? "s" : ""} ·{" "}
-              {pct(agentTotals.qualified, agentTotals.leads)}% qualifiés
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AgentChannelStats channels={agentChannels} totals={agentTotals} />
-          </CardContent>
-        </Card>
-
-        <Card className="rise">
-          <CardHeader>
-            <CardTitle>Alertes</CardTitle>
-            <CardDescription>Actions à traiter</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertsPanel alerts={alerts} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── Détail ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:items-start">
-        <Card className="rise lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Réservations à venir</CardTitle>
-            <CardDescription>Les 6 prochaines sorties</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UpcomingBookings bookings={upcoming} />
-          </CardContent>
-        </Card>
-
-        <Card className="rise">
-          <CardHeader>
-            <CardTitle>Météo marine — Carnon</CardTitle>
-            <CardDescription>Prévisions des 5 prochains jours</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <WeatherWidget days={weatherDays} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="rise">
+      <Card className="rise delay-5">
         <CardHeader>
-          <CardTitle>Transactions récentes</CardTitle>
-          <CardDescription>Derniers revenus et dépenses enregistrés</CardDescription>
+          <CardTitle>Derniers mouvements</CardTitle>
+          <CardDescription>Revenus et dépenses enregistrés</CardDescription>
+          <CardAction>
+            <CardLink href="/finances" label="Voir tous les mouvements dans Finance" />
+          </CardAction>
         </CardHeader>
         <CardContent>
-          <RecentTransactions transactions={recentTransactions} />
+          <RecentTransactions transactions={recentTransactions} columns={2} />
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-const ALERT_TONE = {
-  danger: "border-danger/35 bg-danger/10 hover:bg-danger/15 text-danger",
-  gold: "border-gold/35 bg-gold/10 hover:bg-gold/15 text-gold",
-  warning: "border-warning/35 bg-warning/10 hover:bg-warning/15 text-warning",
-} as const;
-
-function AlertBanner({
-  href,
-  tone,
-  strong,
-  text,
-}: {
-  href: string;
-  tone: keyof typeof ALERT_TONE;
-  strong: string;
-  text: string;
-}) {
-  const cls = ALERT_TONE[tone];
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center gap-3 rounded-2xl border-[0.5px] px-4 py-3 text-sm transition-colors duration-300 [transition-timing-function:var(--ease-ios)]",
-        cls,
-      )}
-    >
-      <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-current" />
-      <span className="min-w-0 flex-1">
-        <span className="font-semibold">{strong}</span>
-        <span className="block truncate text-[12.5px] text-muted-foreground">{text}</span>
-      </span>
-    </Link>
-  );
-}
-
-function buildAlerts(
-  bookings: BookingJoinRow[],
-  attentionLeads: { id: string; first_name: string | null; last_name: string | null }[],
-  todayIso: string,
-): AlertItem[] {
-  const alerts: AlertItem[] = [];
-  const todayMs = new Date(todayIso).getTime();
-
-  for (const lead of attentionLeads) {
-    alerts.push({
-      id: `lead-${lead.id}`,
-      severity: "danger",
-      title: `Lead à rappeler — ${fullName(lead.first_name, lead.last_name)}`,
-      description: "Intervention humaine requise.",
-    });
-  }
-
-  for (const b of bookings) {
-    const name = fullName(b.customers?.first_name ?? null, b.customers?.last_name ?? null);
-    if (b.deposit_paid === false) {
-      alerts.push({
-        id: `deposit-${b.id}`,
-        severity: "warning",
-        title: `Acompte en attente — ${b.offer_name ?? "réservation"}`,
-        description: `${name} · sortie du ${formatDateLong(b.date)}.`,
-      });
-      continue;
-    }
-    if ((b.balance_due ?? 0) > 0 && b.balance_due_date) {
-      const daysLeft = (new Date(b.balance_due_date).getTime() - todayMs) / DAY_MS;
-      if (daysLeft <= 10) {
-        alerts.push({
-          id: `balance-${b.id}`,
-          severity: daysLeft <= 3 ? "danger" : "warning",
-          title: `Solde à encaisser — ${formatEur(b.balance_due)}`,
-          description: `${name} · le jour de la sortie (${formatDateLong(b.balance_due_date)}).`,
-        });
-      }
-    }
-  }
-
-  return alerts.slice(0, 5);
-}
-
-// ── Leads les plus chauds (date souhaitée connue) ──────────────────
-function HotLeads({ leads }: { leads: HotLeadRow[] }) {
-  if (leads.length === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        Aucun lead avec une date souhaitée à venir pour l&apos;instant.
-      </p>
-    );
-  }
-  return (
-    <ul className="divide-y divide-border/60">
-      {leads.map((l) => {
-        const label = l.source_channel === "website" ? null : l.source_channel;
-        const desired = l.desired_date
-          ? new Date(`${l.desired_date}T00:00:00`).toLocaleDateString("fr-FR", {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-            })
-          : null;
-        return (
-          <li key={l.id}>
-            <Link
-              href={`/leads?lead=${l.id}`}
-              className="group flex items-center gap-3 py-2.5 transition-colors hover:bg-foreground/[0.03]"
-            >
-              <span className="relative shrink-0">
-                <span
-                  className={cn(
-                    "flex size-9 items-center justify-center rounded-full text-xs font-semibold",
-                    channelMeta(l.source_channel).className,
-                  )}
-                >
-                  {initials(l.first_name, l.last_name)}
-                </span>
-                <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
-                  <ChannelLogo channel={label} className="size-2.5" />
-                </span>
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-foreground">
-                    {fullName(l.first_name, l.last_name)}
-                  </span>
-                  {l.occasion && (
-                    <span className="shrink-0 rounded-full bg-gold/10 px-1.5 py-0.5 text-[10px] font-medium text-gold">
-                      {l.occasion}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground">
-                  {desired && (
-                    <span className="inline-flex items-center gap-1 font-medium text-gold">
-                      <CalendarDays className="size-3" />
-                      {desired}
-                    </span>
-                  )}
-                  {l.interested_offer && <span className="truncate">· {l.interested_offer}</span>}
-                  {l.party_size != null && (
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="size-3" />
-                      {l.party_size}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <span
-                className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
-                  scoreClasses(l.score),
-                )}
-                title="Score de qualification"
-              >
-                {l.score ?? "—"}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-// ── Performance de Léa par canal ───────────────────────────────────
-function AgentChannelStats({
-  channels,
-  totals,
-}: {
-  channels: { channel: string; conversations: number; leads: number; qualified: number }[];
-  totals: { conversations: number; leads: number; qualified: number };
-}) {
-  if (channels.length === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        Léa n&apos;a pas encore de conversation enregistrée.
-      </p>
-    );
-  }
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-xs text-muted-foreground">
-            <th className="pb-2 pr-4 text-left font-medium">Canal</th>
-            <th className="pb-2 pr-4 text-right font-medium">Conversations</th>
-            <th className="pb-2 pr-4 text-right font-medium">Leads</th>
-            <th className="pb-2 pr-4 text-right font-medium">Qualifiés</th>
-            <th className="pb-2 text-right font-medium">Taux</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/60">
-          {channels.map((c) => {
-            const chLabel = c.channel === "autre" ? "Autre" : channelMeta(c.channel).label;
-            return (
-              <tr key={c.channel}>
-                <td className="py-2.5 pr-4">
-                  <span className="flex items-center gap-2 font-medium text-foreground">
-                    <ChannelLogo channel={c.channel === "autre" ? null : c.channel} className="size-4" />
-                    {chLabel}
-                  </span>
-                </td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">{c.conversations}</td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">{c.leads}</td>
-                <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">{c.qualified}</td>
-                <td className="py-2.5 text-right tabular-nums font-medium text-success">
-                  {pct(c.qualified, c.leads)}%
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-        <tfoot>
-          <tr className="border-t border-border font-semibold">
-            <td className="pt-2.5 pr-4 text-foreground">Total</td>
-            <td className="pt-2.5 pr-4 text-right tabular-nums text-foreground">{totals.conversations}</td>
-            <td className="pt-2.5 pr-4 text-right tabular-nums text-foreground">{totals.leads}</td>
-            <td className="pt-2.5 pr-4 text-right tabular-nums text-foreground">{totals.qualified}</td>
-            <td className="pt-2.5 text-right tabular-nums text-success">
-              {pct(totals.qualified, totals.leads)}%
-            </td>
-          </tr>
-        </tfoot>
-      </table>
     </div>
   );
 }

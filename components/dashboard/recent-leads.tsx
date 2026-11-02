@@ -1,9 +1,12 @@
 import { UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateRelative } from "@/lib/format";
 import { leadStatusBadge } from "@/lib/status";
+
+// Derniers leads arrivés, en verre clair. La teinte indigo est celle des
+// leads dans tout le tableau de bord (docs/DESIGN.md §4).
 
 export type RecentLead = {
   id: string;
@@ -26,30 +29,27 @@ function initials(name: string) {
 export function RecentLeads({ leads }: { leads: RecentLead[] }) {
   if (leads.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
-        <UserPlus className="size-6 text-muted-foreground/60" />
-        Aucun lead récent.
-      </div>
+      <EmptyState icon={<UserPlus />} title="Aucun lead récent">
+        Les nouveaux prospects apparaissent ici dès que Léa les enregistre.
+      </EmptyState>
     );
   }
 
   return (
-    <ul className="divide-y divide-border">
+    <ul>
       {leads.map((lead) => {
         const status = leadStatusBadge(lead.status);
         return (
           <li
             key={lead.id}
-            className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/50"
+            className="flex items-center gap-3 border-b border-[var(--hairline)] py-3 last:border-b-0"
           >
-            <Avatar className="size-9">
-              <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
-                {initials(lead.name)}
-              </AvatarFallback>
-            </Avatar>
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[rgba(109,124,242,0.12)] text-[12px] font-semibold text-indigo">
+              {initials(lead.name)}
+            </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{lead.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="truncate text-[14px] font-medium tracking-[-0.012em] text-foreground">{lead.name}</p>
+              <p className="truncate text-[12px] text-ink-3">
                 {lead.interestedOffer ?? "Offre non précisée"}
                 {lead.sourceChannel ? ` · ${lead.sourceChannel}` : ""}
                 {lead.createdAt ? ` · ${formatDateRelative(lead.createdAt)}` : ""}
@@ -57,7 +57,7 @@ export function RecentLeads({ leads }: { leads: RecentLead[] }) {
             </div>
             <div className="flex shrink-0 flex-col items-end gap-1">
               {typeof lead.score === "number" && (
-                <span className="text-xs font-semibold text-gold">{lead.score}/10</span>
+                <span className="text-[12px] font-semibold tabular-nums text-indigo">{lead.score}/10</span>
               )}
               <Badge variant={status.variant}>{status.label}</Badge>
             </div>
