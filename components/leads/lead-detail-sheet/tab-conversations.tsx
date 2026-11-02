@@ -5,9 +5,11 @@ import { useDebouncedCallback } from "use-debounce";
 import { Check, Loader2, Mail, MessageSquare, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { channelMeta, type Lead } from "@/lib/leads";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ChannelLogo } from "@/components/leads/channel-logo";
+import { channelLabel } from "@/components/agent/channels";
+import type { Lead } from "@/lib/leads";
 import {
   getConversations,
   sendMessage,
@@ -109,14 +111,20 @@ export function TabConversations({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-gold/30 bg-gold/5 p-3">
+      {/* La mémoire de Léa sur ce contact : ce qu'elle réutilise à chaque
+          réponse. Modifiable — corriger le mémo, c'est corriger l'agent. */}
+      <div className="rounded-[20px] border border-[rgba(47,127,224,0.16)] bg-[linear-gradient(160deg,rgba(47,127,224,0.08),rgba(124,192,245,0.06))] p-3.5">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-            <Sparkles className="size-4 text-gold" /> Mémo IA
+          <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ocean">
+            <Sparkles className="size-3.5" strokeWidth={2} /> Ce que Léa a retenu
           </span>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 text-[11.5px] text-ink-3">
             {memoState === "saving" && <Loader2 className="size-3 animate-spin" />}
-            {memoState === "saved" && <Check className="size-3 text-success" />}
+            {memoState === "saved" && (
+              <>
+                <Check className="size-3 text-success" /> Enregistré
+              </>
+            )}
           </span>
         </div>
         <Textarea
@@ -126,33 +134,38 @@ export function TabConversations({
             saveMemo(e.target.value);
           }}
           onBlur={() => saveMemo.flush()}
-          placeholder="Contexte retenu par l'assistant…"
-          className="min-h-[64px] resize-none border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0"
+          placeholder="Contexte retenu par l'agent : occasion, préférences, objections…"
+          className="min-h-[64px] resize-none rounded-none border-0 bg-transparent p-0 text-[13.5px] leading-relaxed shadow-none focus-visible:bg-transparent focus-visible:ring-0"
         />
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center py-10 text-[13px] text-ink-3">
           <Loader2 className="mr-2 size-4 animate-spin" /> Chargement…
         </div>
       ) : conversations.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-          <MessageSquare className="size-6 opacity-50" />
-          Aucune conversation pour l&apos;instant.
-        </div>
+        <EmptyState icon={<MessageSquare />} title="Aucune conversation pour l'instant">
+          Le premier échange avec ce contact apparaîtra ici, quel que soit le canal.
+        </EmptyState>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           {conversations.map((conv) => {
-            const meta = channelMeta(conv.channel);
-            const Icon = meta.Icon;
             return (
               <div key={conv.id} className="flex flex-col gap-3">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Icon className="size-3" />
-                  {meta.label}
+                <div className="flex justify-center">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/90 bg-white/70 px-3 py-1 text-[11.5px] font-medium text-ink-2 shadow-[inset_0_1px_0_#fff]">
+                    <ChannelLogo channel={conv.channel} className="size-3" />
+                    {channelLabel(conv.channel)}
+                    {conv.created_at && (
+                      <span className="text-ink-3">
+                        · {new Date(conv.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 {conv.summary && (
-                  <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs italic text-muted-foreground">
+                  <p className="vitre-inset rounded-[16px] px-3.5 py-2.5 text-[12.5px] leading-relaxed text-ink-2">
+                    <span className="font-semibold text-foreground">Résumé · </span>
                     {conv.summary}
                   </p>
                 )}
@@ -167,7 +180,9 @@ export function TabConversations({
         </div>
       )}
 
-      <div className="sticky bottom-0 flex items-end gap-2 border-t border-border bg-popover pt-3">
+      {/* Collé en bas du panneau ; -mb-4/pb-4 recouvre la marge intérieure du
+          conteneur, sinon les bulles défilaient visibles SOUS le champ. */}
+      <div className="sticky bottom-0 -mx-5 -mb-4 flex items-end gap-2 border-t border-[var(--hairline)] bg-[rgba(250,252,255,0.97)] px-5 pb-4 pt-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -176,20 +191,26 @@ export function TabConversations({
           }}
           placeholder={
             lead.source_channel === "email"
-              ? "Écrire un email…"
-              : "Écrire un message…"
+              ? "Écrire un email… (⌘ + Entrée pour envoyer)"
+              : "Écrire un message… (⌘ + Entrée pour envoyer)"
           }
-          className="min-h-[44px] flex-1 resize-none"
+          className="min-h-12 flex-1 resize-none rounded-[24px] py-3"
         />
-        <Button size="icon" onClick={handleSend} disabled={sending || !draft.trim()}>
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={sending || !draft.trim()}
+          aria-label="Envoyer"
+          className="grid size-12 shrink-0 place-items-center rounded-full bg-[linear-gradient(160deg,#1d4c84,#0b2545)] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_8px_18px_-8px_rgba(11,37,69,0.6)] transition-[transform,filter,opacity] duration-200 hover:brightness-110 active:scale-95 disabled:opacity-40"
+        >
           {sending ? (
-            <Loader2 className="animate-spin" />
+            <Loader2 className="size-[18px] animate-spin" />
           ) : lead.source_channel === "email" ? (
-            <Mail />
+            <Mail className="size-[18px]" />
           ) : (
-            <Send />
+            <Send className="size-[18px]" />
           )}
-        </Button>
+        </button>
       </div>
     </div>
   );

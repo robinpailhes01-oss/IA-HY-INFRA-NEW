@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, ArrowDown, ArrowUp, ChevronsUpDown, Download, MessageCircle } from "lucide-react";
+import { Archive, ArrowDown, ArrowUp, ChevronsUpDown, Download, MessageCircle, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,14 +23,18 @@ import {
 import {
   LEAD_COLUMNS,
   STATUS_LABEL,
-  channelMeta,
   fullName,
+  initials,
   needsFollowUp,
   relativeDays,
-  scoreClasses,
   type Lead,
   type LeadStatus,
 } from "@/lib/leads";
+import { ChannelLogo } from "@/components/leads/channel-logo";
+import { channelLabel } from "@/components/agent/channels";
+import { ContactAvatar } from "@/components/agent/contact-avatar";
+import { ScoreChip } from "@/components/agent/score-meter";
+import { stageTone } from "@/components/agent/stages";
 
 type SortKey = "name" | "channel" | "score" | "status" | "desired_date" | "last";
 const PAGE_SIZE = 50;
@@ -123,7 +127,7 @@ export function LeadsTableView({
         fullName(l.first_name, l.last_name, l.whatsapp_name),
         l.phone ?? "",
         l.email ?? "",
-        channelMeta(l.source_channel).label,
+        channelLabel(l.source_channel),
         l.interested_offer ?? "",
         l.occasion ?? "",
         l.score ?? "",
@@ -148,18 +152,18 @@ export function LeadsTableView({
   return (
     <div className="flex flex-col gap-3">
       {selectedIds.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gold/40 bg-gold/5 px-3 py-2">
-          <span className="text-sm font-medium text-foreground">
+        <div className="vitre-strong sticky top-3 z-20 flex flex-wrap items-center gap-2 rounded-full py-1.5 pl-4 pr-1.5">
+          <span className="text-[13px] font-semibold text-foreground">
             {selectedIds.length} sélectionné{selectedIds.length > 1 ? "s" : ""}
           </span>
           <Select onValueChange={(v) => { onBulkStatus(selectedIds, v as LeadStatus); clearSelection(); }}>
-            <SelectTrigger size="sm" className="ml-2">
+            <SelectTrigger size="sm" className="ml-1">
               <SelectValue>{() => "Changer le statut"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {LEAD_COLUMNS.map((c) => (
                 <SelectItem key={c.status} value={c.status}>
-                  {c.label}
+                  {stageTone(c.status).label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -172,22 +176,23 @@ export function LeadsTableView({
             <Download />
             Exporter CSV
           </Button>
-          <Button size="sm" variant="ghost" onClick={clearSelection} className="ml-auto text-muted-foreground">
-            Désélectionner
+          <Button size="icon-sm" variant="ghost" onClick={clearSelection} className="ml-auto" aria-label="Désélectionner">
+            <X />
           </Button>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-        <Table>
+      <div className="vitre overflow-hidden rounded-[24px]">
+        <div className="relative z-[1] overflow-x-auto px-2 pb-1 pt-1">
+        <Table className="min-w-[860px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-8">
+              <TableHead className="w-10 pl-3">
                 <input
                   type="checkbox"
                   checked={allOnPageSelected}
                   onChange={toggleAll}
-                  className="size-4 cursor-pointer accent-gold"
+                  className="size-4 cursor-pointer rounded accent-ocean"
                   aria-label="Tout sélectionner"
                 />
               </TableHead>
@@ -202,90 +207,90 @@ export function LeadsTableView({
           </TableHeader>
           <TableBody>
             {pageRows.map((lead) => {
-              const channel = channelMeta(lead.source_channel);
-              const ChannelIcon = channel.Icon;
               const relance = needsFollowUp(lead, now);
+              const tone = stageTone(lead.status);
+              const name = fullName(lead.first_name, lead.last_name, lead.whatsapp_name);
               return (
                 <TableRow
                   key={lead.id}
-                  className="group cursor-pointer"
+                  data-state={selected.has(lead.id) ? "selected" : undefined}
+                  className="group cursor-pointer border-[var(--hairline)] hover:bg-white/60 data-[state=selected]:bg-[rgba(47,127,224,0.06)]"
                   onClick={() => onOpen(lead)}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell className="pl-3" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selected.has(lead.id)}
                       onChange={() => toggleOne(lead.id)}
-                      className="size-4 cursor-pointer accent-gold"
-                      aria-label="Sélectionner"
+                      className="size-4 cursor-pointer rounded accent-ocean"
+                      aria-label={`Sélectionner ${name}`}
                     />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground">
-                        {fullName(lead.first_name, lead.last_name, lead.whatsapp_name)}
-                      </span>
-                      {relance && (
-                        <span className="size-2 shrink-0 rounded-full bg-warning" title="À relancer" />
-                      )}
-                      {lead.source_channel === "whatsapp" && lead.phone && (
-                        <a
-                          href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Ouvrir WhatsApp"
-                          className="text-success/60 transition-colors hover:text-success"
-                        >
-                          <MessageCircle className="size-3.5" />
-                        </a>
-                      )}
+                    <div className="flex items-center gap-3">
+                      <ContactAvatar size="sm" initials={initials(lead.first_name, lead.last_name, lead.whatsapp_name)} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate font-semibold tracking-[-0.012em] text-foreground">{name}</span>
+                          {relance && (
+                            <span className="size-2 shrink-0 rounded-full bg-warning" title="À relancer" />
+                          )}
+                          {lead.source_channel === "whatsapp" && lead.phone && (
+                            <a
+                              href={`https://wa.me/${lead.phone.replace(/\D/g, "")}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Ouvrir WhatsApp"
+                              className="text-whatsapp/60 transition-colors hover:text-whatsapp"
+                            >
+                              <MessageCircle className="size-3.5" />
+                            </a>
+                          )}
+                        </div>
+                        {lead.phone ? (
+                          <a
+                            href={`tel:${lead.phone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[12px] tabular-nums text-ink-3 transition-colors hover:text-ocean"
+                          >
+                            {lead.phone}
+                          </a>
+                        ) : lead.email ? (
+                          <a
+                            href={`mailto:${lead.email}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[12px] text-ink-3 transition-colors hover:text-ocean"
+                          >
+                            {lead.email}
+                          </a>
+                        ) : (
+                          <span className="text-[12px] text-ink-3">—</span>
+                        )}
+                      </div>
                     </div>
-                    {lead.phone ? (
-                      <a
-                        href={`tel:${lead.phone}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {lead.phone}
-                      </a>
-                    ) : lead.email ? (
-                      <a
-                        href={`mailto:${lead.email}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        {lead.email}
-                      </a>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
                   </TableCell>
                   <TableCell>
-                    <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
-                      <ChannelIcon className="size-3.5" />
-                      {channel.label}
+                    <span className="inline-flex items-center gap-1.5 text-[13px] text-ink-2">
+                      <ChannelLogo channel={lead.source_channel} className="size-3.5" />
+                      {channelLabel(lead.source_channel)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="max-w-[220px] truncate text-[13px] text-ink-2">
                     {lead.interested_offer ?? "—"}
                   </TableCell>
                   <TableCell className="text-center">
-                    <span
-                      className={cn(
-                        "inline-flex size-7 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
-                        scoreClasses(lead.score),
-                      )}
-                    >
-                      {lead.score ?? "—"}
+                    <span className="inline-grid place-items-center">
+                      <ScoreChip score={lead.score} size="sm" />
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm text-foreground">
-                      {STATUS_LABEL[lead.status ?? ""] ?? lead.status ?? "—"}
+                    <span className={cn("pastille", tone.pill)}>
+                      <span className="size-1.5 rounded-full" style={{ background: tone.color }} />
+                      {STATUS_LABEL[lead.status ?? ""] ? tone.label : lead.status ?? "—"}
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="text-[13px] tabular-nums text-ink-2">
                     {lead.desired_date
                       ? new Date(lead.desired_date).toLocaleDateString("fr-FR", {
                           day: "numeric",
@@ -294,7 +299,7 @@ export function LeadsTableView({
                         })
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="pr-4 text-[13px] text-ink-3">
                     {relativeDays(lead.last_interaction_at ?? lead.created_at, now)}
                   </TableCell>
                 </TableRow>
@@ -302,14 +307,15 @@ export function LeadsTableView({
             })}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {pageCount > 1 && (
-        <div className="flex items-center justify-end gap-2 text-sm">
+        <div className="flex items-center justify-end gap-2 text-[13px]">
           <Button size="sm" variant="outline" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
             Précédent
           </Button>
-          <span className="text-muted-foreground">
+          <span className="px-1 tabular-nums text-ink-2">
             Page {safePage + 1} / {pageCount}
           </span>
           <Button
@@ -346,8 +352,8 @@ function SortHead({
         type="button"
         onClick={() => setSort({ key: k, dir: active && sort.dir === "asc" ? "desc" : "asc" })}
         className={cn(
-          "inline-flex items-center gap-1 transition-colors hover:text-foreground",
-          active ? "text-foreground" : "text-muted-foreground",
+          "inline-flex h-8 items-center gap-1 rounded-full text-[12.5px] font-medium transition-colors hover:text-foreground",
+          active ? "text-foreground" : "text-ink-3",
         )}
       >
         {label}

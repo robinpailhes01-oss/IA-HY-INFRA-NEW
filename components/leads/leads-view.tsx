@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useDebouncedCallback } from "use-debounce";
-import { Plus, Users } from "lucide-react";
+import { ArrowRight, Plus, SearchX, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   EMPTY_FILTERS,
   filterLeads,
@@ -40,7 +42,6 @@ import { LeadsFiltersMobile } from "@/components/leads/leads-filters-mobile";
 import { ViewToggle, type ViewMode } from "@/components/leads/view-toggle";
 import { LeadDetailSheet } from "@/components/leads/lead-detail-sheet";
 import { NewLeadSheet } from "@/components/leads/new-lead-sheet";
-import { NewLeadFab } from "@/components/leads/new-lead-fab";
 
 function rowToLead(row: Record<string, unknown>): Lead {
   return {
@@ -262,35 +263,106 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
   };
 
   const escalatedLeads = leads.filter((l) => l.needs_human_intervention && !l.archived);
+  const showTakeover = () => {
+    setView("priority");
+    setBucket("takeover");
+  };
 
   return (
-    <div className="flex flex-col gap-4">
-      {escalatedLeads.length > 0 && (
-        <div className="enter-up flex items-center gap-3 rounded-xl border border-warning/40 bg-warning/8 px-4 py-3 text-sm">
-          <span className="inline-flex size-2 shrink-0 animate-pulse rounded-full bg-warning" />
-          <p className="flex-1 text-warning-foreground/90">
-            <strong className="text-warning">{escalatedLeads.length} lead{escalatedLeads.length > 1 ? "s" : ""}</strong>
-            {" "}à reprendre — Léa a escaladé ces conversations vers vous.
-          </p>
-        </div>
-      )}
-
-      <header className="enter-up flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Leads</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="flex flex-col gap-4 lg:gap-5">
+      <PageHeader
+        eyebrow="Agent WhatsApp · pipeline"
+        title={
+          <>
+            Les <em>leads</em>
+          </>
+        }
+        description={
+          <>
             {leads.length} prospect{leads.length > 1 ? "s" : ""} dans le pipeline
             {view === "priority"
-              ? " · triés par urgence, les plus chauds en haut"
+              ? " — rangés par urgence, ce qui t'attend en haut."
               : view === "kanban"
-                ? " · glisse une carte pour changer son statut"
-                : ""}
+                ? " — glisse une carte pour changer son étape."
+                : " — coche des lignes pour agir en groupe."}
+          </>
+        }
+        actions={
+          <>
+            <ViewToggle view={view} onChange={setView} className="min-w-0 flex-1 sm:flex-none" />
+            <Button size="lg" onClick={() => setCreateOpen(true)} className="hidden md:inline-flex">
+              <Plus />
+              Nouveau lead
+            </Button>
+            {/* Téléphone : un cercle à côté des vues plutôt qu'un bouton
+                flottant — le coin bas-droit appartient au widget de Léa. */}
+            <Button
+              size="icon-lg"
+              onClick={() => setCreateOpen(true)}
+              className="md:hidden"
+              aria-label="Nouveau lead"
+            >
+              <Plus className="size-5" />
+            </Button>
+          </>
+        }
+      />
+
+      {/* En vue Priorité, « À reprendre » est déjà la première section :
+          le bandeau ne sert qu'en Kanban et en Tableau. */}
+      {escalatedLeads.length > 0 && view !== "priority" && (
+        <button
+          type="button"
+          onClick={showTakeover}
+          className="enter-up group flex min-h-14 w-full items-center gap-3 rounded-[20px] border border-[rgba(224,77,85,0.18)] bg-[linear-gradient(100deg,rgba(255,255,255,0.75),rgba(255,240,241,0.75))] px-4 py-3 text-left shadow-[inset_0_1px_0_#fff,0_10px_24px_-18px_rgba(224,77,85,0.5)] backdrop-blur-xl transition-colors hover:bg-white"
+        >
+          <span className="pulse-dot size-2.5 shrink-0 bg-danger text-danger" />
+          <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-foreground">
+            <strong className="font-semibold text-danger">
+              {escalatedLeads.length} lead{escalatedLeads.length > 1 ? "s" : ""} à reprendre
+            </strong>{" "}
+            <span className="text-ink-2">— Léa a escaladé ces conversations vers toi.</span>
           </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {view === "priority" && (
+          <span className="hidden shrink-0 items-center gap-1 text-[13px] font-medium text-foreground sm:inline-flex">
+            Les voir
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </button>
+      )}
+
+      <LeadsFilters {...filterProps} />
+      <LeadsFiltersMobile {...filterProps} />
+
+      {leads.length === 0 ? (
+        <EmptyState icon={<Users />} title="Aucun lead pour le moment">
+          Les nouvelles demandes arrivent ici d&apos;elles-mêmes : Léa crée une fiche à chaque
+          premier message.
+        </EmptyState>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<SearchX />}
+          title="Aucun lead ne correspond aux filtres"
+          action={
+            filtersActive(filters) ? (
+              <Button variant="outline" onClick={() => setFilters(EMPTY_FILTERS)}>
+                Réinitialiser les filtres
+              </Button>
+            ) : undefined
+          }
+        >
+          Essaie d&apos;élargir ta recherche.
+        </EmptyState>
+      ) : view === "priority" ? (
+        <LeadsPriority
+          leads={filtered}
+          now={now}
+          onOpen={openLead}
+          sort={prioritySort}
+          bucket={bucket}
+          onBucketChange={setBucket}
+          sortControl={
             <Select value={prioritySort} onValueChange={(v) => setPrioritySort(v as PrioritySort)}>
-              <SelectTrigger size="sm" className="w-auto">
+              <SelectTrigger className="h-10 w-full sm:w-auto">
                 <SelectValue>
                   {(v) => PRIORITY_SORTS.find((s) => s.value === v)?.label ?? "Trier"}
                 </SelectValue>
@@ -303,43 +375,7 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
                 ))}
               </SelectContent>
             </Select>
-          )}
-          <ViewToggle view={view} onChange={setView} />
-          <Button onClick={() => setCreateOpen(true)} className="hidden md:inline-flex">
-            <Plus />
-            Nouveau lead
-          </Button>
-        </div>
-      </header>
-
-      <LeadsFilters {...filterProps} />
-      <LeadsFiltersMobile {...filterProps} />
-
-      {leads.length === 0 ? (
-        <EmptyState
-          title="Aucun lead pour le moment"
-          subtitle="Les nouvelles demandes apparaîtront ici automatiquement."
-        />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          title="Aucun lead ne correspond aux filtres"
-          subtitle="Essaie d'élargir ta recherche."
-          action={
-            filtersActive(filters) ? (
-              <Button variant="outline" size="sm" onClick={() => setFilters(EMPTY_FILTERS)}>
-                Réinitialiser les filtres
-              </Button>
-            ) : undefined
           }
-        />
-      ) : view === "priority" ? (
-        <LeadsPriority
-          leads={filtered}
-          now={now}
-          onOpen={openLead}
-          sort={prioritySort}
-          bucket={bucket}
-          onBucketChange={setBucket}
         />
       ) : view === "kanban" ? (
         <LeadsKanban leads={filtered} now={now} onOpen={openLead} onMove={moveLead} />
@@ -362,30 +398,6 @@ export function LeadsView({ initialLeads, now }: { initialLeads: Lead[]; now: nu
         initialTab={detailTab}
       />
       <NewLeadSheet open={createOpen} onOpenChange={setCreateOpen} onCreated={handleCreated} />
-      <NewLeadFab onClick={() => setCreateOpen(true)} />
-    </div>
-  );
-}
-
-function EmptyState({
-  title,
-  subtitle,
-  action,
-}: {
-  title: string;
-  subtitle: string;
-  action?: ReactNode;
-}) {
-  return (
-    <div className="enter-up flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/40 py-20 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Users className="size-6" />
-      </span>
-      <div className="space-y-1">
-        <p className="font-medium text-foreground">{title}</p>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-      {action}
     </div>
   );
 }

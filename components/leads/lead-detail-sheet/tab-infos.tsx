@@ -72,7 +72,7 @@ export function TabInfos({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex h-4 items-center justify-end text-xs text-muted-foreground">
+      <div className="-mb-1 flex h-4 items-center justify-end text-[11.5px] text-ink-3">
         {status === "saving" && (
           <span className="flex items-center gap-1">
             <Loader2 className="size-3 animate-spin" /> Enregistrement…
@@ -110,9 +110,9 @@ export function TabInfos({
             onBlur={(e) => commitText("phone", e.target.value)}
           />
           {isWhatsAppLid(form.phone) && (
-            <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
-              📱 Identifiant WhatsApp privé — le client a masqué son vrai numéro.
-              Tu peux quand même lui répondre via WhatsApp.
+            <p className="mt-1 px-1 text-[11px] leading-snug text-ink-3">
+              Identifiant WhatsApp privé : le client a masqué son vrai numéro. Tu peux
+              quand même lui répondre sur WhatsApp.
             </p>
           )}
         </Field>
@@ -275,8 +275,13 @@ export function TabInfos({
         </Select>
       </Field>
 
-      <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">
-        <span className="text-sm font-medium text-foreground">Intervention humaine requise</span>
+      <label className="vitre-inset flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-full py-2 pl-4 pr-3">
+        <span className="text-[13.5px] font-medium text-foreground">
+          Intervention humaine requise
+          <span className="block text-[11.5px] font-normal text-ink-3">
+            Léa signale qu&apos;elle te passe la main
+          </span>
+        </span>
         <Switch
           checked={form.needs_human_intervention ?? false}
           onCheckedChange={(c) => {
@@ -292,7 +297,7 @@ export function TabInfos({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label className="t-label px-1 text-ink-2">{label}</Label>
       {children}
     </div>
   );

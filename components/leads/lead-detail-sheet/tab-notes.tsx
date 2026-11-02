@@ -45,8 +45,8 @@ export function TabNotes({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-foreground">Notes internes</label>
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <label className="t-card px-1 text-foreground">Notes internes</label>
+        <span className="flex items-center gap-1 text-[11.5px] text-ink-3">
           {state === "saving" && (
             <>
               <Loader2 className="size-3 animate-spin" /> Enregistrement…
@@ -68,9 +68,9 @@ export function TabNotes({
         }}
         onBlur={() => save.flush()}
         placeholder="Préférences, contexte, points d'attention…"
-        className="min-h-[220px] resize-none"
+        className="min-h-[240px] resize-none rounded-[20px] leading-relaxed"
       />
-      <p className="text-xs text-muted-foreground">
+      <p className="px-1 text-[11.5px] text-ink-3">
         Sauvegarde automatique après une courte pause.
       </p>
     </div>

@@ -115,16 +115,22 @@ export function NewLeadSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full gap-0 overflow-y-auto sm:max-w-md"
+        className="gap-0 overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-md"
       >
-        <SheetHeader>
-          <SheetTitle>Nouveau lead</SheetTitle>
-          <SheetDescription>Ajoute un prospect manuellement au pipeline.</SheetDescription>
+        <SheetHeader className="px-6 pb-2 pt-6">
+          <p className="t-eyebrow text-ink-3">Pipeline</p>
+          <SheetTitle className="t-serif text-[30px] font-normal leading-tight">
+            Nouveau <em>lead</em>
+          </SheetTitle>
+          <SheetDescription>
+            Un prospect venu hors de WhatsApp (téléphone, salon, bouche à oreille) : il arrive
+            directement en « Qualifié ».
+          </SheetDescription>
         </SheetHeader>
 
-        <div className="grid gap-4 p-4">
+        <div className="grid gap-4 px-6 py-4">
           <div className="grid gap-1.5">
-            <Label>Prénom *</Label>
+            <Label className="t-label text-ink-2">Prénom *</Label>
             <Input
               value={form.first_name}
               onChange={(e) => set("first_name", e.target.value)}
@@ -134,7 +140,7 @@ export function NewLeadSheet({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Téléphone *</Label>
+            <Label className="t-label text-ink-2">Téléphone *</Label>
             <Input
               value={form.phone}
               onChange={(e) => set("phone", e.target.value)}
@@ -143,7 +149,7 @@ export function NewLeadSheet({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Ce qu&apos;il recherche</Label>
+            <Label className="t-label text-ink-2">Ce qu&apos;il recherche</Label>
             <Input
               value={form.interested_offer}
               onChange={(e) => set("interested_offer", e.target.value)}
@@ -152,7 +158,7 @@ export function NewLeadSheet({
           </div>
 
           <div className="grid gap-1.5">
-            <Label>Canal d&apos;acquisition</Label>
+            <Label className="t-label text-ink-2">Canal d&apos;acquisition</Label>
             <Select
               value={form.source_channel}
               onValueChange={(v) => set("source_channel", (v as string) ?? "")}
@@ -173,11 +179,11 @@ export function NewLeadSheet({
           </div>
         </div>
 
-        <SheetFooter className="flex-row justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <SheetFooter className="mt-auto flex-row justify-end gap-2 border-t border-[var(--hairline)] px-6 py-4">
+          <Button variant="outline" size="lg" onClick={() => onOpenChange(false)}>
             Annuler
           </Button>
-          <Button onClick={handleSubmit} disabled={pending}>
+          <Button size="lg" onClick={handleSubmit} disabled={pending}>
             {pending && <Loader2 className="animate-spin" />}
             Créer le lead
           </Button>

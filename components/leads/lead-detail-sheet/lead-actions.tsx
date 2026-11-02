@@ -43,7 +43,7 @@ export function LeadActions({
         last_followup_at: now,
         followup_count: (lead.followup_count ?? 0) + 1,
       });
-      toast.success("Relance envoyée par Léa ✉️");
+      toast.success("Relance envoyée par Léa");
     });
   }
 
@@ -55,7 +55,7 @@ export function LeadActions({
         return;
       }
       onPatch({ status: "booked" });
-      toast.success("Lead marqué comme réservé 🎉");
+      toast.success("Lead marqué comme réservé");
     });
   }
 
@@ -86,8 +86,10 @@ export function LeadActions({
     });
   }
 
+  // Quatre décisions, une rangée de pilules. La relance (confiée à Léa) est
+  // l'action principale ; « Réservé » et « Perdu » ferment le dossier.
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       {lostOpen && (
         <div className="flex items-center gap-2">
           <Input
@@ -95,43 +97,41 @@ export function LeadActions({
             onChange={(e) => setReason(e.target.value)}
             placeholder="Raison de la perte…"
             autoFocus
-            className="h-8"
+            className="h-10"
           />
-          <Button size="sm" variant="destructive" onClick={confirmLost} disabled={pending}>
+          <Button variant="destructive" onClick={confirmLost} disabled={pending}>
             Confirmer
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => setLostOpen(false)}>
+          <Button variant="ghost" onClick={() => setLostOpen(false)}>
             Annuler
           </Button>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" size="sm" onClick={relance} disabled={pending}>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Button onClick={relance} disabled={pending} className="h-11">
           <RefreshCw />
           Relancer
         </Button>
         <Button
           variant="outline"
-          size="sm"
           onClick={booked}
           disabled={pending || lead.status === "booked"}
-          className="text-success hover:text-success"
+          className="h-11 text-success hover:text-success"
         >
           <CheckCircle2 />
           Réservé
         </Button>
         <Button
           variant="outline"
-          size="sm"
           onClick={() => setLostOpen((v) => !v)}
           disabled={pending || lead.status === "lost"}
-          className="text-destructive hover:text-destructive"
+          className="h-11 text-danger hover:text-danger"
         >
           <XCircle />
           Perdu
         </Button>
-        <Button variant="ghost" size="sm" onClick={archive} disabled={pending}>
+        <Button variant="ghost" onClick={archive} disabled={pending} className="h-11">
           <Archive />
           Archiver
         </Button>

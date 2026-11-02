@@ -51,23 +51,28 @@ export function LeadDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-[600px]">
+      <SheetContent
+        side="right"
+        // Les variantes data-[side=right] du kit (w-3/4, max-w-sm) priment sur
+        // un simple w-full : on les vise explicitement.
+        className="flex flex-col gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-[600px]"
+      >
         {lead && (
           <>
-            <div className="border-b border-border p-4 pr-12">
+            <div className="border-b border-[var(--hairline)] px-5 pb-4 pt-5 sm:px-6">
               <SheetTitle className="sr-only">{fullName(lead.first_name, lead.last_name, lead.whatsapp_name)}</SheetTitle>
               <SheetDescription className="sr-only">Détail et édition du lead</SheetDescription>
               <LeadDetailHeader lead={lead} onStatusChange={handleStatus} />
             </div>
 
             <Tabs value={tab} onValueChange={(v) => setTab(v as string)} className="flex min-h-0 flex-1 flex-col gap-0">
-              <TabsList className="mx-4 mt-3 w-auto">
+              <TabsList className="mx-5 mt-4 w-auto sm:mx-6 group-data-horizontal/tabs:h-11">
                 <TabsTrigger value="infos">Infos</TabsTrigger>
                 <TabsTrigger value="conversations">Conversations</TabsTrigger>
                 <TabsTrigger value="notes">Notes</TabsTrigger>
               </TabsList>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <div className="scroll-soft min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
                 <TabsContent value="infos">
                   <TabInfos lead={lead} onPatch={(patch) => onPatch(lead.id, patch)} />
                 </TabsContent>
@@ -84,7 +89,7 @@ export function LeadDetailSheet({
               </div>
             </Tabs>
 
-            <div className="border-t border-border p-4">
+            <div className="border-t border-[var(--hairline)] bg-white/50 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-6">
               <LeadActions
                 lead={lead}
                 onPatch={(patch) => onPatch(lead.id, patch)}
