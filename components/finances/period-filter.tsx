@@ -1,14 +1,19 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { CalendarRange, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PillGroup } from "@/components/finance/pill-group";
+import { ALL_TIME_FROM, ALL_TIME_TO, shortDate } from "@/components/finance/fin-utils";
 import { cn } from "@/lib/utils";
 
-const ALL_TIME_FROM = "2020-01-01";
-const ALL_TIME_TO = "2099-12-31";
+// Le filtre de période de la page Finance. La période vit dans l'URL
+// (?from=…&to=…) : la page reste un composant serveur, un lien partagé
+// rouvre la même vue, et le bouton « précédent » du navigateur marche.
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -22,104 +27,144 @@ function monthBounds(year: number, monthIdx: number): { from: string; to: string
   };
 }
 
-type Preset = "month" | "prev_month" | "30d" | "year" | "all" | "custom";
+type Preset = "month" | "prev_month" | "30d" | "year" | "all";
 
-function detectPreset(from: string, to: string): Preset {
-  const now = new Date();
-  const cur = monthBounds(now.getFullYear(), now.getMonth());
-  if (from === cur.from && to === cur.to) return "month";
-
-  const prevMonthIdx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-  const prevMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-  const prev = monthBounds(prevMonthYear, prevMonthIdx);
-  if (from === prev.from && to === prev.to) return "prev_month";
-
-  if (from === `${now.getFullYear()}-01-01` && to === `${now.getFullYear()}-12-31`) return "year";
-  if (from === ALL_TIME_FROM && to === ALL_TIME_TO) return "all";
-
-  const today = now.toISOString().slice(0, 10);
-  const thirty = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
-  if (from === thirty && to === today) return "30d";
-
-  return "custom";
+function presetBounds(p: Preset, now: Date): { from: string; to: string } {
+  if (p === "month") return monthBounds(now.getFullYear(), now.getMonth());
+  if (p === "prev_month") {
+    const idx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    const yr = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    return monthBounds(yr, idx);
+  }
+  if (p === "30d") {
+    return {
+      from: new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10),
+      to: now.toISOString().slice(0, 10),
+    };
+  }
+  if (p === "year") return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` };
+  return { from: ALL_TIME_FROM, to: ALL_TIME_TO };
 }
 
-export function PeriodFilter({ from, to }: { from: string; to: string }) {
+const PRESETS: Array<{ value: Preset; label: string }> = [
+  { value: "month", label: "Ce mois" },
+  { value: "prev_month", label: "Mois dernier" },
+  { value: "30d", label: "30 jours" },
+  { value: "year", label: "Année" },
+  { value: "all", label: "Tout" },
+];
+
+function detectPreset(from: string, to: string): Preset | null {
+  const now = new Date();
+  for (const p of PRESETS) {
+    const b = presetBounds(p.value, now);
+    if (b.from === from && b.to === to) return p.value;
+  }
+  return null;
+}
+
+export function PeriodFilter({ from, to, className }: { from: string; to: string; className?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
   const [pending, startTransition] = useTransition();
-
   const active = detectPreset(from, to);
+
+  // Les dates personnalisées s'éditent dans un tiroir, puis s'appliquent
+  // d'un geste : un champ date natif émet un changement à chaque segment
+  // tapé, naviguer à chaque frappe rechargeait la page trois fois.
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState({ from, to });
 
   function navigate(nextFrom: string, nextTo: string) {
     const params = new URLSearchParams(search.toString());
     params.set("from", nextFrom);
     params.set("to", nextTo);
-    startTransition(() => router.push(`${pathname}?${params.toString()}`));
+    startTransition(() => router.push(`${pathname}?${params.toString()}`, { scroll: false }));
   }
 
-  function applyPreset(p: Exclude<Preset, "custom">) {
-    const now = new Date();
-    if (p === "month") {
-      const { from: f, to: t } = monthBounds(now.getFullYear(), now.getMonth());
-      navigate(f, t);
-    } else if (p === "prev_month") {
-      const idx = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-      const yr = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-      const { from: f, to: t } = monthBounds(yr, idx);
-      navigate(f, t);
-    } else if (p === "30d") {
-      const today = now.toISOString().slice(0, 10);
-      const thirty = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 10);
-      navigate(thirty, today);
-    } else if (p === "year") {
-      navigate(`${now.getFullYear()}-01-01`, `${now.getFullYear()}-12-31`);
-    } else if (p === "all") {
-      navigate(ALL_TIME_FROM, ALL_TIME_TO);
-    }
+  function applyPreset(p: Preset) {
+    const b = presetBounds(p, new Date());
+    setDraft(b);
+    setOpen(false);
+    navigate(b.from, b.to);
   }
 
-  const presets: { id: Exclude<Preset, "custom">; label: string }[] = [
-    { id: "month", label: "Ce mois" },
-    { id: "prev_month", label: "Mois dernier" },
-    { id: "30d", label: "30 j" },
-    { id: "year", label: "Année" },
-    { id: "all", label: "Tout" },
-  ];
+  const validDraft = Boolean(draft.from && draft.to && draft.from <= draft.to);
+  const customLabel = active === null ? `${shortDate(from)} → ${shortDate(to)}` : "Dates";
 
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-2",
-        pending && "opacity-60",
-      )}
-    >
-      {presets.map((p) => (
-        <Button
-          key={p.id}
-          variant={active === p.id ? "default" : "outline"}
-          size="sm"
-          onClick={() => applyPreset(p.id)}
+    <div className={cn("flex flex-col gap-2.5", className)}>
+      {/* Téléphone : une seule rangée qui défile jusqu'au bord de l'écran
+          (-mx-3 px-3, la gouttière de la coque) — la pilule coupée par le bord dit « il y a la suite »,
+          là où une rangée qui passe à la ligne cachait « Tout ». */}
+      <div className="no-scrollbar -mx-3 flex items-center gap-2 overflow-x-auto px-3 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+        <PillGroup label="Période" options={PRESETS} value={active} onChange={applyPreset} className="max-w-none shrink-0 overflow-x-visible" />
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => {
+            setDraft({ from, to });
+            setOpen((o) => !o);
+          }}
+          className={cn(
+            "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-medium tracking-[-0.01em] outline-none transition-colors duration-200 focus-visible:ring-4 focus-visible:ring-ocean/20 sm:h-9",
+            active === null || open
+              ? "border-white bg-white text-foreground shadow-[inset_0_1px_0_#fff,0_1px_2px_rgba(11,37,69,0.08),0_6px_16px_-10px_rgba(11,37,69,0.3)]"
+              : "border-white/90 bg-white/55 text-ink-2 hover:bg-white/80 hover:text-foreground",
+          )}
         >
-          {p.label}
-        </Button>
-      ))}
-      <div className="flex items-center gap-1.5">
-        <Input
-          type="date"
-          value={from}
-          onChange={(e) => navigate(e.target.value, to)}
-          className="h-8 w-auto text-xs"
-        />
-        <span className="text-xs text-muted-foreground">→</span>
-        <Input
-          type="date"
-          value={to}
-          onChange={(e) => navigate(from, e.target.value)}
-          className="h-8 w-auto text-xs"
-        />
+          <CalendarRange className={cn("size-4", active === null ? "text-ocean" : "text-ink-3")} />
+          {customLabel}
+        </button>
+        {pending && <Loader2 aria-label="Chargement" className="size-4 shrink-0 animate-spin text-ink-3" />}
       </div>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.24, ease: [0.32, 0.72, 0, 1] }}
+            className="overflow-hidden"
+          >
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!validDraft) return;
+                setOpen(false);
+                navigate(draft.from, draft.to);
+              }}
+              className="vitre-inset flex flex-col gap-3 rounded-[22px] p-3 sm:inline-flex sm:flex-row sm:items-end"
+            >
+              <label className="grid gap-1.5">
+                <span className="t-label pl-1 text-ink-3">Du</span>
+                <Input
+                  type="date"
+                  value={draft.from}
+                  max={draft.to || undefined}
+                  onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
+                  className="h-11 sm:h-9 sm:w-44"
+                />
+              </label>
+              <label className="grid gap-1.5">
+                <span className="t-label pl-1 text-ink-3">Au</span>
+                <Input
+                  type="date"
+                  value={draft.to}
+                  min={draft.from || undefined}
+                  onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
+                  className="h-11 sm:h-9 sm:w-44"
+                />
+              </label>
+              <Button type="submit" disabled={!validDraft} className="h-11 sm:h-9">
+                Afficher
+              </Button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

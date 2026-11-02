@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AmountField, Field, FormSection } from "@/components/finance/form-bits";
 import { createGiftCard, type GiftCardCreate } from "@/app/(dashboard)/bookings/actions";
 
 type Form = {
@@ -54,6 +55,7 @@ export function AddGiftCardDialog() {
   }
 
   function handleSave() {
+    if (pending) return;
     const amount = Number(form.amount);
     if (!form.buyer_first_name.trim() || !form.buyer_last_name.trim()) {
       toast.error("Prénom et nom de l'acheteur requis.");
@@ -99,108 +101,102 @@ export function AddGiftCardDialog() {
       <DialogTrigger render={<Button size="sm" variant="outline" />}>
         <Gift /> Carte cadeau
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Nouvelle carte cadeau</DialogTitle>
-          <DialogDescription>
-            La carte est marquée payée immédiatement. Tu ajouteras la date plus
-            tard quand le bénéficiaire viendra réserver.
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="pr-10">
+          <span className="mb-1 grid size-10 place-items-center rounded-full bg-[rgba(164,126,44,0.12)] text-gold">
+            <Gift className="size-[18px]" />
+          </span>
+          <DialogTitle className="t-serif font-serif text-[28px] font-normal leading-tight text-foreground">
+            Une carte cadeau
+          </DialogTitle>
+          <DialogDescription className="text-ink-2">
+            Elle est marquée payée tout de suite. La date viendra plus tard, quand le bénéficiaire réservera.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Acheteur (qui paie)
-            </p>
+        <div className="grid gap-5">
+          <AmountField
+            id="gift-amount"
+            value={form.amount}
+            onChange={(v) => set("amount", v)}
+            onSubmit={handleSave}
+            label="Montant de la carte"
+          />
+
+          <FormSection title="L'acheteur · celui qui paie">
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>Prénom *</Label>
+              <Field label="Prénom" required>
                 <Input
                   value={form.buyer_first_name}
                   onChange={(e) => set("buyer_first_name", e.target.value)}
                   placeholder="Alice"
+                  className="h-11"
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Nom *</Label>
+              </Field>
+              <Field label="Nom" required>
                 <Input
                   value={form.buyer_last_name}
                   onChange={(e) => set("buyer_last_name", e.target.value)}
                   placeholder="Dupont"
+                  className="h-11"
                 />
-              </div>
+              </Field>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>Email</Label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Email">
                 <Input
                   type="email"
                   value={form.buyer_email}
                   onChange={(e) => set("buyer_email", e.target.value)}
                   placeholder="alice@exemple.fr"
+                  className="h-11"
                 />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>Téléphone</Label>
+              </Field>
+              <Field label="Téléphone">
                 <Input
                   type="tel"
                   value={form.buyer_phone}
                   onChange={(e) => set("buyer_phone", e.target.value)}
                   placeholder="+33 6 00 00 00 00"
+                  className="h-11"
                 />
-              </div>
+              </Field>
             </div>
-          </div>
+          </FormSection>
 
-          <div className="grid gap-1.5 rounded-lg border border-dashed border-border bg-muted/30 p-3">
-            <Label className="text-xs">Bénéficiaire (si différent de l&apos;acheteur)</Label>
+          <div className="vitre-inset grid gap-1.5 rounded-[20px] p-4">
+            <Label className="t-label text-ink-2">Bénéficiaire, si ce n&apos;est pas l&apos;acheteur</Label>
             <Input
               value={form.recipient_name}
               onChange={(e) => set("recipient_name", e.target.value)}
               placeholder="Bob Dupont"
+              className="h-11 bg-white"
             />
-            <p className="text-[11px] text-muted-foreground">
-              Laisse vide si l&apos;acheteur garde la carte pour lui.
-            </p>
+            <p className="t-caption text-ink-3">Laisse vide si l&apos;acheteur garde la carte pour lui.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Montant (€) *</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => set("amount", e.target.value)}
-                placeholder="400"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Prestation pré-choisie</Label>
-              <Input
-                value={form.offer_name}
-                onChange={(e) => set("offer_name", e.target.value)}
-                placeholder="Sortie 2h, libre…"
-              />
-            </div>
-          </div>
+          <Field label="Prestation pré-choisie">
+            <Input
+              value={form.offer_name}
+              onChange={(e) => set("offer_name", e.target.value)}
+              placeholder="Sortie 2 h, libre…"
+              className="h-11"
+            />
+          </Field>
 
-          <div className="grid gap-1.5">
-            <Label>Notes</Label>
+          <Field label="Notes">
             <Textarea
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
               placeholder="Ex. anniversaire de Bob, validité 1 an…"
               rows={2}
             />
-          </div>
+          </Field>
         </div>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-          <Button onClick={handleSave} disabled={pending}>
+          <DialogClose render={<Button variant="outline" className="h-11 sm:h-10" />}>Annuler</DialogClose>
+          <Button onClick={handleSave} disabled={pending} className="h-11 sm:h-10 sm:px-5">
             {pending && <Loader2 className="animate-spin" />}
             Vendre la carte cadeau
           </Button>

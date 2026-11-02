@@ -1,12 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { CheckCircle2, FileText, Wallet } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { formatDateRelative, formatEur } from "@/lib/format";
+import { EmptyState } from "@/components/ui/empty-state";
+import { formatEur } from "@/lib/format";
 import {
   SettleBalanceDialog,
   type SettleTarget,
@@ -15,12 +13,24 @@ import {
   BookingEditDialog,
   type EditableBooking,
 } from "@/components/bookings/booking-edit-dialog";
+import { BookingRow } from "@/components/bookings/booking-row";
 
+/**
+ * Des soldes à encaisser, un bouton par ligne. Sert aux soldes EN RETARD :
+ * des sorties passées dont le solde n'a jamais été marqué payé — presque
+ * toujours de l'argent bien perçu le jour J (espèces, terminal) mais jamais
+ * saisi. Un clic pour régulariser.
+ */
 export function BalanceAgenda({
   items,
+  todayIso,
+  late = false,
   editableById = {},
 }: {
   items: SettleTarget[];
+  todayIso: string;
+  /** Sorties passées : l'état de paiement passe au rouge. */
+  late?: boolean;
   /** Données éditables par id — active le clic sur une ligne pour modifier/supprimer. */
   editableById?: Record<string, EditableBooking>;
 }) {
@@ -31,68 +41,40 @@ export function BalanceAgenda({
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 py-8 text-center text-sm text-muted-foreground">
-        <CheckCircle2 className="size-6 text-success/70" />
-        Aucun solde à encaisser. Tout est à jour. ⚓
-      </div>
+      <EmptyState icon={<CheckCircle2 />} title="Tout est à jour">
+        Aucun solde à encaisser.
+      </EmptyState>
     );
   }
 
   return (
     <>
-      <ul className="divide-y divide-border/60">
+      <ul className="divide-y divide-[var(--hairline)]">
         {items.map((b) => {
           const editable = editableById[b.id];
           return (
-          <li
-            key={b.id}
-            onClick={editable ? () => { setEditing(editable); setEditOpen(true); } : undefined}
-            title={editable ? "Modifier cette réservation" : undefined}
-            className={cn(
-              "flex items-center gap-3 py-3",
-              editable && "-mx-2 cursor-pointer rounded-lg px-2 transition-colors hover:bg-muted/50",
-            )}
-          >
-            <div className="flex size-11 shrink-0 flex-col items-center justify-center rounded-lg bg-secondary text-center">
-              <span className="text-[10px] font-medium capitalize leading-none text-muted-foreground">
-                {formatDateRelative(b.date).split(" ")[0]}
-              </span>
-              <span className="text-sm font-semibold leading-tight text-foreground">
-                {new Date(b.date).getDate()}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">
-                {b.offerName ?? "Sortie"}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {b.customerName} · solde{" "}
-                <span className="font-medium text-foreground">{formatEur(b.balanceDue)}</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Link
-                href={`/contrats/${b.id}`}
-                target="_blank"
-                title="Voir le contrat de location"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <FileText className="size-4" />
-                <span className="sr-only">Contrat</span>
-              </Link>
-              <Button
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelected(b);
-                  setOpen(true);
-                }}
-              >
-                <Wallet /> Encaisser
-              </Button>
-            </div>
-          </li>
+            <BookingRow
+              key={b.id}
+              id={b.id}
+              date={b.date}
+              todayIso={todayIso}
+              title={b.offerName ?? "Sortie"}
+              subtitle={b.customerName}
+              amount={null}
+              pay={{ label: `Solde ${formatEur(b.balanceDue)}`, tone: late ? "late" : "balance" }}
+              onOpen={
+                editable
+                  ? () => {
+                      setEditing(editable);
+                      setEditOpen(true);
+                    }
+                  : undefined
+              }
+              onSettle={() => {
+                setSelected(b);
+                setOpen(true);
+              }}
+            />
           );
         })}
       </ul>

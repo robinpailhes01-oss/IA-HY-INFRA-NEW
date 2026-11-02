@@ -1,5 +1,7 @@
+import { CircleAlert, HandCoins } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/shell/page-header";
 import {
   Card,
   CardContent,
@@ -7,8 +9,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { KpiCard } from "@/components/dashboard/kpi-card";
+import { Num } from "@/components/ui/num";
 import { BalanceAgenda } from "@/components/bookings/balance-agenda";
+import { BookingsBrief } from "@/components/bookings/bookings-brief";
 import { UpcomingBookingsList, type UpcomingItem } from "@/components/bookings/upcoming-bookings-list";
 import type { SettleTarget } from "@/components/bookings/settle-balance-dialog";
 import type { EditableBooking } from "@/components/bookings/booking-edit-dialog";
@@ -18,7 +21,18 @@ import {
 } from "@/components/bookings/bookings-table";
 import { AddBookingDialog } from "@/components/bookings/add-booking-dialog";
 import { AddGiftCardDialog } from "@/components/bookings/add-gift-card-dialog";
+import { WeekBars } from "@/components/finance/week-bars";
+import { isoAddDays, shortDate } from "@/components/finance/fin-utils";
 import { parsePayments } from "@/lib/payments";
+import { formatEur } from "@/lib/format";
+
+// RÉSERVATIONS — le carnet des sorties et l'argent qui va avec.
+//
+//   1. le point de Léa : le planning, les acomptes à réclamer, les retards ;
+//   2. les sorties à venir (filtrables : solde à encaisser, acompte dû) et,
+//      à côté, l'argent qui va rentrer semaine par semaine ;
+//   3. les soldes passés jamais saisis, s'il y en a ;
+//   4. le registre complet (à traiter / à venir / historique).
 
 const CONFIRMED = new Set(["confirmed", "completed"]);
 
@@ -86,30 +100,12 @@ export default async function BookingsPage() {
     .filter((b) => b.date === null || b.date >= todayIso)
     .reduce((sum, b) => sum + resteDe(b), 0);
   // Les sorties passées non soldées ne disparaissent pas pour autant : elles
-  // sortent du KPI mais restent listées plus bas, à régulariser.
-  const resteEnRetard = nonAnnulees
-    .filter((b) => b.date !== null && b.date < todayIso)
-    .reduce((sum, b) => sum + resteDe(b), 0);
+  // sortent de ce total mais restent listées plus bas (« Soldes en retard »,
+  // et l'onglet « À traiter » du registre).
 
-  const toCollect: SettleTarget[] = bookings
-    .filter(
-      (b) =>
-        b.status !== "cancelled" &&
-        b.date !== null &&
-        b.date >= todayIso &&
-        (b.balance_due ?? 0) > 0,
-    )
-    .map((b) => ({
-      id: b.id,
-      customerName: fullName(
-        b.customers?.first_name ?? null,
-        b.customers?.last_name ?? null,
-      ),
-      offerName: b.offer_name,
-      date: b.date!,
-      balanceDue: b.balance_due ?? 0,
-      sourceChannel: b.source_channel,
-    }));
+  // (L'ancienne liste « Soldes à encaisser » — sorties à venir avec un solde
+  // dû — est désormais le filtre « Solde à encaisser » de la liste À venir :
+  // mêmes lignes, même bouton, sans les afficher deux fois.)
 
   // Sorties déjà passées dont le solde n'a jamais été marqué comme encaissé.
   // Presque toujours de l'argent bien perçu le jour J (espèces ou terminal)
@@ -152,6 +148,7 @@ export default async function BookingsPage() {
       balanceDue: b.balance_due,
       depositPaid: b.deposit_paid,
       sourceChannel: b.source_channel,
+      isGiftCard: Boolean(b.is_gift_card),
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -222,84 +219,157 @@ export default async function BookingsPage() {
     ]),
   );
 
-  return (
-    <div className="space-y-6">
-      <header className="enter-up flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Réservations
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {tableItems.length} sortie{tableItems.length > 1 ? "s" : ""} enregistrée
-            {tableItems.length > 1 ? "s" : ""} · clique sur une ligne pour modifier
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <AddGiftCardDialog />
-          <AddBookingDialog />
-        </div>
-      </header>
+  // ── Ce qui va rentrer, par tranches de 7 jours à partir d'aujourd'hui ─
+  // Des fenêtres glissantes plutôt que des semaines calendaires : un
+  // dimanche, « cette semaine » n'aurait compté que la journée en cours.
+  // Même définition que le reste à encaisser (acompte non payé + solde dû
+  // des sorties à venir non annulées) : la somme des capsules, plus ce qui
+  // tombe au-delà de six semaines et les cartes cadeaux sans date, redonne
+  // exactement le total.
+  const futureDated = nonAnnulees.filter((b) => b.date !== null && b.date >= todayIso);
+  const weeks = Array.from({ length: 6 }, (_, w) => {
+    const from = isoAddDays(todayIso, w * 7);
+    const to = isoAddDays(todayIso, w * 7 + 7);
+    const inWeek = futureDated.filter((b) => b.date! >= from && b.date! < to);
+    return {
+      label: w === 0 ? "7 jours" : shortDate(from),
+      amount: inWeek.reduce((sum, b) => sum + resteDe(b), 0),
+      count: inWeek.length,
+    };
+  });
+  const thisWeekCount = weeks[0].count;
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <KpiCard label="Confirmées" value={confirmees} accent="primary" index={0} />
-        <KpiCard label="À venir" value={aVenir} accent="info" index={1} />
-        <KpiCard
-          label="Reste à encaisser"
-          value={resteAEncaisser}
-          format="eur"
-          accent="success"
-          hint={
-            resteEnRetard > 0
-              ? `sorties à venir · ${Math.round(resteEnRetard)} € en retard à régulariser`
-              : "sorties à venir"
-          }
-          index={2}
-        />
+  const upcomingOpen = nonAnnulees.filter((b) => b.date === null || b.date >= todayIso);
+  const balancesToCollect = upcomingOpen.reduce((sum, b) => sum + (b.balance_due ?? 0), 0);
+  const unpaidDeposits = upcomingOpen.filter((b) => !b.deposit_paid && (b.deposit_amount ?? 0) > 0);
+  const depositsDue = {
+    count: unpaidDeposits.length,
+    amount: unpaidDeposits.reduce((sum, b) => sum + (b.deposit_amount ?? 0), 0),
+  };
+  const next = upcomingAll[0] ?? null;
+  const nextRow = next ? bookings.find((b) => b.id === next.id) : null;
+
+  return (
+    <div className="space-y-4 lg:space-y-5">
+      <PageHeader
+        eyebrow="Finance · Réservations"
+        title={
+          <>
+            Les <em>réservations</em>
+          </>
+        }
+        description={`${confirmees} sortie${confirmees > 1 ? "s" : ""} confirmée${confirmees > 1 ? "s" : ""} ou terminée${confirmees > 1 ? "s" : ""} depuis le début. Touche une ligne pour la modifier.`}
+        actions={
+          // Même gabarit que la Vue d'ensemble : 44 px au pouce, l'action
+          // principale (marine) à droite.
+          <div className="grid w-full grid-cols-2 gap-2 [&>button]:h-11 [&>button]:px-4 sm:flex sm:w-auto sm:[&>button]:h-10">
+            <AddGiftCardDialog />
+            <AddBookingDialog />
+          </div>
+        }
+      />
+
+      <BookingsBrief
+        upcomingCount={aVenir}
+        thisWeekCount={thisWeekCount}
+        next={
+          next
+            ? {
+                date: next.date,
+                startTime: nextRow?.start_time ?? null,
+                offerName: next.offerName,
+                customerName: next.customerName,
+              }
+            : null
+        }
+        depositsDue={depositsDue}
+        // La tuile « En retard » compte les lignes de la carte « Soldes en
+        // retard » : son montant est donc la somme de CES soldes — y ajouter
+        // les acomptes passés jamais payés affichait un total que la carte
+        // ne permet pas de retrouver.
+        late={{ count: enRetard.length, amount: enRetard.reduce((sum, b) => sum + b.balanceDue, 0) }}
+      />
+
+      {/* Deux colonnes indépendantes sur bureau ; sur téléphone
+          (display: contents + order) : l'argent à venir d'abord, puis les
+          soldes en retard — courts, et ce sont eux qui demandent un geste —,
+          la longue liste des sorties à venir en dernier. */}
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-12 lg:items-start lg:gap-5">
+        <div className="contents lg:col-span-7 lg:flex lg:flex-col lg:gap-5">
+          <Card className="rise order-3 lg:order-none">
+            <CardHeader>
+              <CardTitle>À venir</CardTitle>
+              <CardDescription>Toutes les sorties confirmées à venir, payées ou non</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <UpcomingBookingsList items={upcomingAll} todayIso={todayIso} editableById={editableById} />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="contents lg:sticky lg:top-5 lg:col-span-5 lg:flex lg:flex-col lg:gap-5">
+          <Card className="rise order-1 lg:order-none">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="grid size-8 place-items-center rounded-full bg-[rgba(34,167,191,0.12)] text-aqua">
+                  <HandCoins className="size-4" />
+                </span>
+                Reste à encaisser
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Num className="n-hero n-gradient block w-fit pb-1">{formatEur(resteAEncaisser)}</Num>
+              <p className="t-caption mt-1 text-ink-3">Sur les sorties à venir · par tranches de 7 jours</p>
+              <WeekBars weeks={weeks} className="mt-6" />
+              <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-[var(--hairline)] pt-4">
+                <div className="min-w-0">
+                  <dt className="t-label text-ink-3">Soldes le jour J</dt>
+                  <dd className="mt-1">
+                    <Num className="n-inline text-[16px] text-foreground">{formatEur(balancesToCollect)}</Num>
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="t-label text-ink-3">Acomptes à réclamer</dt>
+                  <dd className="mt-1">
+                    <Num className={depositsDue.amount > 0 ? "n-inline text-[16px] text-warning" : "n-inline text-[16px] text-foreground"}>
+                      {formatEur(depositsDue.amount)}
+                    </Num>
+                  </dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+
+          {/* Les soldes passés jamais marqués payés : ils sortent du « reste
+              à encaisser » mais restent ici, à régulariser en un clic. */}
+          {enRetard.length > 0 && (
+            <Card className="rise order-2 lg:order-none">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="grid size-8 place-items-center rounded-full bg-[rgba(224,77,85,0.1)] text-danger">
+                    <CircleAlert className="size-4" />
+                  </span>
+                  Soldes en retard
+                </CardTitle>
+                <CardDescription>
+                  Des sorties passées dont le solde n&apos;a jamais été marqué payé. Si l&apos;argent a bien été
+                  perçu le jour J, encaisse-le ici pour que les chiffres redeviennent justes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BalanceAgenda items={enRetard} todayIso={todayIso} late editableById={editableById} />
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
-      <Card className="enter-up" style={{ animationDelay: "260ms" }}>
-        <CardHeader>
-          <CardTitle>Soldes à encaisser</CardTitle>
-          <CardDescription>
-            Sorties à venir avec un solde à percevoir le jour J
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BalanceAgenda items={toCollect} editableById={editableById} />
-        </CardContent>
-      </Card>
-
-      {enRetard.length > 0 && (
-        <Card className="enter-up" style={{ animationDelay: "280ms" }}>
-          <CardHeader>
-            <CardTitle>Soldes en retard</CardTitle>
-            <CardDescription>
-              Sorties déjà passées dont le solde n&apos;a jamais été marqué comme encaissé —
-              si l&apos;argent a bien été perçu le jour J, encaisse-les ici pour que les
-              chiffres redeviennent justes
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <BalanceAgenda items={enRetard} editableById={editableById} />
-          </CardContent>
-        </Card>
-      )}
-
-      <Card className="enter-up" style={{ animationDelay: "300ms" }}>
-        <CardHeader>
-          <CardTitle>Réservations à venir</CardTitle>
-          <CardDescription>
-            Toutes les sorties confirmées à venir, payées ou non
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <UpcomingBookingsList items={upcomingAll} editableById={editableById} />
-        </CardContent>
-      </Card>
-
-      <Card className="enter-up" style={{ animationDelay: "340ms" }}>
+      <Card className="rise">
         <CardHeader>
           <CardTitle>Toutes les réservations</CardTitle>
+          <CardDescription>
+            {tableItems.length} enregistrée{tableItems.length > 1 ? "s" : ""} · annulées comprises, barrées
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <BookingsTable bookings={tableItems} todayIso={todayIso} />

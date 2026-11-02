@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, X } from "lucide-react";
+import { Check, Loader2, Plus, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Num } from "@/components/ui/num";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,8 @@ export type SettleTarget = {
 };
 
 type Line = { method: string; amount: string };
+
+const SOURCE_LABEL: Record<string, string> = Object.fromEntries(SOURCE_OPTIONS);
 
 export function SettleBalanceDialog({
   booking,
@@ -76,7 +79,7 @@ export function SettleBalanceDialog({
   }
 
   function handleSave() {
-    if (!booking) return;
+    if (!booking || pending) return;
     const payments = lines
       .map((l) => ({ method: l.method, amount: Number(l.amount) || 0 }))
       .filter((p) => p.amount > 0 && p.method);
@@ -99,106 +102,124 @@ export function SettleBalanceDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Encaisser le solde</DialogTitle>
-          <DialogDescription>
+        <DialogHeader className="pr-10">
+          <span className="mb-1 grid size-10 place-items-center rounded-full bg-[rgba(15,159,110,0.1)] text-success">
+            <Wallet className="size-[18px]" />
+          </span>
+          <DialogTitle className="t-serif font-serif text-[28px] font-normal leading-tight text-foreground">
+            Encaisser le solde
+          </DialogTitle>
+          <DialogDescription className="text-ink-2">
             {booking
               ? `${booking.offerName ?? "Sortie"} · ${booking.customerName} · ${formatDateLong(booking.date)}`
               : ""}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Solde dû</span>
-          <span className="font-semibold text-foreground">
-            {formatEur(booking?.balanceDue ?? 0)}
+        {/* Le solde dû, en grand : c'est le chiffre qu'on vient vérifier. */}
+        <div className="vitre-inset flex items-end justify-between gap-3 rounded-[22px] px-5 py-4">
+          <div>
+            <p className="t-label text-ink-3">Solde dû</p>
+            <Num className="n-kpi mt-1.5 block text-foreground">{formatEur(booking?.balanceDue ?? 0)}</Num>
+          </div>
+          <span
+            className={cn(
+              "pastille mb-1",
+              remaining === 0
+                ? "bg-[rgba(15,159,110,0.1)] text-success"
+                : remaining < 0
+                  ? "bg-[rgba(224,77,85,0.1)] text-danger"
+                  : "bg-white text-ink-2",
+            )}
+          >
+            {remaining > 0 ? (
+              <>
+                Reste <Num>{formatEur(remaining)}</Num>
+              </>
+            ) : remaining < 0 ? (
+              <>
+                Trop-perçu <Num>{formatEur(-remaining)}</Num>
+              </>
+            ) : (
+              <>
+                <Check className="size-3" /> Tout est couvert
+              </>
+            )}
           </span>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-2.5">
+          <p className="t-label text-ink-2">Moyens de paiement</p>
           {lines.map((line, i) => (
-            <div key={i} className="flex items-end gap-2">
-              <div className="grid flex-1 gap-1.5">
-                {i === 0 && <Label>Moyen de paiement</Label>}
-                <Select
-                  value={line.method}
-                  onValueChange={(v) => update(i, { method: (v as string) ?? "" })}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue>
-                      {(val) => (val ? PAYMENT_LABEL[val as string] : "Choisir")}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid w-28 gap-1.5">
-                {i === 0 && <Label>Montant</Label>}
+            <div key={i} className="flex items-center gap-2">
+              <Select
+                value={line.method}
+                onValueChange={(v) => update(i, { method: (v as string) ?? "" })}
+              >
+                <SelectTrigger className="h-11 min-w-0 flex-1" aria-label={`Moyen de paiement ${i + 1}`}>
+                  <SelectValue>
+                    {(val) => (val ? PAYMENT_LABEL[val as string] : "Choisir")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="relative w-32 shrink-0">
                 <Input
                   type="number"
+                  inputMode="decimal"
                   min={0}
                   value={line.amount}
                   onChange={(e) => update(i, { amount: e.target.value })}
                   placeholder="0"
+                  aria-label={`Montant ${i + 1}`}
+                  className="n-inline h-11 pr-8 text-right"
                 />
+                <span className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-[13px] text-ink-3">€</span>
               </div>
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
                 type="button"
                 onClick={() => removeLine(i)}
                 disabled={lines.length <= 1}
                 aria-label="Retirer ce moyen"
+                className="size-11 shrink-0"
               >
                 <X />
               </Button>
             </div>
           ))}
-          {lines.length < 4 && (
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={addLine}
-              className="w-fit"
-            >
-              <Plus /> Ajouter un moyen
-            </Button>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Total saisi · {formatEur(total)}</span>
-          <span
-            className={cn(
-              "font-medium",
-              remaining === 0
-                ? "text-success"
-                : remaining < 0
-                  ? "text-danger"
-                  : "text-muted-foreground",
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {lines.length < 4 ? (
+              <Button variant="secondary" type="button" onClick={addLine} className="h-10 w-fit">
+                <Plus /> Ajouter un moyen
+              </Button>
+            ) : (
+              <span />
             )}
-          >
-            {remaining > 0
-              ? `Reste ${formatEur(remaining)}`
-              : remaining < 0
-                ? `Trop-perçu ${formatEur(-remaining)}`
-                : "Soldé ✓"}
-          </span>
+            <span className="text-[12.5px] text-ink-3">
+              Total saisi · <Num className="n-inline text-ink-2">{formatEur(total)}</Num>
+            </span>
+          </div>
         </div>
 
         {/* Canal d'acquisition — demandé au client le jour J */}
-        <div className="grid gap-1.5 border-t border-border pt-3">
-          <Label>Comment nous avez-vous connu ? <span className="text-muted-foreground">(optionnel)</span></Label>
+        <div className="grid gap-1.5 border-t border-[var(--hairline)] pt-4">
+          <Label className="t-label text-ink-2">
+            Comment nous avez-vous connu ? <span className="font-normal text-ink-3">(optionnel)</span>
+          </Label>
           <Select value={channel} onValueChange={(v) => setChannel(v ?? "")}>
-            <SelectTrigger>
-              <SelectValue placeholder="Demander au client…" />
+            <SelectTrigger className="h-11 w-full">
+              {/* Le libellé, pas la clé brute (« tiktok_organic ») de la base. */}
+              <SelectValue>
+                {(val) => (val ? SOURCE_LABEL[val as string] ?? (val as string) : "Demander au client…")}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {SOURCE_OPTIONS.map(([val, label]) => (
@@ -211,8 +232,8 @@ export function SettleBalanceDialog({
         </div>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-          <Button onClick={handleSave} disabled={pending}>
+          <DialogClose render={<Button variant="outline" className="h-11 sm:h-10" />}>Annuler</DialogClose>
+          <Button onClick={handleSave} disabled={pending} className="h-11 sm:h-10 sm:px-5">
             {pending && <Loader2 className="animate-spin" />}
             Encaisser
           </Button>

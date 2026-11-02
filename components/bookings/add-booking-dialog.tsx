@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { CalendarPlus, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Num } from "@/components/ui/num";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { createBooking, type BookingCreate } from "@/app/(dashboard)/bookings/actions";
 import { SOURCE_OPTIONS } from "@/lib/status";
 import { formatEur } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { ChoicePills, EuroInput, Field, FormSection, ToggleRow } from "@/components/finance/form-bits";
 
 const OFFER_OPTIONS: { value: string; label: string; type: string }[] = [
   { value: "Sortie privative 3h", label: "Sortie privative 3h", type: "sortie_privative" },
@@ -48,7 +51,6 @@ const STATUS_OPTIONS: [string, string][] = [
 ];
 
 const SOURCE_LABEL: Record<string, string> = Object.fromEntries(SOURCE_OPTIONS);
-const STATUS_LABEL: Record<string, string> = Object.fromEntries(STATUS_OPTIONS);
 
 type Form = {
   first_name: string;
@@ -121,6 +123,7 @@ export function AddBookingDialog() {
   const bookingType = offerOpt?.type ?? "sortie_privative";
 
   function handleSave() {
+    if (pending) return;
     if (!form.first_name.trim() || !form.last_name.trim()) {
       toast.error("Le prénom et le nom sont requis.");
       return;
@@ -177,230 +180,198 @@ export function AddBookingDialog() {
       <DialogTrigger render={<Button size="sm" />}>
         <Plus /> Nouvelle réservation
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Nouvelle réservation</DialogTitle>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader className="pr-10">
+          <span className="mb-1 grid size-10 place-items-center rounded-full bg-[rgba(34,167,191,0.12)] text-aqua">
+            <CalendarPlus className="size-[18px]" />
+          </span>
+          <DialogTitle className="t-serif font-serif text-[28px] font-normal leading-tight text-foreground">
+            Nouvelle réservation
+          </DialogTitle>
+          <DialogDescription className="text-ink-2">
+            Le client, la sortie, le paiement — dans cet ordre.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          {/* Client */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Prénom *</Label>
-              <Input
-                value={form.first_name}
-                onChange={(e) => set("first_name", e.target.value)}
-                placeholder="Alice"
-              />
+        <div className="grid gap-6">
+          <FormSection title="Le client">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Prénom" required>
+                <Input
+                  value={form.first_name}
+                  onChange={(e) => set("first_name", e.target.value)}
+                  placeholder="Alice"
+                  className="h-11"
+                />
+              </Field>
+              <Field label="Nom" required>
+                <Input
+                  value={form.last_name}
+                  onChange={(e) => set("last_name", e.target.value)}
+                  placeholder="Dupont"
+                  className="h-11"
+                />
+              </Field>
             </div>
-            <div className="grid gap-1.5">
-              <Label>Nom *</Label>
-              <Input
-                value={form.last_name}
-                onChange={(e) => set("last_name", e.target.value)}
-                placeholder="Dupont"
-              />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                  placeholder="alice@exemple.fr"
+                  className="h-11"
+                />
+              </Field>
+              <Field label="Téléphone">
+                <Input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="+33 6 00 00 00 00"
+                  className="h-11"
+                />
+              </Field>
             </div>
-          </div>
+          </FormSection>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-                placeholder="alice@exemple.fr"
+          <FormSection title="La sortie">
+            <div className="grid gap-2">
+              <span className="t-label text-ink-2">Offre</span>
+              <ChoicePills
+                label="Offre"
+                options={OFFER_OPTIONS}
+                value={form.offer_key}
+                onChange={(v) => handleOfferChange(v)}
               />
             </div>
-            <div className="grid gap-1.5">
-              <Label>Téléphone</Label>
-              <Input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="+33 6 00 00 00 00"
-              />
+            {form.offer_key === "__autre__" && (
+              <Field label="Nom de l'offre">
+                <Input
+                  value={form.offer_custom}
+                  onChange={(e) => set("offer_custom", e.target.value)}
+                  placeholder="Ex. Sortie apéro 2h"
+                  className="h-11"
+                />
+              </Field>
+            )}
+            {/* Téléphone : date + personnes, puis début + fin. Bureau : une
+                seule rangée, la date d'abord. */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-[1.4fr_1fr_1fr_0.9fr]">
+              <Field label="Date" required>
+                <Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className="h-11" />
+              </Field>
+              <Field label="Personnes" className="sm:order-last">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={form.party_size}
+                  onChange={(e) => set("party_size", e.target.value)}
+                  placeholder="4"
+                  className="h-11"
+                />
+              </Field>
+              <Field label="Début">
+                <Input
+                  type="time"
+                  value={form.start_time}
+                  onChange={(e) => set("start_time", e.target.value)}
+                  className="h-11"
+                />
+              </Field>
+              <Field label="Fin">
+                <Input
+                  type="time"
+                  value={form.end_time}
+                  onChange={(e) => set("end_time", e.target.value)}
+                  className="h-11"
+                />
+              </Field>
             </div>
-          </div>
-
-          {/* Sortie */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Date *</Label>
-              <Input
-                type="date"
-                value={form.date}
-                onChange={(e) => set("date", e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Offre</Label>
-              <Select value={form.offer_key} onValueChange={handleOfferChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue>
-                    {(val) => {
-                      const opt = OFFER_OPTIONS.find((o) => o.value === (val as string));
-                      return opt?.label ?? (val as string) ?? "Choisir…";
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {OFFER_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {form.offer_key === "__autre__" && (
-            <div className="grid gap-1.5">
-              <Label>Nom de l&apos;offre</Label>
-              <Input
-                value={form.offer_custom}
-                onChange={(e) => set("offer_custom", e.target.value)}
-                placeholder="Ex. Sortie apéro 2h"
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Heure de début</Label>
-              <Input
-                type="time"
-                value={form.start_time}
-                onChange={(e) => set("start_time", e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Heure de fin</Label>
-              <Input
-                type="time"
-                value={form.end_time}
-                onChange={(e) => set("end_time", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Nb de personnes</Label>
-              <Input
-                type="number"
-                min={1}
-                value={form.party_size}
-                onChange={(e) => set("party_size", e.target.value)}
-                placeholder="4"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Statut</Label>
-              <Select
+            <div className="grid gap-2">
+              <span className="t-label text-ink-2">Statut</span>
+              <ChoicePills
+                label="Statut"
+                options={STATUS_OPTIONS.map(([value, label]) => ({ value, label }))}
                 value={form.status}
-                onValueChange={(v) => set("status", (v as string) ?? "confirmed")}
+                onChange={(v) => set("status", v)}
+              />
+            </div>
+          </FormSection>
+
+          <FormSection title="Le paiement">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Montant total" required>
+                <EuroInput
+                  value={form.total_amount}
+                  onChange={(v) => set("total_amount", v)}
+                  placeholder="550"
+                />
+              </Field>
+              <Field label="Acompte">
+                <EuroInput
+                  value={form.deposit_amount}
+                  onChange={(v) => set("deposit_amount", v)}
+                  placeholder="200"
+                />
+              </Field>
+            </div>
+            <ToggleRow
+              checked={form.deposit_paid}
+              onChange={(v) => set("deposit_paid", v)}
+              label="Acompte encaissé"
+              aside={
+                totalNum > 0 ? (
+                  <span className="text-[12.5px] text-ink-3">
+                    Solde restant
+                    <Num
+                      className={cn(
+                        "n-inline block text-[15px]",
+                        balanceDue > 0 ? "text-foreground" : "text-success",
+                      )}
+                    >
+                      {formatEur(balanceDue)}
+                    </Num>
+                  </span>
+                ) : undefined
+              }
+            />
+            <Field label="Canal d'acquisition" required>
+              <Select
+                value={form.source_channel}
+                onValueChange={(v) => set("source_channel", (v as string) ?? "")}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="h-11 w-full">
                   <SelectValue>
-                    {(val) => STATUS_LABEL[val as string] ?? (val as string) ?? "Sélectionner…"}
+                    {(val) =>
+                      val ? SOURCE_LABEL[val as string] ?? (val as string) : "Comment t'a-t-il trouvé ?"
+                    }
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUS_OPTIONS.map(([value, label]) => (
+                  {SOURCE_OPTIONS.map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          {/* Finances */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-1.5">
-              <Label>Montant total (€) *</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.total_amount}
-                onChange={(e) => set("total_amount", e.target.value)}
-                placeholder="550"
+            </Field>
+            <Field label="Notes">
+              <Textarea
+                value={form.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Ex. anniversaire, demande spéciale…"
+                rows={2}
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>Acompte (€)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.deposit_amount}
-                onChange={(e) => set("deposit_amount", e.target.value)}
-                placeholder="200"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="deposit_paid"
-              type="checkbox"
-              checked={form.deposit_paid}
-              onChange={(e) => set("deposit_paid", e.target.checked)}
-              className="size-4 accent-primary"
-            />
-            <label htmlFor="deposit_paid" className="text-sm cursor-pointer select-none">
-              Acompte encaissé
-            </label>
-            {totalNum > 0 && (
-              <span className="ml-auto text-sm text-muted-foreground">
-                Solde restant :{" "}
-                <strong className={balanceDue > 0 ? "text-foreground" : "text-success"}>
-                  {formatEur(balanceDue)}
-                </strong>
-              </span>
-            )}
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label>Canal d&apos;acquisition *</Label>
-            <Select
-              value={form.source_channel}
-              onValueChange={(v) => set("source_channel", (v as string) ?? "")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  {(val) =>
-                    val ? SOURCE_LABEL[val as string] ?? (val as string) : "Sélectionner…"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {SOURCE_OPTIONS.map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label>Notes (optionnel)</Label>
-            <Textarea
-              value={form.notes}
-              onChange={(e) => set("notes", e.target.value)}
-              placeholder="Ex. anniversaire, demande spéciale…"
-              rows={2}
-            />
-          </div>
+            </Field>
+          </FormSection>
         </div>
 
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
-          <Button onClick={handleSave} disabled={pending}>
+          <DialogClose render={<Button variant="outline" className="h-11 sm:h-10" />}>Annuler</DialogClose>
+          <Button onClick={handleSave} disabled={pending} className="h-11 sm:h-10 sm:px-5">
             {pending && <Loader2 className="animate-spin" />}
             Créer la réservation
           </Button>

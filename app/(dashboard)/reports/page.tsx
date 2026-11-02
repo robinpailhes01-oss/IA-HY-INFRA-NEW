@@ -1,7 +1,17 @@
 
+import { CalendarCheck, CalendarDays, ShoppingBag, TrendingUp } from "lucide-react";
+
 import { createClient } from "@/lib/supabase/server";
+import { PageHeader } from "@/components/shell/page-header";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { ReportsBrief } from "@/components/reports/reports-brief";
 import { ReportsView, type ChannelStat, type TimeBucket } from "@/components/reports/reports-view";
+import { channelMeta } from "@/lib/leads";
+
+// RAPPORTS — la VALEUR DES SORTIES réservées (montant total, à la date de la
+// sortie, annulées exclues), semaine après semaine, et les canaux qui
+// amènent les clients. Ce n'est pas l'encaissé : l'argent réellement perçu
+// est sur la page Finance (table revenues).
 
 type BookingRow = {
   date: string | null;
@@ -131,26 +141,103 @@ export default async function ReportsPage() {
   const countMonth = months[months.length - 1].count;
   const avgBasket = countMonth > 0 ? Math.round(caMonth / countMonth) : 0;
 
-  return (
-    <div className="space-y-6">
-      <header className="enter-up space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Rapports</h1>
-        <p className="text-sm text-muted-foreground">
-          Chiffre d&apos;affaires et réservations par canal · vue d&apos;ensemble
-        </p>
-      </header>
+  // ── La lecture de Léa ─────────────────────────────────────────────
+  // « Inconnu » regroupe les réservations sans canal ET celles marquées « Je
+  // ne sais pas » : ni l'un ni l'autre ne dit d'où vient le client.
+  const yearStats = toStats(chanYear);
+  const unknownCount = yearStats.filter((c) => c.channel === "unknown").reduce((n, c) => n + c.count, 0);
+  const known = yearStats.filter((c) => c.channel !== "unknown");
+  const knownTotal = known.reduce((n, c) => n + c.count, 0);
+  const top = known[0];
+  const topChannel =
+    top && knownTotal > 0
+      ? { label: channelMeta(top.channel).label, count: top.count, share: Math.round((top.count / knownTotal) * 100) }
+      : null;
+  const runnersUp = known.slice(1, 3).map((c) => channelMeta(c.channel).label);
+  const best = months.reduce<(typeof months)[number] | null>((b, m) => (!b || m.revenue > b.revenue ? m : b), null);
+  const bestMonth = best
+    ? {
+        short: new Date(`${best.key}-15T12:00:00Z`).toLocaleDateString("fr-FR", { month: "long", timeZone: "UTC" }),
+        revenue: best.revenue,
+      }
+    : null;
+  // L'année glissante : les mêmes douze mois que le graphique « Par mois »
+  // (site web compris — il n'est écarté que du classement des canaux).
+  const year = months.reduce((acc, m) => ({ revenue: acc.revenue + m.revenue, count: acc.count + m.count }), {
+    revenue: 0,
+    count: 0,
+  });
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="CA cette semaine" value={caWeek} format="eur" accent="gold" index={0} />
-        <KpiCard label="CA ce mois" value={caMonth} format="eur" accent="primary" index={1} />
-        <KpiCard label="Réservations ce mois" value={countMonth} format="int" accent="info" index={2} />
-        <KpiCard label="Panier moyen" value={avgBasket} format="eur" accent="success" hint="ce mois-ci" index={3} />
+  return (
+    <div className="space-y-4 lg:space-y-5">
+      <PageHeader
+        eyebrow="Finance · Rapports"
+        title={
+          <>
+            Les <em>rapports</em>
+          </>
+        }
+        description="La valeur des sorties réservées, à leur date, et les canaux qui t'amènent des clients. L'argent réellement encaissé est sur la Vue d'ensemble Finance."
+      />
+
+      <ReportsBrief
+        topChannel={topChannel}
+        runnersUp={runnersUp}
+        bestMonth={bestMonth}
+        year={year}
+        knownCount={knownTotal}
+        unknownCount={unknownCount}
+        className="rise"
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-5">
+        <KpiCard
+          label="CA cette semaine"
+          value={caWeek}
+          format="eur"
+          accent="ocean"
+          icon={<CalendarDays />}
+          hint="sorties de la semaine"
+          trend={weeks.map((w) => w.revenue)}
+          index={0}
+        />
+        <KpiCard
+          label="CA ce mois"
+          value={caMonth}
+          format="eur"
+          accent="navy"
+          icon={<TrendingUp />}
+          hint="sorties du mois"
+          trend={months.map((m) => m.revenue)}
+          primary
+          index={1}
+        />
+        <KpiCard
+          label="Réservations ce mois"
+          value={countMonth}
+          format="int"
+          accent="aqua"
+          icon={<CalendarCheck />}
+          hint="annulées exclues"
+          trend={months.map((m) => m.count)}
+          index={2}
+        />
+        <KpiCard
+          label="Panier moyen"
+          value={avgBasket}
+          format="eur"
+          accent="sky"
+          icon={<ShoppingBag />}
+          hint="ce mois-ci"
+          trend={months.filter((m) => m.count > 0).map((m) => Math.round(m.revenue / m.count))}
+          index={3}
+        />
       </div>
 
       <ReportsView
         weekly={weekly}
         monthly={monthly}
-        channels={{ month: toStats(chanMonth), year: toStats(chanYear), all: toStats(chanAll) }}
+        channels={{ month: toStats(chanMonth), year: yearStats, all: toStats(chanAll) }}
       />
     </div>
   );
