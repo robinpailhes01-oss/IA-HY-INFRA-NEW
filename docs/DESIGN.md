@@ -219,3 +219,7 @@ relativement à aujourd'hui).
 du kit : une capture à **390 px** et une à **1440 px** de chaque espace.
 `npm run build` avant chaque push — `tsc` et `eslint` ne voient ni les erreurs
 de frontière serveur/client, ni les polices cassées.
+
+## Comptabilité (`/compta`, espace Finance)
+
+Une page, quatre vues dans l'URL (`?vue=tva|cloture|reglages`) : le journal à traiter, la TVA (réel normal CA3 ou réel simplifié CA12, au choix dans Réglages), la clôture mensuelle avec les exports (FEC, CSV, ZIP des justificatifs), les réglages et règles automatiques. Le panneau marine est le brief de Léa (la chose la plus urgente d'abord). Les montants sont au centime (`formatEurCents`). Toute la logique est pure dans `lib/compta/*` et partagée par la page, les exports et les outils de Léa (`get_compta_status`, `classify_movements`). Données : migration `0035_comptabilite.sql`.

@@ -28,6 +28,11 @@ import {
 import { addExpense, addRevenue } from "@/app/(dashboard)/finances/actions";
 import { addEventBooking, createEvent } from "@/app/(dashboard)/events/actions";
 import { askManager } from "@/lib/lea/manager";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadCompta } from "@/lib/compta/data";
+import { resultOf } from "@/lib/compta/ledger";
+import { obligations } from "@/lib/compta/vat";
+import { classifyMovement } from "@/app/(dashboard)/compta/actions";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Les MAINS de Léa sur le tableau de bord.
@@ -355,6 +360,36 @@ export const LEA_TOOLS: Anthropic.Beta.BetaTool[] = [
         payment_status: { type: "string", enum: ["paid", "pending"] },
       },
       required: ["event_id", "first_name"],
+    },
+  },
+  // ── Comptabilité ────────────────────────────────────────────────────
+  {
+    name: "get_compta_status",
+    description: "État de la comptabilité de l'exercice : mouvements bancaires et de caisse à classer (avec le classement proposé), justificatifs manquants, prochaine déclaration de TVA, résultat HT, et le plan de comptes disponible (codes). À appeler avant de classer.",
+    input_schema: { type: "object", properties: { year: { type: "integer" } } },
+  },
+  {
+    name: "classify_movements",
+    description: "Classe un ou plusieurs mouvements en comptabilité (compte du plan comptable + taux de TVA). N'utilise que des `key` et des `account_code` renvoyés par get_compta_status. Taux autorisés : 0, 2.1, 5.5, 10, 20. reverse_charge = autoliquidation (fournisseur étranger qui facture HT : Google, Meta, logiciels US…). Si tu hésites sur un compte, ne classe pas : demande à Robin.",
+    input_schema: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { type: "string", description: "Identifiant du mouvement, ex. bank:…" },
+              account_code: { type: "string" },
+              vat_rate: { type: "number" },
+              reverse_charge: { type: "boolean" },
+              no_receipt_reason: { type: "string", description: "Seulement si aucune facture n'existera (frais bancaires sur relevé, virement interne…)." },
+            },
+            required: ["key", "account_code", "vat_rate"],
+          },
+        },
+      },
+      required: ["items"],
     },
   },
   // ── Délégation au Manager ───────────────────────────────────────────
@@ -724,6 +759,72 @@ export async function runLeaTool(name: string, input: Input, lastUserText: strin
         payment_status: str(input.payment_status) ?? "pending",
       });
       return done(`Inscription : ${fullName(str(input.first_name), str(input.last_name))}`, { ok: r.ok, error: "error" in r ? (r.error as string) : null });
+    }
+
+    // ── Comptabilité ──
+    case "get_compta_status": {
+      const year = num(input.year) ?? new Date().getFullYear();
+      const data = await loadCompta(year, supabase as unknown as SupabaseClient);
+      if (!data.ready) return read({ ok: false, error: "La comptabilité n'est pas installée (migration 0035 à appliquer dans Supabase)." });
+      const label = (code: string) => data.accountsByCode.get(code)?.label ?? code;
+      const todo = data.movements.filter((m) => m.status === "a_classer");
+      const missing = data.movements.filter((m) => m.status === "justificatif");
+      const obs = obligations({ settings: data.settings, year, movements: data.movements, periods: data.periods, filings: data.filings, todayIso: today() });
+      const nextVat = obs.find((o) => o.state === "en_retard" || o.state === "a_declarer") ?? null;
+      const brief = (m: (typeof todo)[number]) => ({
+        key: m.key,
+        date: m.date,
+        libelle: m.title,
+        detail: m.detail,
+        sens: m.direction === "in" ? "entrée" : "sortie",
+        montant: m.amount,
+        source: m.source === "bank" ? "Qonto" : "caisse",
+        propose: m.suggestion ? { account_code: m.suggestion.account, compte: label(m.suggestion.account), vat_rate: m.suggestion.vatRate, reverse_charge: m.suggestion.reverseCharge } : null,
+      });
+      return read({
+        exercice: year,
+        regime_tva: data.settings.vat_regime,
+        a_classer: todo.length,
+        justificatifs_manquants: missing.length,
+        resultat_ht: resultOf(data.movements),
+        prochaine_tva: nextVat ? { declaration: nextVat.label, montant: nextVat.amount, echeance: nextVat.due, etat: nextVat.state } : null,
+        mouvements_a_classer: todo.slice(0, 40).map(brief),
+        sans_justificatif: missing.slice(0, 30).map((m) => ({ ...brief(m), compte: m.account?.label })),
+        plan_de_comptes: data.accounts.filter((a) => a.active).map((a) => ({ code: a.code, compte: a.label, type: a.kind, tva_par_defaut: a.default_vat_rate })),
+      });
+    }
+    case "classify_movements": {
+      const items = Array.isArray(input.items) ? (input.items as Input[]).slice(0, 60) : [];
+      if (items.length === 0) return { result: json({ ok: false, error: "items requis" }), isError: true };
+      const data = await loadCompta(new Date().getFullYear(), supabase as unknown as SupabaseClient);
+      const prev = await loadCompta(new Date().getFullYear() - 1, supabase as unknown as SupabaseClient);
+      const byKey = new Map([...prev.movements, ...data.movements].map((m) => [m.key, m]));
+      const results: Array<{ key: string; ok: boolean; error?: string }> = [];
+      for (const it of items) {
+        const m = byKey.get(String(it.key ?? ""));
+        const code = str(it.account_code);
+        if (!m || !code || !data.accountsByCode.has(code)) {
+          results.push({ key: String(it.key), ok: false, error: !m ? "mouvement inconnu" : "compte inconnu" });
+          continue;
+        }
+        const r = await classifyMovement(
+          { source: m.source, sourceId: m.sourceId, date: m.date },
+          {
+            accountCode: code,
+            vatRate: num(it.vat_rate) ?? 0,
+            reverseCharge: it.reverse_charge === true,
+            ...(str(it.no_receipt_reason) ? { noReceiptReason: str(it.no_receipt_reason) } : {}),
+          },
+          "lea",
+        );
+        results.push({ key: m.key, ok: r.ok, ...(r.ok ? {} : { error: r.error ?? "échec" }) });
+      }
+      const okCount = results.filter((r) => r.ok).length;
+      return {
+        result: json({ ok: okCount > 0, classes: okCount, echecs: results.filter((r) => !r.ok) }),
+        isError: okCount === 0,
+        action: { label: `${okCount} mouvement${okCount > 1 ? "s" : ""} classé${okCount > 1 ? "s" : ""} en compta`, ok: okCount > 0 },
+      };
     }
 
     // ── Manager ──

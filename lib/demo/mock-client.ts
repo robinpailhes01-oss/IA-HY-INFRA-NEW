@@ -210,6 +210,7 @@ export function createMockClient(): any {
         upload: async () => ({ data: { path: "demo" }, error: null }),
         getPublicUrl: () => ({ data: { publicUrl: "" } }),
         createSignedUrl: async () => ({ data: { signedUrl: "" }, error: null }),
+        download: async () => ({ data: new Blob(["justificatif de démonstration"]), error: null }),
         remove: async () => ({ data: [], error: null }),
       }),
     },

@@ -67,6 +67,7 @@ export const SECTIONS: Section[] = [
       { href: "/finances", label: "Vue d'ensemble" },
       { href: "/bookings", label: "Réservations" },
       { href: "/reports", label: "Rapports" },
+      { href: "/compta", label: "Comptabilité" },
     ],
   },
 ];

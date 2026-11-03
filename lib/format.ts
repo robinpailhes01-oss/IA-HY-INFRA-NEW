@@ -18,6 +18,18 @@ export function formatEur(value: number | null | undefined): string {
   return eur.format(value ?? 0);
 }
 
+const eurCents = new Intl.NumberFormat("fr-FR", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Montant au centime — la comptabilité ne s'arrondit pas. */
+export function formatEurCents(value: number | null | undefined): string {
+  return eurCents.format(value ?? 0);
+}
+
 export function formatEurCompact(value: number | null | undefined): string {
   // Sous le millier, la notation compacte n'abrège rien et affichait
   // « 840,0 € » : on rend le montant entier.
