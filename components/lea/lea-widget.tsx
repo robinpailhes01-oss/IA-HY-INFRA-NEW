@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Mic, MicOff, RotateCcw, X } from "lucide-react";
+import { ArrowUp, Check, Mic, MicOff, RotateCcw, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { LeaAvatar, type LeaState } from "@/components/lea/lea-avatar";
@@ -27,9 +27,10 @@ import { LEA_ASK_EVENT } from "@/components/lea/ask-lea";
 // dépense ajoutée par Léa doit apparaître sans recharger la page.
 // ═══════════════════════════════════════════════════════════════════════
 
-type Msg = { id: string; role: "user" | "lea"; text: string; failed?: boolean };
+type Action = { label: string; ok: boolean };
+type Msg = { id: string; role: "user" | "lea"; text: string; failed?: boolean; actions?: Action[] };
 
-const STORAGE_KEY = "hy-lea-chat-v1";
+const STORAGE_KEY = "hy-lea-chat-v2";
 
 const SUGGESTIONS = [
   "Qui attend une réponse de ma part ?",
@@ -37,6 +38,7 @@ const SUGGESTIONS = [
   "Quelles sorties cette semaine ?",
   "Comment va la trésorerie ?",
   "Ajoute 45 € de gasoil aujourd'hui",
+  "Crée un lead : Marie, 06 12 34 56 78, Nuit Insolite",
   "Relance les devis envoyés cette semaine",
 ];
 
@@ -138,6 +140,12 @@ export function LeaWidget() {
   // Une question posée pendant que Léa répond encore (bouton d'une page,
   // suggestion, double envoi) n'est pas perdue : elle attend son tour.
   const queueRef = useRef<string[]>([]);
+  // L'historique part avec chaque question : Léa (route /api/lea) est sans
+  // état, c'est la conversation affichée qui lui sert de mémoire.
+  const messagesRef = useRef<Msg[]>([]);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const send = useCallback(
     async (raw: string) => {
@@ -152,14 +160,21 @@ export function LeaWidget() {
       setMessages((m) => [...m, { id: newId(), role: "user", text }]);
       setPending(true);
       try {
-        const res = await fetch("/api/jarvis", {
+        const history = [
+          ...messagesRef.current.filter((m) => !m.failed).map(({ role, text: t }) => ({ role, text: t })),
+          { role: "user" as const, text },
+        ];
+        const res = await fetch("/api/lea", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({ messages: history }),
         });
-        const data = (await res.json().catch(() => ({}))) as { reply?: string; error?: string };
+        const data = (await res.json().catch(() => ({}))) as { reply?: string; error?: string; actions?: Action[] };
         const reply = data.reply ?? data.error ?? "Je n'ai pas pu répondre — réessaie dans un instant.";
-        setMessages((m) => [...m, { id: newId(), role: "lea", text: reply, failed: !res.ok || !data.reply }]);
+        setMessages((m) => [
+          ...m,
+          { id: newId(), role: "lea", text: reply, failed: !res.ok || !data.reply, actions: data.actions ?? [] },
+        ]);
         setSpeaking(true);
         setTimeout(() => setSpeaking(false), 2400);
         // Léa a peut-être modifié des données (dépense, relance…) : on
@@ -350,9 +365,30 @@ export function LeaWidget() {
                       {m.role === "lea" && (
                         <LeaAvatar ring={false} className="mt-0.5 size-7 shrink-0" />
                       )}
+                      <div className={cn("flex max-w-[84%] flex-col gap-1.5", m.role === "user" && "items-end")}>
+                      {/* Ce que Léa a réellement fait pendant ce tour : la
+                          preuve, au-dessus de ce qu'elle en dit. */}
+                      {m.actions && m.actions.length > 0 && (
+                        <ul className="flex flex-wrap gap-1.5">
+                          {m.actions.map((a, i) => (
+                            <li
+                              key={i}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium",
+                                a.ok
+                                  ? "bg-[rgba(15,159,110,0.1)] text-success"
+                                  : "bg-[rgba(224,77,85,0.1)] text-danger",
+                              )}
+                            >
+                              {a.ok ? <Check className="size-3" /> : <X className="size-3" />}
+                              {a.label}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       <p
                         className={cn(
-                          "max-w-[84%] whitespace-pre-wrap rounded-[20px] px-3.5 py-2.5 text-[13.5px] leading-relaxed",
+                          "whitespace-pre-wrap rounded-[20px] px-3.5 py-2.5 text-[13.5px] leading-relaxed",
                           m.role === "user"
                             ? "rounded-br-md bg-[linear-gradient(170deg,#183f6d,#0b2545)] text-white shadow-[0_8px_18px_-10px_rgba(11,37,69,0.6)]"
                             : m.failed
@@ -362,6 +398,7 @@ export function LeaWidget() {
                       >
                         {m.text}
                       </p>
+                      </div>
                     </li>
                   ))}
                   {pending && (
@@ -428,7 +465,7 @@ export function LeaWidget() {
                 </button>
               </div>
               <p className="mt-2 px-2 text-center text-[11px] text-ink-3">
-                Léa agit pour de vrai — relances et dépenses sont exécutées ; une modification d&apos;offre attend ton « oui ».
+                Léa agit pour de vrai — ton « oui » d&apos;abord avant d&apos;écrire à un client ou de supprimer.
               </p>
             </form>
           </motion.section>

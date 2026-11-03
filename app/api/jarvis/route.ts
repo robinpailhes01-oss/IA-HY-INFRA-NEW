@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 function demoReply(message: string): string {
   const m = message.toLowerCase();
   if (/relan|rappel|écri|envoie/.test(m)) {
-    return "C'est fait : j'ai relancé Camille David et Hugo Blanc sur WhatsApp avec un message chaleureux qui rappelle leurs dates et le lien de réservation. (Mode démo — rien n'a réellement été envoyé.)";
+    return "Voici ce que j'enverrais sur WhatsApp à Camille David et Hugo Blanc : « Bonjour ! Bonne nouvelle : la météo s'annonce magnifique ce week-end sur Carnon, idéale pour votre sortie en mer. Votre créneau vous attend — on vous retrouve au port ? L'équipe Harmonie Yacht ». Je confirme ? (Mode démo — rien ne sera réellement envoyé.)";
   }
   if (/ajoute|dépense|gasoil|€/.test(m)) {
     return "Dépense enregistrée : 45 € de gasoil, catégorie Gasoil, datée d'aujourd'hui. Elle apparaît déjà dans Finance. (Mode démo — rien n'a réellement été enregistré.)";

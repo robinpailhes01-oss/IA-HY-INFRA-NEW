@@ -96,9 +96,13 @@ lumière. Les séparateurs internes utilisent `--hairline` (marine 8 %).
 ### Léa, la manageuse (widget global)
 
 En bas à droite de chaque page (au-dessus de la barre d'onglets sur téléphone),
-l'avatar de Léa ouvre un panneau de conversation branché sur l'agent Manager
-(`/api/jarvis` → fonction `dashboard-agent`) : elle répond sur tout le tableau
-de bord et agit réellement (relances, dépenses, config — avec confirmation).
+l'avatar de Léa ouvre un panneau de conversation (`/api/lea`) : un agent Claude
+dont les outils (`lib/lea/tools.ts`) appellent les MÊMES actions serveur que les
+boutons de l'interface — leads, réservations, encaissements, dépenses, revenus,
+événements, messages et relances clients — et qui délègue au Manager
+(`dashboard-agent`) la config de Léa WhatsApp et l'analyse financière fine.
+Écrire à un client, relancer, archiver ou annuler exige le « oui » de Robin,
+vérifié dans le code.
 ⌘J l'ouvre partout. Toute recommandation cliquable d'une page passe par
 `askLea()` : une seule conversation, une seule mémoire. Ne jamais placer un
 contrôle essentiel dans l'angle bas-droit de l'écran.
