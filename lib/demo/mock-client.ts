@@ -206,6 +206,7 @@ export function createMockClient(): any {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
     },
     storage: {
+      listBuckets: async () => ({ data: [], error: null }),
       from: () => ({
         upload: async () => ({ data: { path: "demo" }, error: null }),
         getPublicUrl: () => ({ data: { publicUrl: "" } }),

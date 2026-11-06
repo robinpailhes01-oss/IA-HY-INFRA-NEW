@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Archive,
   ChevronDown,
+  DatabaseBackup,
   LayoutGrid,
   MessageCircle,
   Mic,
@@ -39,6 +40,7 @@ const TOOL_ICONS: Record<ToolKey, LucideIcon> = {
   events: PartyPopper,
   archives: Archive,
   jarvis: Mic,
+  backup: DatabaseBackup,
   settings: Settings,
 };
 

@@ -72,12 +72,13 @@ export const SECTIONS: Section[] = [
   },
 ];
 
-export type ToolKey = "events" | "archives" | "jarvis" | "settings";
+export type ToolKey = "events" | "archives" | "jarvis" | "backup" | "settings";
 
 export const TOOLS: Array<{ key: ToolKey; href: string; label: string }> = [
   { key: "events", href: "/events", label: "Événements" },
   { key: "archives", href: "/archives", label: "Archives clients" },
   { key: "jarvis", href: "/jarvis", label: "Jarvis (voix)" },
+  { key: "backup", href: "/sauvegarde", label: "Sauvegarde" },
   { key: "settings", href: "/settings", label: "Paramètres" },
 ];
 
