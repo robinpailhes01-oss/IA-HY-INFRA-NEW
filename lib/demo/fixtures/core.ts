@@ -103,13 +103,13 @@ const customers: Row[] = Array.from({ length: 70 }, (_, i) => {
 // Répartition réaliste d'un mois de novembre : la saison est finie, les
 // demandes portent sur les fêtes de fin d'année et le printemps.
 const LEAD_PLAN: Array<[string, number]> = [
-  ["new", 9],
-  ["contacted", 11],
-  ["qualified", 9],
-  ["quote_sent", 7],
-  ["followed_up", 6],
+  ["new", 2],
+  ["contacted", 3],
+  ["qualified", 3],
+  ["quote_sent", 3],
+  ["followed_up", 2],
   ["booked", 17],
-  ["lost", 8],
+  ["lost", 12],
 ];
 const CHANNELS = ["whatsapp", "whatsapp", "whatsapp", "whatsapp", "instagram_organic", "instagram_organic", "instagram_organic", "website", "google_organic", "tiktok_organic", "chatgpt", "word_of_mouth", "meta_ads"] as const;
 
@@ -130,10 +130,11 @@ for (const [status, n] of LEAD_PLAN) {
   for (let k = 0; k < n; k++) {
     const first = FIRST[(leadIndex * 3 + 5) % FIRST.length];
     const last = LAST[(leadIndex * 11 + 3) % LAST.length];
-    const recent = leadIndex % 3 !== 0;
-    const createdAgo = recent ? int(0, 29) : int(30, 160);
-    const created = daysFromNow(-createdAgo);
     const active = status !== "booked" && status !== "lost";
+    // Hors saison (novembre) : peu de nouvelles demandes. Les pistes actives
+    // datent du dernier mois ; les réservées et perdues, de la haute saison.
+    const createdAgo = active ? int(0, 29) : int(35, 210);
+    const created = daysFromNow(-createdAgo);
     const offer = pick(OFFERS);
     const desiredAhead =
       leadIndex % 9 === 0 ? int(2, 6) : leadIndex % 4 === 0 ? int(40, 70) : int(10, 180);
@@ -159,8 +160,8 @@ for (const [status, n] of LEAD_PLAN) {
         status === "quote_sent" || status === "qualified" ? int(6, 9) :
         status === "lost" ? int(1, 4) : int(3, 8),
       status,
-      needs_human_intervention: active && (leadIndex === 4 || leadIndex === 13 || leadIndex === 22),
-      last_interaction_at: active ? minutesAgo(int(20, 60 * 24 * 6)) : created.toISOString(),
+      needs_human_intervention: active && (leadIndex === 4 || leadIndex === 9),
+      last_interaction_at: active ? minutesAgo(int(45, 60 * 24 * 12)) : created.toISOString(),
       last_followup_at: status === "followed_up" ? daysFromNow(-int(1, 5)).toISOString() : null,
       followup_count: status === "followed_up" ? int(1, 2) : 0,
       ai_memo: chance(0.8) ? MEMOS[leadIndex % MEMOS.length] : null,
@@ -193,8 +194,8 @@ const SCRIPTS: string[][] = [
   [
     "Salut ! On est 9 filles pour un EVJF en mai, c'est possible de privatiser le bateau ?",
     "Bonjour ! Oui, le bateau est entièrement privatisé pour votre groupe 🥂 Jusqu'à 12 personnes. Vous avez une date précise en mai ?",
-    "Le samedi 17 mai si possible, l'après-midi",
-    "Le 17 mai après-midi est disponible. Pour un EVJF je vous conseille la sortie 4 h (800 €) avec escale baignade à la plage de la Maguelone. On peut prévoir enceinte, glacière et décoration.",
+    "Le samedi 22 mai si possible, l'après-midi",
+    "Le 22 mai après-midi est disponible. Pour un EVJF je vous conseille la sortie 4 h (800 €) avec escale baignade à la plage de la Maguelone. On peut prévoir enceinte, glacière et décoration.",
     "Ça a l'air top ! Je vois avec les filles et je reviens vers vous",
   ],
   [
@@ -215,9 +216,85 @@ const SCRIPTS: string[][] = [
     "Parfait, merci pour la réponse rapide",
     "Avec plaisir ! N'hésitez pas si vous avez d'autres questions 😊",
   ],
+  [
+    "Bonjour, vous faites des cartes cadeaux ? Ce serait pour Noël",
+    "Bonjour ! Oui 🎁 La carte cadeau est valable 1 an, au montant de la sortie de votre choix : 2 h (400 €), 3 h (600 €) ou 4 h (800 €). Je peux vous envoyer le lien pour la commander.",
+    "Parfait, je prends celle de 3 h",
+    "Excellent choix ! Voici le lien : harmonie-yacht.fr/carte-cadeau — vous la recevez par e-mail tout de suite, prête à offrir 🎁",
+  ],
+  [
+    "Bonjour, vous êtes ouverts en ce moment ? On cherche une sortie avant la fin du mois",
+    "Bonjour ! Oui, nous naviguons encore par beau temps jusqu'à mi-décembre ☀️ La mer est calme et les couchers de soleil sont superbes en cette saison. Vous seriez combien ?",
+    "Juste nous deux, un dimanche",
+    "Dimanche à 14 h 30 est disponible : sortie 2 h à 400 € pour tout le bateau. Je vous envoie le lien de réservation ?",
+  ],
+  [
+    "Bonjour, ma mère a reçu une carte cadeau pour son anniversaire, comment on choisit la date ?",
+    "Bonjour ! Avec plaisir. Donnez-moi le code de la carte (il commence par HY-) et la date qui vous arrange, je regarde les disponibilités 🙂",
+    "HY-4821, plutôt au printemps",
+    "Merci, votre carte est valide ! Au printemps les week-ends partent vite : je peux vous proposer dès avril. Quel mois vous conviendrait le mieux ?",
+  ],
+  [
+    "Bonjour, on prépare un EVJF pour fin juin, vous avez des disponibilités ?",
+    "Bonjour ! Félicitations à la future mariée 🥂 Fin juin, il nous reste quelques samedis. Vous seriez combien ?",
+    "On est 8",
+    "Parfait, 8 personnes tiennent largement à bord (jusqu'à 12). La sortie 4 h avec baignade est à 800 €. Je vous envoie le détail et les dates libres ?",
+  ],
 ];
 
-const waLeads = leads.filter((l) => l.source_channel === "whatsapp" || leadIndexOf(l) % 3 === 1).slice(0, 28);
+// Une fiche sans nom de famille fait « factice » en vitrine : on complète
+// de façon déterministe (sans toucher au tirage aléatoire des autres données).
+leads.forEach((l, i) => {
+  if (l.first_name && !l.last_name) l.last_name = LAST[(i * 7 + 3) % LAST.length];
+});
+
+
+// Ce que la fiche affiche (offre, occasion, personnes, date, mémo) doit dire la
+// même chose que la conversation : sinon une vitrine montre un EVJF de 9
+// personnes dans le fil et « demande en mariage, 4 personnes » dans la fiche.
+const sundayAfter = (days: number) => {
+  const d = daysFromNow(days);
+  d.setUTCDate(d.getUTCDate() + ((7 - d.getUTCDay()) % 7));
+  return iso(d);
+};
+// Un élément par script de SCRIPTS (même ordre).
+const SCRIPT_META: Array<{ offer: string; occasion: string; party: number; date: string; slot: string; memo: string }> = [
+  { offer: "Sortie privative 3h", occasion: "Anniversaire", party: 6, date: `${YEAR + 1}-03-14`, slot: "Coucher de soleil", memo: MEMOS[0] },
+  { offer: "Nuit Insolite (avec sortie en mer)", occasion: "Noël en amoureux", party: 2, date: `${YEAR}-12-24`, slot: "Soirée", memo: MEMOS[4] },
+  { offer: "Sortie privative 4h", occasion: "EVJF", party: 9, date: `${YEAR + 1}-05-22`, slot: "Après-midi", memo: MEMOS[1] },
+  { offer: "Sortie privative 2h", occasion: "Entre amis", party: 4, date: `${YEAR + 1}-04-17`, slot: "Matinée", memo: MEMOS[5] },
+  { offer: "Sortie privative 3h", occasion: "Séminaire", party: 10, date: `${YEAR + 1}-04-08`, slot: "Après-midi", memo: MEMOS[3] },
+  { offer: "Sortie privative 3h", occasion: "Entre amis", party: 6, date: `${YEAR + 1}-06-05`, slot: "Après-midi", memo: MEMOS[6] },
+  { offer: "Carte cadeau 3h", occasion: "Cadeau de Noël", party: 2, date: `${YEAR + 1}-03-20`, slot: "Après-midi", memo: "Veut offrir une carte cadeau 3 h pour Noël. Lien envoyé, attend le paiement." },
+  { offer: "Sortie privative 2h", occasion: "Couple", party: 2, date: sundayAfter(9), slot: "Après-midi", memo: "Cherche une sortie avant la fin du mois, dimanche 14 h 30. Lien de réservation proposé." },
+  { offer: "Sortie privative 3h", occasion: "Carte cadeau offerte", party: 4, date: `${YEAR + 1}-04-11`, slot: "Après-midi", memo: "A reçu une carte cadeau (HY-4821). Veut une date dès avril." },
+  { offer: "Sortie privative 4h", occasion: "EVJF", party: 8, date: `${YEAR + 1}-06-26`, slot: "Après-midi", memo: "EVJF fin juin, 8 personnes. Attend le détail des dates libres." },
+];
+
+// Hors saison : une dizaine de fils seulement. Les pistes actives d'abord
+// (les plus récentes en tête de liste), puis deux fils de clients déjà passés.
+const isActiveLead = (l: Row) => l.status !== "booked" && l.status !== "lost";
+const waLeads = [
+  ...leads.filter(isActiveLead).slice(0, 8),
+  ...leads.filter((l) => !isActiveLead(l) && l.status === "booked").slice(0, 2),
+];
+// Quel script pour quel fil : 0 et 2 sont ceux qui attendent une réponse,
+// 3 est repris par Robin, les autres se sont terminés avec Léa.
+const SCRIPT_ORDER = [1, 5, 2, 3, 7, 0, 6, 4, 9, 8];
+// Le prénom doit coller à ce que dit la personne (« ma femme », « on est 9
+// filles ») : un EVJF organisé par « Hugo » ferait faux en vitrine.
+const SCRIPT_PEOPLE: Array<[string, string]> = [
+  ["Julien", "Rousseau"], // 0 · anniversaire de sa femme
+  ["Chloé", "David"], // 1 · Nuit Insolite, surprise pour son copain
+  ["Camille", "Lefèvre"], // 2 · EVJF de 9 filles
+  ["Antoine", "Fournier"], // 3 · prix 2 h, pique-nique
+  ["Sophie", "Girard"], // 4 · séminaire d'équipe
+  ["Thomas", "Garnier"], // 5 · météo
+  ["Émilie", "Roux"], // 6 · carte cadeau de Noël
+  ["Maxime", "Faure"], // 7 · sortie en couple avant fin novembre
+  ["Pauline", "Mercier"], // 8 · carte cadeau reçue
+  ["Inès", "Dubois"], // 9 · EVJF fin juin
+];
 function leadIndexOf(l: Row) {
   return leads.indexOf(l);
 }
@@ -229,11 +306,31 @@ export const lead_last_message: Row[] = [];
 waLeads.forEach((lead, i) => {
   const active = lead.status !== "booked" && lead.status !== "lost";
   // Quatre clients attendent une réponse : ils ont écrit en dernier.
-  const awaiting = active && i % 6 === 1;
-  const paused = active && (i === 3 || i === 10);
-  const minutesBack = i < 6 ? int(3, 180) : int(200, 60 * 24 * 12);
+  const awaiting = active && (i === 0 || i === 2);
+  const paused = active && i === 3;
+  const minutesBack =
+    i === 0 ? int(40, 70) :
+    i === 1 ? int(110, 170) :
+    i === 2 ? int(300, 380) :
+    i === 3 ? int(60 * 26, 60 * 30) :
+    i < 8 ? int(60 * 24 * 2, 60 * 24 * 9) :
+    int(60 * 24 * 12, 60 * 24 * 21);
   const lastAt = new Date(NOW.getTime() - minutesBack * 60_000);
-  const script = SCRIPTS[i % SCRIPTS.length];
+  const scriptIndex = SCRIPT_ORDER[i % SCRIPT_ORDER.length];
+  const script = SCRIPTS[scriptIndex];
+  const meta = SCRIPT_META[scriptIndex];
+  const [firstName, lastName] = SCRIPT_PEOPLE[scriptIndex];
+  lead.first_name = firstName;
+  lead.last_name = lastName;
+  const slug = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (lead.email) lead.email = `${slug(firstName)}.${slug(lastName)}@gmail.com`;
+  if (lead.instagram_handle) lead.instagram_handle = `@${slug(firstName)}_${slug(lastName)}`;
+  lead.interested_offer = meta.offer;
+  lead.occasion = meta.occasion;
+  lead.party_size = meta.party;
+  lead.desired_time_slot = meta.slot;
+  lead.ai_memo = meta.memo;
+  if (lead.status !== "lost") lead.desired_date = meta.date;
   const lines = awaiting && script.length % 2 === 0 ? script.slice(0, -1) : script;
   const convId = uid("c0a70000");
   const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || null;

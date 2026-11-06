@@ -109,14 +109,14 @@ const extraConversations: Row[] = [];
 const extraMessages: Row[] = [];
 const extraLastMessages: Row[] = [];
 
-finished.slice(0, 22).forEach((lead, i) => {
+finished.slice(0, 4).forEach((lead, i) => {
   const script = lead.status === "booked" ? bookedScript(lead) : lostScript(lead);
   // Un fil sur quatre : Robin prend la main pour confirmer lui-même.
   if (lead.status === "booked" && i % 4 === 0) {
     script.push({ me: true, human: true, body: "Bonjour, c'est Robin, le capitaine. Je confirme pour samedi — à très vite à bord !" });
   }
   // Dernière activité répartie sur les 30 jours.
-  const endAt = NOW - (1.2 + i * 1.3) * 86_400_000 - int(30, 600) * MIN;
+  const endAt = NOW - (24 + i * 11) * 86_400_000 - int(30, 600) * MIN;
   const convId = demo.uid("c0a70000");
   const name = [lead.first_name, lead.last_name].filter(Boolean).join(" ") || null;
 
@@ -191,7 +191,7 @@ for (const row of conversations) {
 const hub_credit_ledger: Row[] = Array.from({ length: 460 }, (_, i) => {
   const r = rand();
   const channel = r < 0.78 ? "whatsapp_baileys" : r < 0.93 ? "instagram" : "facebook";
-  const daysAgo = Math.floor(Math.pow(rand(), 1.4) * 180);
+  const daysAgo = rand() < 0.1 ? int(0, 29) : int(30, 200);
   const tokensIn = int(900, 4200);
   const tokensOut = int(80, 420);
   return {
