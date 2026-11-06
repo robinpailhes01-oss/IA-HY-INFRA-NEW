@@ -1,5 +1,6 @@
 "use server";
 
+import { DEMO_MODE } from "@/lib/demo/mode";
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
@@ -132,6 +133,8 @@ export async function importIcsFile(fileContent: string, fileName: string) {
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://ia-hy-infra-new.vercel.app";
 
 export async function sendOutreachCampaign(legacyClientIds: string[], campaign: string) {
+  // Démonstration : aucun e-mail ne part.
+  if (DEMO_MODE) return fail("Envoi désactivé dans la démonstration.");
   const supabase = await createClient();
   const resendKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM ?? "Harmonie Yacht <reservations@harmonie-yacht.fr>";

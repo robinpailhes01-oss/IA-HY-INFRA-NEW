@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
+import { DEMO_MODE } from "@/lib/demo/mode";
 import type { LeadStatus } from "@/lib/leads";
 
 type Result<T = null> =
@@ -155,6 +156,12 @@ export async function triggerManualFollowup(leadId: string) {
   ]);
 
   if (!lead) return fail("Lead introuvable.");
+
+  // Démonstration : aucun envoi réel (ni WhatsApp, ni e-mail).
+  if (DEMO_MODE) {
+    revalidatePath("/leads");
+    return ok(null);
+  }
 
   const contactChannel = (conv?.channel as string | null) ?? lead.source_channel;
   const isEmail = contactChannel === "email" && !!lead.email;
@@ -408,6 +415,7 @@ export type SendOutcome = {
 
 /** Envoie un message WhatsApp via le service Baileys (Railway). */
 async function sendViaBaileys(phone: string, text: string): Promise<boolean> {
+  if (DEMO_MODE) return true; // démonstration : rien ne part
   const base = process.env.BAILEYS_SERVICE_URL;
   if (!base) return false;
   try {
@@ -494,8 +502,9 @@ export async function sendMessage(
   // ── Envoi email réel si le canal est "email" ──────────────────────
   const isEmail = channel === "email";
   if (isEmail && lead?.email) {
-    const resendKey = process.env.RESEND_API_KEY;
+    const resendKey = DEMO_MODE ? undefined : process.env.RESEND_API_KEY;
     const fromEmail = process.env.RESEND_FROM ?? "Harmonie Yacht <reservations@harmonie-yacht.fr>";
+    if (DEMO_MODE) delivered = true; // démonstration : rien ne part
 
     if (resendKey) {
       // Cherche le dernier Message-ID sortant pour le header In-Reply-To.
