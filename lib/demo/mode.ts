@@ -10,5 +10,11 @@
 // Vercel fixent NODE_ENV à "production", et la condition ci-dessous est
 // évaluée à la compilation. Sert aux captures d'écran et à l'itération de
 // design (voir docs/DESIGN.md §7).
+//
+// Exception : un déploiement de DÉMONSTRATION séparé (projet Vercel dédié, sans
+// aucune clé de base réelle) peut l'activer en production avec en plus
+// NEXT_PUBLIC_HY_DEMO_DEPLOY=1. Le vrai projet ne pose jamais ces deux
+// variables — et ce code n'existe que sur la branche `demo-video`.
 export const DEMO_MODE =
-  process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_HY_DEMO === "1";
+  process.env.NEXT_PUBLIC_HY_DEMO === "1" &&
+  (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_HY_DEMO_DEPLOY === "1");

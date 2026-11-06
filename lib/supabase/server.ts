@@ -4,7 +4,14 @@ import type { Database } from "@/types/database";
 
 export async function createClient() {
   // Mode démo local uniquement (jamais en production) — voir lib/demo/mode.ts.
-  if (process.env.NODE_ENV !== "production" && process.env.NEXT_PUBLIC_HY_DEMO === "1") {
+  if (
+    process.env.NEXT_PUBLIC_HY_DEMO === "1" &&
+    (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_HY_DEMO_DEPLOY === "1")
+  ) {
+    // Lire les cookies rend la page dynamique, comme avec le vrai client :
+    // sans cela Next la pré-rend à la compilation (et /leads, qui lit l'URL,
+    // échouerait).
+    await cookies();
     const { createMockClient } = await import("@/lib/demo/mock-client");
     return createMockClient() as ReturnType<typeof createServerClient<Database>>;
   }
