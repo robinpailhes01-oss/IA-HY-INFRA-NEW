@@ -15,6 +15,7 @@ import { CardLink } from "@/components/overview/card-link";
 import { CockpitKpi } from "@/components/overview/cockpit-kpi";
 import { HotLeads, type HotLead } from "@/components/overview/hot-leads";
 import { LeaBrief, type BriefSignals } from "@/components/overview/lea-brief";
+import { DailyRecapCard } from "@/components/overview/daily-recap-card";
 import { SeasonCard } from "@/components/overview/season-card";
 import { formatEur } from "@/lib/format";
 
@@ -474,6 +475,15 @@ export default async function OverviewPage() {
 
   const recentTransactions = mergeTransactions(revenues, expensesRes.data ?? [], 8);
 
+  // Le dernier récap quotidien de Léa (rédigé chaque matin par la fonction daily-recap).
+  const recapRes = await supabase
+    .from("recaps")
+    .select("content, created_at")
+    .eq("type", "daily")
+    .order("period_end", { ascending: false })
+    .limit(1);
+  const recap = recapRes.data?.[0] ?? null;
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <PageHeader
@@ -504,6 +514,8 @@ export default async function OverviewPage() {
       />
 
       <LeaBrief signals={signals} updatedAt={parisTime} />
+
+      {recap?.content && recap.created_at && <DailyRecapCard content={recap.content} createdAt={recap.created_at} />}
 
       {/* ── Les chiffres ─────────────────────────────────────────────
           La trésorerie d'abord et seule en dégradé : c'est elle qui dit si
