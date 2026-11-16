@@ -61,7 +61,8 @@ export const RESTORE_ORDER = [
   "wa_inbox",
   "wa_lid_map",
   "wa_messages",
-  "weather_cache"
+  "weather_cache",
+  "mail_rules"
 ] as const;
 
 /** Clé primaire de chaque table (pour l'upsert). */
@@ -242,6 +243,9 @@ export const PRIMARY_KEYS: Record<string, string[]> = {
     "id"
   ],
   "weather_cache": [
+    "id"
+  ],
+  "mail_rules": [
     "id"
   ]
 };

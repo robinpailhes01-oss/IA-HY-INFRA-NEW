@@ -9,6 +9,7 @@ import { overviewFixtures } from "@/lib/demo/fixtures/overview";
 import { extraFixtures } from "@/lib/demo/fixtures/extra";
 import { comptaFixtures } from "@/lib/demo/fixtures/compta";
 import { recapFixtures } from "@/lib/demo/fixtures/recap";
+import { mailFixtures } from "@/lib/demo/fixtures/mails";
 
 type Row = Record<string, any>;
 
@@ -17,7 +18,7 @@ let cache: Record<string, Row[]> | null = null;
 export function getFixtures(): Record<string, Row[]> {
   if (cache) return cache;
   const out: Record<string, Row[]> = {};
-  for (const part of [coreFixtures, socialFixtures, financeFixtures, agentFixtures, overviewFixtures, extraFixtures, comptaFixtures, recapFixtures]) {
+  for (const part of [coreFixtures, socialFixtures, financeFixtures, agentFixtures, overviewFixtures, extraFixtures, comptaFixtures, recapFixtures, mailFixtures]) {
     for (const [table, rows] of Object.entries(part)) {
       out[table] = [...(out[table] ?? []), ...rows];
     }

@@ -63,6 +63,7 @@ export const KNOWN_TABLES = [
   "wa_lid_map",
   "wa_messages",
   "weather_cache",
+  "mail_rules",
 ] as const;
 
 /** Vues : leurs lignes sont exportées, mais elles ne se restaurent pas comme des tables. */
