@@ -123,7 +123,9 @@ export function RestorePanel() {
         }
         const tr: TableReport = { table, expected: rows.length, restored: 0, failed: [], droppedColumns: [] };
         try {
-          if (CLEAR_BEFORE.has(table)) await post("/api/admin/restore/table", { table, clear: true });
+          // On ne vide que s'il y a de quoi remettre : une table vide dans la sauvegarde ne doit
+          // pas effacer les lignes par défaut posées par les migrations (règles de compta…).
+          if (CLEAR_BEFORE.has(table) && rows.length > 0) await post("/api/admin/restore/table", { table, clear: true });
           const passes: Array<{ nullify?: string[] }> = SELF_REFERENCES[table] ? [{ nullify: SELF_REFERENCES[table] }, {}] : [{}];
           for (let p = 0; p < passes.length; p++) {
             let batch: Row[] = [];
