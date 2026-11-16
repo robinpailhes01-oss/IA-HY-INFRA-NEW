@@ -22,13 +22,15 @@ Temps total : 2 à 3 heures, dont la moitié à ressaisir des clés.
 
 - Donne-moi l'**identifiant** du projet (les 20 caractères de l'adresse). Je te remets le SQL prêt à coller.
 - Dans **SQL Editor** : colle tout, **Run**. Résultat attendu : `Success`, sans rouge.
-- Ensuite, dans le même éditeur, ces 2 lignes (remplace par deux textes secrets de ton choix, longs, différents) :
+- Ensuite, remplace les deux secrets de la base (deux textes longs, différents, de ton choix) :
 
   ```sql
-  alter database postgres set app.cron_secret = 'UN_SECRET_LONG_A_TOI';
+  select vault.update_secret((select id from vault.secrets where name = 'cron_secret'), 'UN_SECRET_LONG_A_TOI');
   select vault.update_secret((select id from vault.secrets where name = 'sync_gcal_secret'), 'UN_AUTRE_SECRET_LONG');
   ```
-  Garde ces deux secrets : tu les remettras comme secrets des fonctions (étape 5).
+  Garde-les : tu les remettras comme secrets des fonctions (étape 5) et, pour `cron_secret`, dans Vercel (`CRON_SECRET`).
+- **Sécurité (important)** : dans Supabase → Authentication → Sign In / Providers, désactive « Allow new users to sign up ». Sinon n'importe qui peut créer un compte et lire tes données.
+- Authentication → URL Configuration : « Site URL » = l'adresse de ton tableau de bord.
 
 ## 3. Brancher le tableau de bord (toi, 10 min)
 
@@ -73,7 +75,7 @@ Chaque fonction lit ses clés dans **Edge Functions → Secrets**. Les clés de 
 | agent-lea, whatsapp-webhook | `LEA_SHARED_SECRET` (le même que dans Railway), `OWNER_PHONE`, `SITE_BOOKING_URL` |
 | agent-lea, finance-pulse, weekly-report, telegram-manager | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_CHAT_ID` |
 | whatsapp-webhook, agent-lea, booking-form-webhook | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN` (si l'API Meta est utilisée) |
-| lea-followups, qonto-sync, sumup-sync, finance-pulse, weekly-report | `CRON_SECRET` (= `app.cron_secret` de l'étape 2) |
+| lea-followups, qonto-sync, sumup-sync, finance-pulse, weekly-report | `CRON_SECRET` (= `cron_secret` du coffre-fort, étape 2) |
 | qonto-sync | `QONTO_API_KEY` (`identifiant:clé`) |
 | sumup-sync | `SUMUP_API_KEY`, `SUMUP_MERCHANT_CODE` |
 | stripe-webhook | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (+ `_TEST`) |
