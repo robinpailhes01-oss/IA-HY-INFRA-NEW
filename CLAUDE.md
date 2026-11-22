@@ -1,13 +1,13 @@
 # Harmonie Yacht — tableau de bord et agents IA
 
-Location de yacht au port de Carnon. Robin gère seul. Ce dépôt contient le tableau de bord (leads, réservations, finances, compta, marketing) et les agents IA qui travaillent pour les clients.
+Yacht de 12 m (10 personnes au plus) : nuits insolites et sorties en mer privatisées. À Carnon, puis à Sète à partir d'avril 2027. Fermé de début décembre à début avril. Robin gère ; sa femme s'occupe de l'Instagram et des photos. Ce dépôt contient le tableau de bord (leads, réservations, finances, compta, marketing) et les agents IA qui travaillent pour les clients.
 
 Robin vient ici pour quatre choses : améliorer le tableau de bord, régler Léa et les agents, gérer le quotidien (relances, compta, chiffres du mois), le marketing et le site.
 
 ## Comment travailler avec Robin
 - **En français**, en tableau quand c'est possible, avec des mots simples : Robin n'est pas développeur et veut **apprendre**. Un mot technique est expliqué en une phrase la première fois.
 - Chaque réponse finit par trois points : **fait** (ce que j'ai fait), **pourquoi** (pourquoi comme ça), **à toi** (ce que Robin doit tester ou valider).
-- Moment actuel : basse saison, bateau peu actif ou fermé. Priorités : la compta et les stats de Léa.
+- Moment actuel : basse saison, fermeture à partir de début décembre. Priorités : la compta et les stats de Léa.
 
 ## Ne rien oublier (le problème n°1 de Robin)
 - Au début de chaque conversation : lire `hy-context/decisions.md` et `docs/etat.md`.
