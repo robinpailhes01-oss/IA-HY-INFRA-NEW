@@ -1,6 +1,18 @@
 # Harmonie Yacht — tableau de bord et agents IA
 
-Location de yacht au port de Carnon. Robin gère seul. Ce dépôt contient le tableau de bord (leads, réservations, finances, compta, marketing) et les agents IA qui travaillent pour les clients. On répond **en français**, brièvement, en tableau quand c'est possible, avec des mots simples : Robin n'est pas développeur.
+Location de yacht au port de Carnon. Robin gère seul. Ce dépôt contient le tableau de bord (leads, réservations, finances, compta, marketing) et les agents IA qui travaillent pour les clients.
+
+Robin vient ici pour quatre choses : améliorer le tableau de bord, régler Léa et les agents, gérer le quotidien (relances, compta, chiffres du mois), le marketing et le site.
+
+## Comment travailler avec Robin
+- **En français**, en tableau quand c'est possible, avec des mots simples : Robin n'est pas développeur et veut **apprendre**. Un mot technique est expliqué en une phrase la première fois.
+- Chaque réponse finit par trois points : **fait** (ce que j'ai fait), **pourquoi** (pourquoi comme ça), **à toi** (ce que Robin doit tester ou valider).
+- Moment actuel : basse saison, bateau peu actif ou fermé. Priorités : la compta et les stats de Léa.
+
+## Ne rien oublier (le problème n°1 de Robin)
+- Au début de chaque conversation : lire `hy-context/decisions.md` et `docs/etat.md`.
+- Dès que Robin tranche quelque chose (prix, règle, choix) : une ligne datée + la raison dans `hy-context/decisions.md`, **tout de suite**, pas en fin de conversation.
+- Une conversation = un sujet. En fin de tâche : mettre à jour `docs/etat.md`.
 
 ## Ce qu'il y a ici
 | Quoi | Où |
@@ -36,6 +48,7 @@ Ces actions touchent de vrais clients ou de l'argent, et ne se rattrapent pas.
 ## Règles
 - Jamais de clé dans un fichier ni dans le chat : elles vont dans Vercel (Production et Preview) ou dans les secrets Supabase. `.env.example` ne contient que des noms.
 - N'invente jamais un chiffre, un prix, un statut ou une règle : pose une question courte à Robin.
+- Les chiffres (stats de Léa, compta, réservations) se lisent dans la base, en lecture seule, avec une requête ciblée montrée à Robin. Jamais une table entière.
 - Même erreur 3 fois : stop, et explique ce qui bloque.
 
 ## Liens avec le reste
