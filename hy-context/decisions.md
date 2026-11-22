@@ -5,6 +5,7 @@ Une ligne par décision de Robin, la plus récente en haut : la date, la décisi
 
 | Date | Décision | Raison |
 |---|---|---|
+| 2026-11-22 | La production suit désormais `main` (Vercel et branche par défaut GitHub basculés par Robin) | Plus aucune mise en ligne par erreur depuis une branche `claude/...` |
 | 2026-11-22 | Une seule session « Harmonie Yacht », avec une conversation courte par sujet | Ne pas perdre de contexte : la mémoire vit dans les fichiers, pas dans la conversation |
 | 2026-11-22 | Le contexte commun à toutes les activités (qui est Robin, sa voix, les règles générales) vit dans HARMONIE-GROUP et est installé dans chaque session par le script d'environnement | Un seul endroit à tenir à jour, lu par toutes les sessions |
 | 2026-11-22 | Toujours l'OK de Robin pour : message à un vrai client, prix/offre/règle de Léa, migration ou suppression en production, toute écriture dans Qonto, Stripe ou SumUp | Ça touche de vrais clients ou de l'argent, et ça ne se rattrape pas |

@@ -38,15 +38,16 @@ Ces actions touchent de vrais clients ou de l'argent, et ne se rattrapent pas.
 - Tout message (WhatsApp, mail, Telegram) envoyé à un vrai client ou prospect.
 - Changer un prix, une offre ou une règle de Léa en production.
 - Une migration, une suppression de données ou de fichiers en production.
-- Tout ce qui écrit dans Qonto, Stripe ou SumUp. Ces outils sont en lecture seule pour nous.
+- Tout ce qui écrit dans Stripe ou SumUp. Qonto : lecture, devis, factures (envoyées après l'OK de Robin) et justificatifs seulement ; jamais de virement, de carte ni de lien de paiement.
 
 ## Fusions
 - Docs et design : fusion libre si le build passe.
 - Léa et les agents, WhatsApp, paiements, compta, finances : Robin teste la Preview Vercel avant la fusion.
-- La production (ia-hy-infra-new.vercel.app) est déployée depuis la branche `claude/keen-cray-IEgV8`, pas depuis `main`. Jamais de push direct dessus : une PR par étape.
+- La production (ia-hy-infra-new.vercel.app) suit `main` depuis le 22/11/2026. Jamais de push direct sur `main` : une PR par étape. L'ancienne branche `claude/keen-cray-IEgV8` n'est plus utilisée : n'y pousse rien.
 
 ## Règles
-- Jamais de clé dans un fichier ni dans le chat : elles vont dans Vercel (Production et Preview) ou dans les secrets Supabase. `.env.example` ne contient que des noms.
+- Jamais de clé dans un fichier ni dans le chat : elles vont dans Vercel ou dans les secrets Supabase. `.env.example` ne contient que des noms.
+- Les Previews n'ont jamais de vraies clés (clés de test ou aucune). Aujourd'hui plusieurs clés sont encore en « Production et aperçu » : à corriger, voir `docs/etat.md`.
 - N'invente jamais un chiffre, un prix, un statut ou une règle : pose une question courte à Robin.
 - Les chiffres (stats de Léa, compta, réservations) se lisent dans la base, en lecture seule, avec une requête ciblée montrée à Robin. Jamais une table entière.
 - Même erreur 3 fois : stop, et explique ce qui bloque.
