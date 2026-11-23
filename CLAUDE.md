@@ -1,57 +1,42 @@
 # Harmonie Yacht — tableau de bord et agents IA
 
-Yacht de 12 m (10 personnes au plus) : nuits insolites et sorties en mer privatisées. À Carnon, puis à Sète à partir d'avril 2027. Fermé de début décembre à début avril. Robin gère ; sa femme s'occupe de l'Instagram et des photos. Ce dépôt contient le tableau de bord (leads, réservations, finances, compta, marketing) et les agents IA qui travaillent pour les clients.
+Yacht de 12 m (10 personnes au plus) : nuits insolites et sorties en mer privatisées. À Carnon, puis à Sète à partir d'avril 2027. Fermé de début décembre à début avril. Robin gère ; sa femme s'occupe de l'Instagram et des photos.
 
-Robin vient ici pour quatre choses : améliorer le tableau de bord, régler Léa et les agents, gérer le quotidien (relances, compta, chiffres du mois), le marketing et le site.
+Ce dépôt appartient à la **session HARMONIE YACHT**. Il contient le tableau de bord d'Harmonie Yacht et Léa, l'agente qui répond aux clients. Le contexte commun (et ce qui attend l'OK de Robin) est dans le socle et dans `harmonie-group/contexte/`.
 
-## Comment travailler avec Robin
-- **En français**, en tableau quand c'est possible, avec des mots simples : Robin n'est pas développeur et veut **apprendre**. Un mot technique est expliqué en une phrase la première fois.
-- Chaque réponse finit par trois points : **fait** (ce que j'ai fait), **pourquoi** (pourquoi comme ça), **à toi** (ce que Robin doit tester ou valider).
-- Moment actuel : basse saison, fermeture à partir de début décembre. Priorités : la compta et les stats de Léa.
-
-## Ne rien oublier (le problème n°1 de Robin)
-- Au début de chaque conversation : lire `hy-context/decisions.md` et `docs/etat.md`.
-- Dès que Robin tranche quelque chose (prix, règle, choix) : une ligne datée + la raison dans `hy-context/decisions.md`, **tout de suite**, pas en fin de conversation.
-- Une conversation = un sujet. En fin de tâche : mettre à jour `docs/etat.md`.
+## Au début de chaque conversation
+Lis `hy-context/decisions.md` et `docs/etat.md`. Une décision de Robin sur Harmonie Yacht va tout de suite dans `hy-context/decisions.md`.
 
 ## Ce qu'il y a ici
 | Quoi | Où |
 |---|---|
 | Tableau de bord (Next 15.5, App Router, Tailwind 4, shadcn/ui) | `app/`, `components/`, `lib/` |
-| Agents du produit : Léa (WhatsApp, Instagram, mail), le Manager (Telegram), relances, récap du jour | `supabase/functions/` (une fonction par agent) |
+| Léa (WhatsApp, Instagram, mail), relances, récap du jour | `supabase/functions/` (une fonction par agent) |
+| Synchro Qonto et SumUp toutes les heures (`qonto-sync`, `sumup-sync`) | `supabase/functions/` |
 | Base Supabase : 37 migrations | `supabase/migrations/` |
 | Service WhatsApp (Baileys, hébergé sur Railway) | `baileys-service/` |
 | Design « Verre glacier » | `docs/DESIGN.md` |
-| Où on en est | `docs/etat.md` (lire au début, mettre à jour à la fin) |
 
-Le site public n'est **pas** ici : c'est le dépôt `TESTE-HYSITE` (domaine harmonie-yacht.fr). `HY-SITE-` n'est pas le site en ligne.
+Le site public n'est **pas** ici : c'est le dépôt `TESTE-HYSITE` (harmonie-yacht.fr). `HY-SITE-` n'est pas le site en ligne.
+
+## Ce qui change (décisions du groupe, 22/11/2026)
+- **La compta et les factures** passent au comptable du groupe (`harmonie-group`). Le module compta d'ici reste en place en attendant ; ce qu'il devient se décide à l'étape du comptable.
+- **Le Manager Telegram** (`supabase/functions/telegram-manager`) sera remplacé par le manager global. N'y ajoute rien de nouveau.
+- **`qonto-sync` est la source de tout le groupe** : le compte Qonto est partagé avec Luma et des dépenses perso (privées). Ne la modifie pas sans prévenir la session HARMONIE GROUP.
 
 ## Pièges (ce qui a déjà cassé)
-- **Léa a deux sources** : son discours et ses règles sont écrits dans le code (`supabase/functions/agent-lea/index.ts`), la grille de prix et les offres sont lues dans la table `agent_config`. Changer un prix ou une offre touche les deux : vérifier qu'ils restent cohérents.
-- **Base reconstruite en novembre 2026** sur un nouveau projet Supabase. Ce qui reste à rebrancher (webhooks, secrets, site) : `docs/reprise-reconnexion.md`. Une erreur « introuvable » vient souvent de là.
-- **Pièges du design** (police qui retombe en Times sur iPhone, erreurs d'hydratation, nombres mal formatés) : section 0 de `docs/DESIGN.md`, à lire avant de toucher l'interface.
-- **Captures et tests visuels** : mode démo `NEXT_PUBLIC_HY_DEMO=1 npm run dev` (données fictives de `lib/demo/`). Jamais de vraies données client dans une capture.
-- Pas de script `npm test` : la vérification, c'est `npm run build` et `npm run lint`.
-
-## Ce qui attend toujours l'OK explicite de Robin
-Ces actions touchent de vrais clients ou de l'argent, et ne se rattrapent pas.
-- Tout message (WhatsApp, mail, Telegram) envoyé à un vrai client ou prospect.
-- Changer un prix, une offre ou une règle de Léa en production.
-- Une migration, une suppression de données ou de fichiers en production.
-- Tout ce qui écrit dans Stripe ou SumUp. Qonto : lecture, devis, factures (envoyées après l'OK de Robin) et justificatifs seulement ; jamais de virement, de carte ni de lien de paiement.
+- **Léa a deux sources** : son discours et ses règles sont dans le code (`supabase/functions/agent-lea/index.ts`), la grille de prix et les offres dans la table `agent_config`. Changer un prix ou une offre touche les deux : vérifier qu'ils restent cohérents.
+- **Base reconstruite en novembre 2026** sur un nouveau projet Supabase. Ce qui reste à rebrancher : `docs/reprise-reconnexion.md`. Une erreur « introuvable » vient souvent de là.
+- **Design** (police qui retombe en Times sur iPhone, hydratation, nombres) : section 0 de `docs/DESIGN.md`, à lire avant de toucher l'interface.
+- **Captures** : mode démo `NEXT_PUBLIC_HY_DEMO=1 npm run dev` (données fictives de `lib/demo/`). Jamais de vraies données client ni de perso dans une capture.
+- Les chiffres se lisent dans la base, en lecture seule, avec une requête ciblée montrée à Robin. Jamais une table entière.
+- Stripe et SumUp : jamais d'écriture sans l'OK de Robin.
+- Plusieurs clés Vercel sont encore en « Production et aperçu » : à corriger (`docs/etat.md`).
 
 ## Fusions
-- Docs et design : fusion libre si le build passe.
-- Léa et les agents, WhatsApp, paiements, compta, finances : Robin teste la Preview Vercel avant la fusion.
-- La production (ia-hy-infra-new.vercel.app) suit `main` depuis le 22/11/2026. Jamais de push direct sur `main` : une PR par étape. L'ancienne branche `claude/keen-cray-IEgV8` n'est plus utilisée : n'y pousse rien.
+- La production (ia-hy-infra-new.vercel.app) suit `main` depuis le 22/11/2026. Une PR par étape ; l'ancienne branche `claude/keen-cray-IEgV8` n'est plus utilisée.
+- Docs et design : fusion libre si le build passe. Léa, WhatsApp, paiements, compta : Robin teste la Preview avant.
+- Vérification : `npm run build` et `npm run lint` (pas de `npm test`).
 
-## Règles
-- Jamais de clé dans un fichier ni dans le chat : elles vont dans Vercel ou dans les secrets Supabase. `.env.example` ne contient que des noms.
-- Les Previews n'ont jamais de vraies clés (clés de test ou aucune). Aujourd'hui plusieurs clés sont encore en « Production et aperçu » : à corriger, voir `docs/etat.md`.
-- N'invente jamais un chiffre, un prix, un statut ou une règle : pose une question courte à Robin.
-- Les chiffres (stats de Léa, compta, réservations) se lisent dans la base, en lecture seule, avec une requête ciblée montrée à Robin. Jamais une table entière.
-- Même erreur 3 fois : stop, et explique ce qui bloque.
-
-## Liens avec le reste
-- Harmonie Yacht est une activité du groupe Harmonie Group (même SIREN, même compte Qonto). Le tableau de bord du groupe lit ce projet en lecture seule.
-- C'est aussi la vitrine de Luma (l'agence IA de Robin). Chaque étape terminée : une ligne datée en haut de `docs/marketing/etapes.md` (l'étape, à quoi elle sert au client, ce que ça lui change) et 1 à 3 captures `.webp` (largeur 1600 au plus) dans `docs/marketing/captures/`, **avec des données de démonstration uniquement**. Rien n'est publié sans l'accord de Robin.
+## Vitrine de Luma
+Chaque étape terminée : une ligne datée en haut de `docs/marketing/etapes.md` (l'étape, à quoi elle sert au client, ce que ça lui change) et 1 à 3 captures `.webp` (1600 px de large au plus) dans `docs/marketing/captures/`, **avec des données de démonstration uniquement**. Rien n'est publié sans l'accord de Robin.

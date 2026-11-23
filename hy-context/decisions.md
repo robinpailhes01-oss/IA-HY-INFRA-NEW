@@ -5,6 +5,8 @@ Une ligne par décision de Robin, la plus récente en haut : la date, la décisi
 
 | Date | Décision | Raison |
 |---|---|---|
+| 2026-11-22 | Remplace la règle « toute écriture dans Qonto demande l'OK » : Qonto se lit ; devis, factures (envoyées après l'OK de Robin) et justificatifs autorisés ; jamais de virement, de carte ni de lien de paiement | Décision du groupe (`harmonie-group/contexte/decisions.md`) |
+| 2026-11-22 | La compta et les factures passent au comptable du groupe ; le Manager Telegram sera remplacé par le manager global | Un seul comptable et un seul manager pour tout le groupe |
 | 2026-11-22 | La production suit désormais `main` (Vercel et branche par défaut GitHub basculés par Robin) | Plus aucune mise en ligne par erreur depuis une branche `claude/...` |
 | 2026-11-22 | Une seule session « Harmonie Yacht », avec une conversation courte par sujet | Ne pas perdre de contexte : la mémoire vit dans les fichiers, pas dans la conversation |
 | 2026-11-22 | Le contexte commun à toutes les activités (qui est Robin, sa voix, les règles générales) vit dans HARMONIE-GROUP et est installé dans chaque session par le script d'environnement | Un seul endroit à tenir à jour, lu par toutes les sessions |
