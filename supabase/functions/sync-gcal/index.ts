@@ -20,7 +20,7 @@
 //   "3" = Raisin  → événement public
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { gcalFromEnv, type GCalEvent } from "../_shared/google-calendar.ts";
+import { gcalFromAccount, type GCalEvent } from "../_shared/google-calendar.ts";
 
 const SYNC_SECRET = Deno.env.get("SYNC_GCAL_SECRET") ?? "";
 const TZ = "Europe/Paris";
@@ -131,17 +131,17 @@ Deno.serve(async (req) => {
       return json({ error: "type doit être 'booking' ou 'event_public'" }, 400);
     }
 
-    const gcal = gcalFromEnv();
-    if (!gcal) {
-      // Pas de credentials → on log mais on ne bloque pas le caller.
-      console.warn("sync-gcal: GOOGLE_* secrets absents, synchronisation ignorée.");
-      return json({ skipped: "google_credentials_missing" });
-    }
-
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    const gcal = await gcalFromAccount(supabase);
+    if (!gcal) {
+      // Pas de connexion Google → on log mais on ne bloque pas le caller.
+      console.warn("sync-gcal: aucun accès Google (connecte Google depuis la page Boîte mail), synchronisation ignorée.");
+      return json({ skipped: "google_credentials_missing" });
+    }
 
     const table = type === "booking" ? "bookings" : "events_public";
 

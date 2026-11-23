@@ -7,52 +7,10 @@
 // Body : { timeMin: ISO, timeMax: ISO }
 // Auth : header `x-sync-secret` (même que sync-gcal).
 
-const GCAL_SCOPE = "https://www.googleapis.com/auth/calendar";
-const TOKEN_URL = "https://oauth2.googleapis.com/token";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { gcalFromAccount } from "../_shared/google-calendar.ts";
+
 const SYNC_SECRET = Deno.env.get("SYNC_GCAL_SECRET") ?? "";
-
-function base64url(input: Uint8Array): string {
-  return btoa(String.fromCharCode(...input))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
-}
-function encode(obj: unknown): string {
-  return base64url(new TextEncoder().encode(JSON.stringify(obj)));
-}
-async function signJwt(header: unknown, payload: unknown, pemKey: string): Promise<string> {
-  const msg = `${encode(header)}.${encode(payload)}`;
-  const b64 = pemKey
-    .replace(/-----BEGIN PRIVATE KEY-----/, "")
-    .replace(/-----END PRIVATE KEY-----/, "")
-    .replace(/\s/g, "");
-  const der = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    der,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(msg));
-  return `${msg}.${base64url(new Uint8Array(sig))}`;
-}
-
-async function getToken(email: string, pem: string): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  const jwt = await signJwt(
-    { alg: "RS256", typ: "JWT" },
-    { iss: email, scope: GCAL_SCOPE, aud: TOKEN_URL, exp: now + 3600, iat: now },
-    pem,
-  );
-  const res = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
-  });
-  if (!res.ok) throw new Error(`token ${res.status}: ${await res.text()}`);
-  return (await res.json()).access_token;
-}
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), { status: s, headers: { "content-type": "application/json" } });
@@ -67,11 +25,11 @@ Deno.serve(async (req) => {
     const { timeMin, timeMax } = await req.json();
     if (!timeMin || !timeMax) return json({ error: "timeMin et timeMax requis (ISO)" }, 400);
 
-    const calId = Deno.env.get("GOOGLE_CALENDAR_ID")!;
-    const email = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL")!;
-    const key = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")!.replace(/\\n/g, "\n");
-
-    const token = await getToken(email, key);
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const gcal = await gcalFromAccount(supabase);
+    if (!gcal) return json({ error: "Google non connecté" }, 503);
+    const calId = gcal.calendarId;
+    const token = await gcal.token();
     const params = new URLSearchParams({
       timeMin,
       timeMax,

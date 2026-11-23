@@ -24,6 +24,7 @@
 // que ce prospect a payé.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { gcalFromAccount } from "../_shared/google-calendar.ts";
 
 const GCAL_SCOPE = "https://www.googleapis.com/auth/calendar";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -186,27 +187,12 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
   }
 
-  const calId = Deno.env.get("GOOGLE_CALENDAR_ID");
-  const saEmail = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL");
-  const saKey = (Deno.env.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY") ?? "").replace(/\\n/g, "\n");
-  if (!calId || !saEmail || !saKey) {
-    return new Response(JSON.stringify({ error: "missing google secrets" }), { status: 500 });
+  const gcalAccess = await gcalFromAccount(createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!));
+  if (!gcalAccess) {
+    return new Response(JSON.stringify({ error: "Google non connecté" }), { status: 500 });
   }
-
-  const now = Math.floor(Date.now() / 1000);
-  const jwt = await signJwt(
-    { iss: saEmail, scope: GCAL_SCOPE, aud: TOKEN_URL, exp: now + 3600, iat: now },
-    saKey,
-  );
-  const tok = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
-  });
-  if (!tok.ok) {
-    return new Response(JSON.stringify({ error: `gcal token ${tok.status}: ${await tok.text()}` }), { status: 500 });
-  }
-  const { access_token } = await tok.json();
+  const calId = gcalAccess.calendarId;
+  const access_token = await gcalAccess.token();
 
   const today = new Date();
   const future = new Date(today.getTime() + SCAN_DAYS_AHEAD * 86_400_000);

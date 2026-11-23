@@ -1,13 +1,14 @@
 // Outils Gmail partagés par mail-oauth, mail-sync et mail-act.
 //
-// Portée demandée : gmail.modify (lire, étiqueter, mettre à la corbeille). Jamais de
+// Portées demandées : gmail.modify (lire, étiqueter, mettre à la corbeille) et calendar.events
+// (planning : créer/modifier les événements des réservations). Jamais de
 // suppression définitive : l'API DELETE n'est appelée nulle part.
 
 // Client Supabase (clé de service) : non typé, comme dans les autres fonctions.
 // deno-lint-ignore no-explicit-any
 export type Supa = any;
 
-export const SCOPES = "openid email https://www.googleapis.com/auth/gmail.modify";
+export const SCOPES = "openid email https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar.events";
 export const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 export const CATEGORIES = [

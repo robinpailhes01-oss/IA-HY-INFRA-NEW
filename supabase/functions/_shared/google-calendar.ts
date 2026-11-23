@@ -60,13 +60,22 @@ export class GoogleCalendar {
   private accessToken: string | null = null;
   private tokenExpiry = 0;
 
+  /** Identifiants d'un compte de service (ancienne méthode) — vides en mode « connexion Google ». */
   constructor(
-    private calendarId: string,
+    readonly calendarId: string,
     private serviceEmail: string,
     private privateKey: string,
+    /** Si fourni : jeton obtenu autrement (connexion Google du tableau de bord). */
+    private tokenProvider?: () => Promise<string>,
   ) {}
 
+  /** Jeton d'accès valable pour l'API Calendar. */
+  async token(): Promise<string> {
+    return this.getToken();
+  }
+
   private async getToken(): Promise<string> {
+    if (this.tokenProvider) return this.tokenProvider();
     if (this.accessToken && Date.now() < this.tokenExpiry) return this.accessToken;
 
     const now = Math.floor(Date.now() / 1000);
@@ -164,4 +173,28 @@ export function gcalFromEnv(): GoogleCalendar | null {
   if (!calId || !email || !key) return null;
   // Les variables d'environnement échappent parfois les \n — on les restaure.
   return new GoogleCalendar(calId, email, key.replace(/\\n/g, "\n"));
+}
+
+// ── Constructeur « connexion Google » (même autorisation que la boîte mail) ──
+
+import { accessToken, connectedAccount, type Supa } from "./gmail.ts";
+
+/**
+ * Calendrier à utiliser : le compte de service s'il est configuré (ancienne
+ * méthode), sinon le compte Google connecté depuis la page « Boîte mail ».
+ * Calendrier : GOOGLE_CALENDAR_ID s'il existe, sinon l'agenda principal du compte.
+ */
+export async function gcalFromAccount(supabase: Supa): Promise<GoogleCalendar | null> {
+  const sa = gcalFromEnv();
+  if (sa) return sa;
+  const account = await connectedAccount(supabase);
+  if (!account) return null;
+  const calId = Deno.env.get("GOOGLE_CALENDAR_ID") || "primary";
+  let cached: { token: string; until: number } | null = null;
+  return new GoogleCalendar(calId, "", "", async () => {
+    if (cached && Date.now() < cached.until) return cached.token;
+    const token = await accessToken(supabase, account);
+    cached = { token, until: Date.now() + 50 * 60 * 1000 };
+    return token;
+  });
 }

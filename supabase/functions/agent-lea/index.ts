@@ -9,7 +9,7 @@
 // les réservations se font sur le site (send_booking_link partage le lien).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { gcalFromEnv } from "../_shared/google-calendar.ts";
+import { gcalFromAccount } from "../_shared/google-calendar.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-6";
@@ -525,7 +525,7 @@ async function runTool(
       // (congé, maintenance, réservation hors-système…).
       let gcalOccupied: Array<{ type: string; from: string; to: string; label: string }> = [];
       try {
-        const gcal = gcalFromEnv();
+        const gcal = await gcalFromAccount(supabase);
         if (gcal) {
           const timeMin = `${date}T00:00:00+02:00`;
           const timeMax = `${date}T23:59:59+02:00`;
