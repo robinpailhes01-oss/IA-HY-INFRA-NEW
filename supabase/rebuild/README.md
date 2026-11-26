@@ -8,7 +8,7 @@ données d'une sauvegarde (page **Outils → Sauvegarde** du tableau de bord).
 |---|---|
 | `01_base_schema.sql` | Les 32 tables « de base » (leads, réservations, clients, WhatsApp…), **reconstituées** depuis les types générés. Généré par `scripts/rebuild/gen_base_schema.py`. |
 | `02_post_base.sql` | Fonction `get_booked_slots`, profil créé à chaque nouveau compte, accès (RLS). |
-| `../migrations/0001…0037` | Les ajouts faits ensuite (déjà dans le dépôt). |
+| `../migrations/0001…0038` | Les ajouts faits ensuite (déjà dans le dépôt). |
 | `03_after_migrations.sql` | La vue `site_daily_snapshots`, droits sur les vues. |
 | `schema-complete.template.sql` | Tout ça assemblé, prêt à coller dans **SQL Editor**. Remplacer `aaaaaaaaaaaaaaaaaaaa` par l'identifiant du nouveau projet (20 caractères, dans son adresse `https://<identifiant>.supabase.co`). |
 
