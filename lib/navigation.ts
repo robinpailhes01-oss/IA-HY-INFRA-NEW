@@ -66,6 +66,7 @@ export const SECTIONS: Section[] = [
     tabs: [
       { href: "/finances", label: "Vue d'ensemble" },
       { href: "/bookings", label: "Réservations" },
+      { href: "/planning", label: "Planning" },
       { href: "/reports", label: "Rapports" },
       { href: "/compta", label: "Comptabilité" },
       { href: "/mails", label: "Boîte mail" },

@@ -6,6 +6,7 @@ Rien ici n'est publié sans l'accord de Robin.
 
 | Date | Étape | À quoi ça sert | Ce que ça change | Capture |
 |---|---|---|---|---|
+| 2026-11-28 | Planning dans le tableau de bord | Un calendrier mensuel montre chaque sortie, chaque nuit et les jours bloqués, avec ce qu'il reste à encaisser. On bloque des jours en deux clics. | Le planning ne dépend plus d'un outil extérieur : tout est au même endroit, et un jour bloqué n'est plus proposé à la réservation sur le site. | `captures/2026-11-28-planning.webp` |
 | 2026-11-06 | Sauvegarde complète en un clic | Télécharge toute la base (clients, conversations, réservations, finances, fichiers, comptes) dans un seul fichier. | Les données de l'entreprise lui appartiennent vraiment : une copie sur son ordinateur, à tout moment. | `captures/2026-11-06-sauvegarde.webp` |
 | 2026-11-03 | Comptabilité en règle | Chaque mouvement de banque et de caisse est classé, justifié par une facture, et la TVA à déclarer est calculée. | Plus besoin de reconstituer ses comptes à la main : le dossier est prêt pour la TVA, le bilan et un contrôle. | `captures/2026-11-03-comptabilite.webp` |
 | 2026-11-03 | Léa agit sur tout le tableau de bord | On demande à Léa d'ajouter un lead, relancer un client, noter un rendez-vous ou saisir une dépense, et elle le fait. | Une phrase suffit au lieu de dix clics, et Léa demande un « oui » avant d'écrire à un client. | `captures/2026-11-03-lea-conversation.webp` |
